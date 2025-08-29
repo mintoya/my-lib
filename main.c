@@ -24,13 +24,10 @@ char *obj = "{}";
   name:[<string/list/object>,<string/list/object>...];
  */
 
-  char *string = "main : { key : [ hello world, ] otherKey : thing }";
+um_fp inside(char limits[2], um_fp string) {
 
-  //setting the key "hello" to the string "world"
-  UMap* map = UMap_new();
-  UMap_set(map, (um_fp){.length = strlen("hello"),.ptr = "hello"}, (um_fp){.length = strlen("world"),.ptr = "world"});
-  //setting an index 1 to the string "testString"
-  UMap_set(map, (um_fp){.length = sizeof(unsigned int ),.ptr = (int[1]){1}}, (um_fp){.length = strlen("world"),.ptr = "world"});
+  char front = limits[0];
+  char back = limits[1];
 
   for (int i = 0; i < string.length; i++) {
     if (((char *)string.ptr)[i] == front) {
@@ -67,9 +64,9 @@ int main(void) {
 
   um_fp str = um_from(testString);
   usePrint(um_fp, str);
-  usePrint(char *, "inside");
+  usePrint(char*, "inside");
   usePrint(um_fp, inside("[,", str));
-  usePrint(char *, "until :");
+  usePrint(char*, "until :");
   usePrint(um_fp, until(':', str));
   return 0;
 }
