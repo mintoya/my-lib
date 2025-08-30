@@ -1,7 +1,6 @@
 #include "umap-printer/printer.h"
 #include "umap/umap.h"
 #include <alloca.h>
-#include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -85,7 +84,8 @@ um_fp behind(char delim, um_fp string) {
   string.length = i + 1;
   return string;
 }
-
+#define min(a, b) ((a < b) ? (a) : (b))
+#define max(a, b) ((a > b) ? (a) : (b))
 #define stack_split(result, string, ...)                                       \
   result = alloca(                                                             \
       sizeof(um_fp) *                                                          \
@@ -94,11 +94,12 @@ um_fp behind(char delim, um_fp string) {
     void *last;                                                                \
     unsigned int args[] = {__VA_ARGS__};                                       \
     for (int i = 0; i < sizeof(args) / sizeof(unsigned int); i++) {            \
+      args[i] = (i == 0) ? (min(args[i], string.length))                       \
+                         : (min(string.length, max(args[i], args[i - 1])));    \
       result[i] = (um_fp){                                                     \
           .ptr = (i == 0) ? (string.ptr) : (last),                             \
           .length = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),            \
       };                                                                       \
-      assert((i == 0) ? (args[0]) : (args[i] - args[i - 1]) > 0);              \
       last = ((char *)result[i].ptr) + result[i].length;                       \
     }                                                                          \
     result[sizeof(args) / sizeof(unsigned int)] =                              \
@@ -113,9 +114,11 @@ void parse_list(um_fp string) {
   usePrintln(char *, __func__);
   usePrintln(um_fp, string);
 }
+void *parser(um_fp str, UMap *parent);
 void parse_object(um_fp string) {
   usePrintln(char *, __func__);
   usePrintln(um_fp, string);
+  parser(inside(obj, string), NULL);
 }
 
 void *parser(um_fp string, UMap *parent) {
@@ -133,21 +136,24 @@ void *parser(um_fp string, UMap *parent) {
   um_fp toParse;
 
   while (string.length) {
+    um_fp toParse;
     if (current == '{') {
-      um_fp toParse = inside("{}", string);
+      toParse = inside("{}", string);
       parse_object(toParse);
     } else if (current == '[') {
-      um_fp toParse = inside("{}", string);
+      toParse = inside("{}", string);
       parse_list(toParse);
     } else {
-      um_fp toParse = inside(":;", string);
+      toParse = inside(":;", string);
       parse_word(toParse);
     }
-    string = nullUmf;
+    unsigned int place = (toParse.ptr - string.ptr) + toParse.length + 1;
+    um_fp *splits = stack_split(splits, string, place);
+    string = splits[1];
+    fflush(stdout);
   }
 
-  // while ()
-  //   name = behind(':', string);
+  return NULL;
 }
 
 char str[] = {
@@ -157,19 +163,11 @@ char str[] = {
 int main(void) {
 
   char *testString = str;
-  // um_fp str = um_from(testString);
-  um_fp str = um_from("Mozilla");
-  um_fp *slices = stack_split(slices, str, 1, 3);
-
-  usePrintln(um_fp, slices[1]);
-
-  slices = stack_split(slices, str, 2);
-
-  usePrintln(um_fp, slices[1]);
+  um_fp str = um_from(testString);
 
   // usePrint(um_fp, slices[2]);
   // usePrintln(um_fp,around("{}",str));
   // usePrintln(um_fp,inside("{}",str));
-  // parser(str, NULL);
+  parser(str, NULL);
   return 0;
 }
