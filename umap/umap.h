@@ -38,7 +38,7 @@ um_fp UMap_toBuf(UMap *map);
   _Generic((val),                                                              \
       char *: (um_fp){.ptr = (val), .length = strlen(val)},                    \
       const char *: (um_fp){.ptr = (val), .length = strlen(val)},              \
+      char[]: (um_fp){.ptr = (val), .length = sizeof(val)},                    \
       default: (um_fp){.ptr = &(val), .length = sizeof(val)})
-
 
 #endif

@@ -1,8 +1,8 @@
-CC = gcc
+CC = cc
 DIR = build
 # CFLAGS = -pthread -Wall
-CFLAGS = 
-OBJECTS = main-chatGPT.c my-list/my-list.c umap/umap.c umap-printer/printer.c
+CFLAGS = -w
+OBJECTS = main.c my-list/my-list.c umap/umap.c umap-printer/printer.c
 make: $(DIR) $(OBJECTS)
 	$(CC) -o $(DIR)/a $(OBJECTS) $(CFLAGS)
 
@@ -23,8 +23,8 @@ profile: make
 a: $(OBJECTS)
 	$(CC) -o $(DIR)/a $(OBJECTS) $(CFLAGS)
 
-main.o: main-chatGPT.c
-	$(CC) -c main-chatGPT.c $(CFLAGS)
+main.o: main.c
+	$(CC) -c main.c $(CFLAGS)
 my-list.o: my-list/my-list.c
 	$(CC) -c my-list/my-list.c $(CFLAGS)
 umap.o: umap/umap.c

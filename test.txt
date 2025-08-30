@@ -1,4 +1,12 @@
-main : {
-  key : [ hello world, ] 
-  otherKey : thing
+parser : {
+  modeArr: [
+    words,
+    lists,
+    objects,
+  ]
+  modes: {
+    words: parse until colon ;
+    lists: parse around and incide bracket;
+    objects: parse around and inside {};
+  }
 }

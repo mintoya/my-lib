@@ -6,10 +6,11 @@
 #define or ||
 #define min(a, b) ((a < b) ? (a) : (b))
 
-void print_int(const void *integer) { printf("%i\n", *(int *)integer); }
-void print_chars(const void *charf) { printf("%s\n", *(char **)charf); }
+void print_int(const void *integer) { printf("%i", *(int *)integer); }
+void print_chars(const void *charf) { printf("%s", *(char **)charf); }
 void print_umfp(const void *umfp) {
-  printf("%.*s\n", (*(um_fp *)umfp).length, (char *)(*(um_fp *)umfp).ptr);
+  if ((*(um_fp *)umfp).length && (*(um_fp *)umfp).ptr)
+    printf("%.*s", (*(um_fp *)umfp).length, (char *)(*(um_fp *)umfp).ptr);
 }
 void print_rawList(const void *ref) {
   List *l = *(List **)ref;
@@ -22,7 +23,7 @@ void print_rawList(const void *ref) {
     }
     printf(", ");
   }
-  printf("}\n");
+  printf("}");
 }
 void print_UMap(const void *ref) {
   UMap *u = *(UMap **)ref;
@@ -43,7 +44,7 @@ void print_UMap(const void *ref) {
 }
 typedef void (*printer)(const void *);
 
-char *defined[] = {"int", "char*", "um_fp", "List*", "UMap*"};
+char *defined[] = {"int", "char *", "um_fp", "List *", "UMap *"};
 
 List *typeList = NULL; // pointers to places in definedRef
 List *typeBuf = NULL;
