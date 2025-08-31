@@ -1,9 +1,14 @@
 #include "umap-printer/printer.h"
 #include "umap/umap.h"
-#include <alloca.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#ifdef _WIN32
+#include <windows.h>
+#include <malloc.h>
+#else
+#include <alloca.h>
+#endif
 
 char *delims = ":,{}[]; ";
 char *sep = ",";
