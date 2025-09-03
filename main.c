@@ -16,7 +16,6 @@
 #define max(a, b) ((a > b) ? (a) : (b))
 
 um_fp inside(char limits[2], um_fp string) {
-
   char front = limits[0];
   char back = limits[1];
 
@@ -155,13 +154,9 @@ um_fp parseNext(um_fp string, UMap parent[static 1]) {
     break;
   default:
     toParse = behind(';', next);
-    UMap_set(parent, name, um_from("string here!"));
+    UMap_set(parent, name, until(';', next));
     break;
   }
-  usePrint(char *,"parsed: ");
-  usePrint(um_fp,name);
-  usePrint(char *," as :");
-  usePrintln(um_fp,toParse);
   return toParse;
 }
 
@@ -211,9 +206,9 @@ int main(void) {
       break;
     }
     str = after(str, read);
-    mPrint("UMap<string>", &parent);
   }
 
+  mPrint("UMap<string>", &parent);
   // usePrint(UMap *, parent);
   return 0;
 }
