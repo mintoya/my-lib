@@ -14,7 +14,7 @@ extern "C" {
 
 unsigned int UMap_linearSearch(UMap *map, um_fp key) {
   unsigned int res = 0;
-  unsigned int len = map->keys->List_stringMetaData.length;
+  unsigned int len = stringList_length( map->keys );
 
   while (res < len) {
     um_fp current = UMap_getKeyAtIndex(map, res);
@@ -23,7 +23,6 @@ unsigned int UMap_linearSearch(UMap *map, um_fp key) {
     }
     res++;
   }
-
   return res;
 }
 
@@ -44,8 +43,11 @@ um_fp UMap_getValAtKey(UMap *map, um_fp key) {
 }
 
 void UMap_set(UMap *map, um_fp key, um_fp val) {
+
   unsigned int index = UMap_linearSearch(map, key);
-  if (!um_fp_cmp(UMap_getKeyAtIndex(map, index), key)) {
+  unsigned int length = stringList_length(map->keys);
+
+  if ( index< length && !um_fp_cmp(UMap_getKeyAtIndex(map, index), key)) {
     stringList_set(map->keys, key, index);
     stringList_set(map->vals, val, index);
   } else {

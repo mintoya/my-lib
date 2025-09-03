@@ -14,25 +14,6 @@
 
 #define min(a, b) ((a < b) ? (a) : (b))
 #define max(a, b) ((a > b) ? (a) : (b))
-char *delims = ":,{}[]; ";
-char *sep = ",";
-char *val = ":;";
-char *lst = "[]";
-char *obj = "{}";
-// delimiters:
-// : -> follows name
-// ; -> ends defenition
-// , -> separates lists
-// { -> starts internal umap
-// } -> ends internal umap
-// [ -> starts internal list
-// ] -> ends internal list
-/*
-  objects:
-  name:<string/list/object>
-  lists:
-  name:[<string/list/object>,<string/list/object>...]
- */
 
 um_fp inside(char limits[2], um_fp string) {
 
@@ -49,6 +30,8 @@ um_fp inside(char limits[2], um_fp string) {
           counter--;
         }
         if (!counter)
+          return (um_fp){.ptr = ((char *)string.ptr) + i + 1, .width = ii - 1};
+        if(i+ii==string.width-1)
           return (um_fp){.ptr = ((char *)string.ptr) + i + 1, .width = ii - 1};
       }
     }
@@ -69,7 +52,9 @@ um_fp around(char limits[2], um_fp string) {
         } else if (((char *)string.ptr)[i + ii] == back) {
           counter--;
         }
-        if (!counter)
+        if (!counter )
+          return (um_fp){.ptr = ((char *)string.ptr) + i, .width = ii + 1};
+        if(i+ii==string.width-1)
           return (um_fp){.ptr = ((char *)string.ptr) + i, .width = ii + 1};
       }
     }
@@ -94,20 +79,16 @@ um_fp behind(char delim, um_fp string) {
   return string;
 }
 um_fp after(um_fp main, um_fp slice) {
+  if(!(main.ptr&&main.width)) return nullUmf;
+  if(!(slice.ptr&&slice.width)) return main;
   char *mainStart = main.ptr;
   char *mainEnd = mainStart + main.width;
   char *sliceStart = slice.ptr;
   char *sliceEnd = sliceStart + slice.width;
 
-  // if (sliceStart < mainStart) sliceStart = mainStart;
-  // if (sliceEnd   > mainEnd)   sliceEnd   = mainEnd;
-
   assert(sliceStart >= mainStart && sliceEnd <= mainEnd);
 
-  char *afterStart = sliceEnd;
-  size_t afterWidth = mainEnd - afterStart;
-
-  return (um_fp){.ptr = afterStart, .width = afterWidth};
+  return (um_fp){.ptr = sliceEnd, .width = mainEnd - sliceEnd};
 }
 #define stack_split(result, string, ...)                                       \
   result = alloca(                                                             \
@@ -157,7 +138,12 @@ um_fp parseNext(um_fp string, UMap parent[static 1]) {
 
   next = removeSpacesPadding(next);
 
-  um_fp toParse;
+  if (!(next.ptr && next.width)) {
+    return nullUmf;
+  }
+
+  um_fp toParse = string ;
+
   switch (((char *)next.ptr)[0]) {
   case '[':
     toParse = around("[]", next);
@@ -168,34 +154,29 @@ um_fp parseNext(um_fp string, UMap parent[static 1]) {
     UMap_set(parent, name, um_from("object here!"));
     break;
   default:
-    toParse = around(":;", next);
+    toParse = behind(';', next);
     UMap_set(parent, name, um_from("string here!"));
     break;
   }
-  um_fp res = after(string, toParse);
-  return res;
+  usePrint(char *,"parsed: ");
+  usePrint(um_fp,name);
+  usePrint(char *," as :");
+  usePrintln(um_fp,toParse);
+  return toParse;
 }
 
 // char inputString[] = {
 // #embed "test.txt"
 // };
 
-char* inputString = R"(
-parser : {
-  string: example;
-  modeArr: [
-    words,
-    lists,
-    objects,
-  ]
-  modes: {
-    words: parse until colon ;
-    lists: parse around and incide bracket;
-    objects: parse around and inside {};
-  }
-}
+char* inputString = 
+R"d(
 
-)""\0";
+x  : y ;
+x2 :{ x2 : y2; } 
+x3 :[ y3 , y4 ] 
+
+)d";
 
 
 void stringList_printMeta(const stringList *sl) {
@@ -217,15 +198,19 @@ void stringList_printMeta(const stringList *sl) {
            meta->_size);
   }
 }
+
 int main(void) {
-  char *testString = inputString;
-  um_fp str = um_from(testString);
+  printf(inputString);
+  um_fp str = um_from(inputString);
 
   UMap *parent = UMap_new();
 
-  str = inside("{}", str);
   while (str.ptr) {
-    str = parseNext(str, parent);
+    um_fp read = parseNext(str, parent);
+    if (!(read.ptr && read.width)) {
+      break;
+    }
+    str = after(str, read);
     mPrint("UMap<string>", &parent);
   }
 

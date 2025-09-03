@@ -26,7 +26,9 @@ void stringList_insert(stringList *l, um_fp, unsigned int index);
 void stringList_set(stringList *l, um_fp, unsigned int index);
 void stringList_append(stringList *l, um_fp);
 void stringList_free(stringList *l);
-
+static inline unsigned int stringList_length(stringList*l){
+  return l->List_stringMetaData.length;
+}
 #define nullUmf ((um_fp){.ptr = NULL, .width = 0})
 #define um_from(val)                                                           \
   _Generic((val),                                                              \
