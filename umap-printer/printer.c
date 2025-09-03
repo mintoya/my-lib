@@ -9,13 +9,13 @@
 void print_int(const void *integer) { printf("%i", *(int *)integer); }
 void print_chars(const void *charf) { printf("%s", *(char **)charf); }
 void print_umfp(const void *umfp) {
-  if ((*(um_fp *)umfp).length && (*(um_fp *)umfp).ptr)
-    printf("%.*s", (*(um_fp *)umfp).length, (char *)(*(um_fp *)umfp).ptr);
+  if ((*(um_fp *)umfp).width && (*(um_fp *)umfp).ptr)
+    printf("%.*s", (*(um_fp *)umfp).width, (char *)(*(um_fp *)umfp).ptr);
 }
 void print_rawList(const void *ref) {
   List *l = *(List **)ref;
   printf("{");
-  for (int i = 0; i < l->length; i++) {
+  for (int i = 0; i < l->width; i++) {
     const char *refw = List_gst(l, i);
     printf("0x");
     for (int ii = l->width / sizeof(char) - 1; ii >= 0; ii--) {
@@ -28,13 +28,13 @@ void print_rawList(const void *ref) {
 void print_UMap(const void *ref) {
   UMap *u = *(UMap **)ref;
   printf("{\n");
-  for (int i = 0; i < u->keyReg->length; i++) {
+  for (int i = 0; i < u->keys->List_stringMetaData.length; i++) {
     um_fp key = UMap_getKeyAtIndex(u, i);
     um_fp val = UMap_getValAtKey(u, key);
-    if (val.length && val.ptr) {
-      printf("\t %.*s :", key.length, (char *)key.ptr);
+    if (val.width && val.ptr) {
+      printf("\t %.*s :", key.width, (char *)key.ptr);
       printf("0x");
-      for (int ii = val.length / sizeof(char) - 1; ii >= 0; ii--) {
+      for (int ii = val.width / sizeof(char) - 1; ii >= 0; ii--) {
         printf("%02x", *((unsigned char *)val.ptr + ii));
       }
       printf("\n");

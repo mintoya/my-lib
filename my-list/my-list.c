@@ -94,6 +94,11 @@ void List_append(List *l, const void *element) {
   memcpy(l->head + l->width * l->length, element, l->width);
   l->length++;
 }
+void List_pad(List*l,unsigned int ammount){
+  List_resize(l, l->length+ammount);
+  memset(l->head+l->width*l->length, 0, ammount*l->width);
+  l->length+=ammount;
+}
 void List_remove(List *l, unsigned int i) {
   if (checkBounds(l, i)) {
     memcpy(l->head + i * l->width, l->head + (i + 1) * l->width,

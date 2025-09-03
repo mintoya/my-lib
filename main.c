@@ -35,17 +35,17 @@ um_fp inside(char limits[2], um_fp string) {
   char front = limits[0];
   char back = limits[1];
 
-  for (int i = 0; i < string.length; i++) {
+  for (int i = 0; i < string.width; i++) {
     if (((char *)string.ptr)[i] == front) {
       unsigned int counter = 1;
-      for (int ii = 1; ii + i < string.length; ii++) {
+      for (int ii = 1; ii + i < string.width; ii++) {
         if (((char *)string.ptr)[i + ii] == front) {
           counter++;
         } else if (((char *)string.ptr)[i + ii] == back) {
           counter--;
         }
         if (!counter)
-          return (um_fp){.ptr = ((char *)string.ptr) + i + 1, .length = ii - 1};
+          return (um_fp){.ptr = ((char *)string.ptr) + i + 1, .width = ii - 1};
       }
     }
   }
@@ -56,17 +56,17 @@ um_fp around(char limits[2], um_fp string) {
   char front = limits[0];
   char back = limits[1];
 
-  for (int i = 0; i < string.length; i++) {
+  for (int i = 0; i < string.width; i++) {
     if (((char *)string.ptr)[i] == front) {
       unsigned int counter = 1;
-      for (int ii = 1; ii + i < string.length; ii++) {
+      for (int ii = 1; ii + i < string.width; ii++) {
         if (((char *)string.ptr)[i + ii] == front) {
           counter++;
         } else if (((char *)string.ptr)[i + ii] == back) {
           counter--;
         }
         if (!counter)
-          return (um_fp){.ptr = ((char *)string.ptr) + i, .length = ii + 1};
+          return (um_fp){.ptr = ((char *)string.ptr) + i, .width = ii + 1};
       }
     }
   }
@@ -75,18 +75,18 @@ um_fp around(char limits[2], um_fp string) {
 
 um_fp until(char delim, um_fp string) {
   int i = 0;
-  while (i < string.length && ((char *)string.ptr)[i] != delim) {
+  while (i < string.width && ((char *)string.ptr)[i] != delim) {
     i++;
   }
-  string.length = i;
+  string.width = i;
   return string;
 }
 um_fp behind(char delim, um_fp string) {
   int i = 0;
-  while (i < string.length && ((char *)string.ptr)[i] != delim) {
+  while (i < string.width && ((char *)string.ptr)[i] != delim) {
     i++;
   }
-  string.length = i + 1;
+  string.width = i + 1;
   return string;
 }
 #define min(a, b) ((a < b) ? (a) : (b))
@@ -99,16 +99,16 @@ um_fp behind(char delim, um_fp string) {
     void *last;                                                                \
     unsigned int args[] = {__VA_ARGS__};                                       \
     for (int i = 0; i < sizeof(args) / sizeof(unsigned int); i++) {            \
-      args[i] = (i == 0) ? (min(args[i], string.length))                       \
-                         : (min(string.length, max(args[i], args[i - 1])));    \
+      args[i] = (i == 0) ? (min(args[i], string.width))                       \
+                         : (min(string.width, max(args[i], args[i - 1])));    \
       result[i] = (um_fp){                                                     \
           .ptr = (i == 0) ? (string.ptr) : (last),                             \
-          .length = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),            \
+          .width = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),            \
       };                                                                       \
-      last = ((char *)result[i].ptr) + result[i].length;                       \
+      last = ((char *)result[i].ptr) + result[i].width;                       \
     }                                                                          \
     result[sizeof(args) / sizeof(unsigned int)] =                              \
-        (um_fp){.ptr = last, .length = string.length - (last - string.ptr)};   \
+        (um_fp){.ptr = last, .width = string.width - (last - string.ptr)};   \
   } while (0);
 
 void parse_word(um_fp string) {
@@ -127,20 +127,20 @@ void parse_object(um_fp string) {
 }
 
 void *parser(um_fp string, UMap *parent) {
-  if (!(string.ptr && string.length)) {
+  if (!(string.ptr && string.width)) {
     return NULL;
   }
   um_fp name = until(':', string);
   usePrintln(um_fp, name);
 
-  int place = behind(':', string).length;
+  int place = behind(':', string).width;
   while (((char *)(string.ptr))[place] && ((char *)(string.ptr))[place] == ' ')
     place++;
 
   char current = ((char *)(string.ptr))[place];
   um_fp toParse;
 
-  while (string.length) {
+  while (string.width) {
     um_fp toParse;
     if (current == '{') {
       toParse = inside("{}", string);
@@ -152,7 +152,7 @@ void *parser(um_fp string, UMap *parent) {
       toParse = inside(":;", string);
       parse_word(toParse);
     }
-    unsigned int place = (toParse.ptr - string.ptr) + toParse.length + 1;
+    unsigned int place = (toParse.ptr - string.ptr) + toParse.width + 1;
     um_fp *splits = stack_split(splits, string, place);
     string = splits[1];
     fflush(stdout);
@@ -161,18 +161,24 @@ void *parser(um_fp string, UMap *parent) {
   return NULL;
 }
 
-char str[] = {
-#embed "test.txt"
-};
+// char str[] = {
+// #embed "test.txt"
+// };
 
 int main(void) {
-
-  char *testString = str;
-  um_fp str = um_from(testString);
+  // char *testString = str;
+  // um_fp str = um_from(testString);
 
   // usePrint(um_fp, slices[2]);
   // usePrintln(um_fp,around("{}",str));
   // usePrintln(um_fp,inside("{}",str));
-  parser(str, NULL);
+  // parser(str, NULL);
+
+  UMap* n = UMap_new();
+  UMap_set(n,um_from("hello"),um_from("world"));
+  UMap_set(n,um_from("hellow"),um_from("world"));
+  UMap_set(n,um_from("hello5"),um_from("world"));
+  UMap_set(n,um_from("hello"),um_from("world"));
+  usePrint(UMap *,n);
   return 0;
 }

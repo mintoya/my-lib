@@ -2,18 +2,13 @@
 #define UMAP_H
 
 #include "../my-list/my-list.h"
+#include "../string-List/stringList.h"
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct fat_pointer {
-  void *ptr;
-  unsigned int length;
-} um_fp;
 typedef struct umap {
-  List *keyReg; // umapListElements
-  List *keys;   // chars
-  List *valReg; // umapListElements
-  List *vals;   // chars
+  stringList* keys;
+  stringList* vals;
 } UMap;
 
 UMap *UMap_new();
@@ -32,13 +27,5 @@ void UMap_free(UMap *map);
  */
 UMap UMap_fromBuf(um_fp mapRasterized);
 um_fp UMap_toBuf(UMap *map);
-
-#define nullUmf ((um_fp){.ptr = NULL, .length = 0})
-#define um_from(val)                                                           \
-  _Generic((val),                                                              \
-      char *: (um_fp){.ptr = (val), .length = strlen(val)},                    \
-      const char *: (um_fp){.ptr = (val), .length = strlen(val)},              \
-      char[]: (um_fp){.ptr = (val), .length = sizeof(val)},                    \
-      default: (um_fp){.ptr = &(val), .length = sizeof(val)})
 
 #endif
