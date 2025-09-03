@@ -1,7 +1,7 @@
 CC = gcc
 DIR = build
 # CFLAGS = -pthread -Wall
-CFLAGS = -w
+CFLAGS = -w -g
 OBJECTS = main.c my-list/my-list.c umap/umap.c umap-printer/printer.c string-List/stringList.c
 make: $(DIR) $(OBJECTS)
 	$(CC) -o $(DIR)/a $(OBJECTS) $(CFLAGS)
