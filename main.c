@@ -180,7 +180,22 @@ um_fp parseNext(um_fp string, UMap parent[static 1]) {
 // #embed "test.txt"
 // };
 
-char *inputString = "parser : { string: example; modeArr: [ words, lists, objects, ] modes: { words: parse until colon ; lists: parse around and incide bracket; objects: parse around and inside {}; } }";
+char* inputString = R"(
+parser : {
+  string: example;
+  modeArr: [
+    words,
+    lists,
+    objects,
+  ]
+  modes: {
+    words: parse until colon ;
+    lists: parse around and incide bracket;
+    objects: parse around and inside {};
+  }
+}
+
+)""\0";
 
 
 void stringList_printMeta(const stringList *sl) {
