@@ -1,15 +1,19 @@
+#include "string-List/stringList.h"
 #include "umap-printer/printer.h"
 #include "umap/umap.h"
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #ifdef _WIN32
-#include <windows.h>
+#include <assert.h>
 #include <malloc.h>
+#include <windows.h>
 #else
 #include <alloca.h>
 #endif
 
+#define min(a, b) ((a < b) ? (a) : (b))
+#define max(a, b) ((a > b) ? (a) : (b))
 char *delims = ":,{}[]; ";
 char *sep = ",";
 char *val = ":;";
@@ -86,11 +90,25 @@ um_fp behind(char delim, um_fp string) {
   while (i < string.width && ((char *)string.ptr)[i] != delim) {
     i++;
   }
-  string.width = i + 1;
+  string.width = min(i + 1, string.width);
   return string;
 }
-#define min(a, b) ((a < b) ? (a) : (b))
-#define max(a, b) ((a > b) ? (a) : (b))
+um_fp after(um_fp main, um_fp slice) {
+  char *mainStart = main.ptr;
+  char *mainEnd = mainStart + main.width;
+  char *sliceStart = slice.ptr;
+  char *sliceEnd = sliceStart + slice.width;
+
+  // if (sliceStart < mainStart) sliceStart = mainStart;
+  // if (sliceEnd   > mainEnd)   sliceEnd   = mainEnd;
+
+  assert(sliceStart >= mainStart && sliceEnd <= mainEnd);
+
+  char *afterStart = sliceEnd;
+  size_t afterWidth = mainEnd - afterStart;
+
+  return (um_fp){.ptr = afterStart, .width = afterWidth};
+}
 #define stack_split(result, string, ...)                                       \
   result = alloca(                                                             \
       sizeof(um_fp) *                                                          \
@@ -99,86 +117,103 @@ um_fp behind(char delim, um_fp string) {
     void *last;                                                                \
     unsigned int args[] = {__VA_ARGS__};                                       \
     for (int i = 0; i < sizeof(args) / sizeof(unsigned int); i++) {            \
-      args[i] = (i == 0) ? (min(args[i], string.width))                       \
-                         : (min(string.width, max(args[i], args[i - 1])));    \
+      args[i] = (i == 0) ? (min(args[i], string.width))                        \
+                         : (min(string.width, max(args[i], args[i - 1])));     \
       result[i] = (um_fp){                                                     \
           .ptr = (i == 0) ? (string.ptr) : (last),                             \
-          .width = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),            \
+          .width = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),             \
       };                                                                       \
-      last = ((char *)result[i].ptr) + result[i].width;                       \
+      last = ((char *)result[i].ptr) + result[i].width;                        \
     }                                                                          \
     result[sizeof(args) / sizeof(unsigned int)] =                              \
-        (um_fp){.ptr = last, .width = string.width - (last - string.ptr)};   \
+        (um_fp){.ptr = last, .width = string.width - (last - string.ptr)};     \
   } while (0);
 
-void parse_word(um_fp string) {
-  usePrintln(char *, __func__);
-  usePrintln(um_fp, string);
+um_fp removeSpacesPadding(um_fp in) {
+  um_fp res = in;
+  int front = 0;
+  int back = in.width - 1;
+  while (front < in.width && ((char *)in.ptr)[front] == ' ') {
+    front++;
+  }
+  while (back > front && ((char *)in.ptr)[back] == ' ') {
+    back--;
+  }
+  um_fp *splits = stack_split(splits, in, front, back);
+  res = splits[1];
+  return res;
 }
-void parse_list(um_fp string) {
-  usePrintln(char *, __func__);
-  usePrintln(um_fp, string);
-}
-void *parser(um_fp str, UMap *parent);
-void parse_object(um_fp string) {
-  usePrintln(char *, __func__);
-  usePrintln(um_fp, string);
-  parser(inside(obj, string), NULL);
-}
-
-void *parser(um_fp string, UMap *parent) {
+um_fp parseNext(um_fp string, UMap parent[static 1]) {
   if (!(string.ptr && string.width)) {
-    return NULL;
+    return nullUmf;
   }
+
   um_fp name = until(':', string);
-  usePrintln(um_fp, name);
-
-  int place = behind(':', string).width;
-  while (((char *)(string.ptr))[place] && ((char *)(string.ptr))[place] == ' ')
-    place++;
-
-  char current = ((char *)(string.ptr))[place];
-  um_fp toParse;
-
-  while (string.width) {
-    um_fp toParse;
-    if (current == '{') {
-      toParse = inside("{}", string);
-      parse_object(toParse);
-    } else if (current == '[') {
-      toParse = inside("{}", string);
-      parse_list(toParse);
-    } else {
-      toParse = inside(":;", string);
-      parse_word(toParse);
-    }
-    unsigned int place = (toParse.ptr - string.ptr) + toParse.width + 1;
-    um_fp *splits = stack_split(splits, string, place);
-    string = splits[1];
-    fflush(stdout);
+  if (name.ptr == string.ptr && name.width == string.width) {
+    return nullUmf;
   }
 
-  return NULL;
+  um_fp next = after(string, behind(':', string));
+
+  next = removeSpacesPadding(next);
+
+  um_fp toParse;
+  switch (((char *)next.ptr)[0]) {
+  case '[':
+    toParse = around("[]", next);
+    UMap_set(parent, name, um_from("list here!"));
+    break;
+  case '{':
+    toParse = around("{}", next);
+    UMap_set(parent, name, um_from("object here!"));
+    break;
+  default:
+    toParse = around(":;", next);
+    UMap_set(parent, name, um_from("string here!"));
+    break;
+  }
+  um_fp res = after(string, toParse);
+  return res;
 }
 
-// char str[] = {
+// char inputString[] = {
 // #embed "test.txt"
 // };
 
+char *inputString = "parser : { string: example; modeArr: [ words, lists, objects, ] modes: { words: parse until colon ; lists: parse around and incide bracket; objects: parse around and inside {}; } }";
+
+
+void stringList_printMeta(const stringList *sl) {
+  if (!sl) {
+    printf("stringList (null)\n");
+    return;
+  }
+
+  List *metaList = &sl->List_stringMetaData;
+  printf("stringList metadata (length=%u):\n", metaList->length);
+
+  for (unsigned int i = 0; i < metaList->length; i++) {
+    stringMetaData *meta = (stringMetaData *)List_gst(metaList, i);
+    if (!meta) {
+      printf("  [%u] <null>\n", i);
+      continue;
+    }
+    printf("  [%u] index=%u, width=%u, size=%u\n", i, meta->index, meta->width,
+           meta->_size);
+  }
+}
 int main(void) {
-  // char *testString = str;
-  // um_fp str = um_from(testString);
+  char *testString = inputString;
+  um_fp str = um_from(testString);
 
-  // usePrint(um_fp, slices[2]);
-  // usePrintln(um_fp,around("{}",str));
-  // usePrintln(um_fp,inside("{}",str));
-  // parser(str, NULL);
+  UMap *parent = UMap_new();
 
-  UMap* n = UMap_new();
-  UMap_set(n,um_from("hello"),um_from("world"));
-  UMap_set(n,um_from("hellow"),um_from("world"));
-  UMap_set(n,um_from("hello5"),um_from("world"));
-  UMap_set(n,um_from("hello"),um_from("world"));
-  usePrint(UMap *,n);
+  str = inside("{}", str);
+  while (str.ptr) {
+    str = parseNext(str, parent);
+    mPrint("UMap<string>", &parent);
+  }
+
+  // usePrint(UMap *, parent);
   return 0;
 }

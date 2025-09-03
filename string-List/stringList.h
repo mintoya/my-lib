@@ -1,7 +1,8 @@
 #ifndef STRING_LIST_H
 #define STRING_LIST_H
-#include "../my-list/my-list.h"
 #define initialBufferSize
+#include "../my-list/my-list.h"
+#include <string.h>
 
 typedef struct stringMetaData {
   unsigned int index;
@@ -18,7 +19,7 @@ typedef struct fat_pointer {
   void *ptr;
   size_t width;
 } um_fp;
-
+int um_fp_cmp(um_fp a, um_fp b);
 stringList *stringList_new();
 um_fp stringList_get(stringList *l, unsigned int index);
 void stringList_insert(stringList *l, um_fp, unsigned int index);

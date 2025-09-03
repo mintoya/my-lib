@@ -37,6 +37,7 @@ List *List_new(unsigned long bytes) {
   l->size = 1;
   return l;
 }
+#define LIST_GROW_EQ(uint) ( (uint + ( uint <<1 ))+1 )
 
 //
 //prins  hex representatins of list data 
@@ -71,10 +72,6 @@ void List_resize(List *l, unsigned int newSize) {
   l->size = newSize;
   l->length = (l->length < l->size) ? (l->length) : (l->size);
 }
-void List_set(List *l, unsigned int i, const void *element) {
-  checkBounds(l, i);
-  memcpy(l->head + i * l->size, element, l->width);
-}
 // expands list to
 void *List_gst(const List *l, unsigned int i) {
   checkBounds(l, i);
@@ -96,28 +93,33 @@ void List_append(List *l, const void *element) {
 }
 void List_pad(List*l,unsigned int ammount){
   List_resize(l, l->length+ammount);
-  memset(l->head+l->width*l->length, 0, ammount*l->width);
+  // memset(l->head+l->width*l->length, 0, ammount*l->width);
   l->length+=ammount;
 }
 void List_remove(List *l, unsigned int i) {
   if (checkBounds(l, i)) {
-    memcpy(l->head + i * l->width, l->head + (i + 1) * l->width,
+    memmove(l->head + i * l->width, l->head + (i + 1) * l->width,
            (l->length - i) * l->width);
     l->length--;
   }
 }
+
+void List_set(List *l, unsigned int i, const void *element) {
+  checkBounds(l, i);
+  memcpy(l->head + i * l->size, element, l->width);
+}
+
 void List_insert(List *l, unsigned int i, void *element) {
-  if (i == l->length) {
-    List_append(l, element);
-    return;
-  }
-  if (l->size <= l->length + 1) {
-    List_resize(l, l->length + 1);
-  }
-  l->length++;
-  memcpy(l->head + (i + 1) * l->width, l->head + i * l->width,
-         l->width * (l->length - i));
-  List_set(l, i, element); // seg fault
+
+    if (i == l->length) { List_append(l, element); return; }
+
+    if (l->length + 1 > l->size) { List_resize(l, l->size * 2); }
+
+    memmove((char*)l->head + (i + 1) * l->width, (char*)l->head + i * l->width, l->width * (l->length - i));
+
+    memcpy((char*)l->head + i * l->width, element, l->width);
+
+    l->length++;
 }
 int List_forEach(List *l, int (*function)(void *)) {
   int result = 1;

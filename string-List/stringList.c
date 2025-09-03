@@ -25,6 +25,11 @@ stringList *stringList_new() {
 }
 #define max(a,b) ((a<b)?(b):(a))
 
+int um_fp_cmp(um_fp a, um_fp b) {
+    if (a.width != b.width) { return (a.width < b.width) ? -1 : 1; }
+    if (a.width == 0) { return 0; }
+    return memcmp(a.ptr, b.ptr, a.width);
+}
 um_fp stringList_get(stringList *l, unsigned int index) {
   stringMetaData this = mList_get(&(l->List_stringMetaData),stringMetaData,index );
   return ((um_fp){.ptr = (List_gst(&(l->List_char),this.index)),.width=this.width});

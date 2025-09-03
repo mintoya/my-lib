@@ -1,7 +1,7 @@
-CC = gcc
+CC = clang
 DIR = build
 # CFLAGS = -pthread -Wall
-CFLAGS = -w -g
+CFLAGS = -w -g -fsanitize=address
 OBJECTS = main.c my-list/my-list.c umap/umap.c umap-printer/printer.c string-List/stringList.c
 make: $(DIR) $(OBJECTS)
 	$(CC) -o $(DIR)/a $(OBJECTS) $(CFLAGS)

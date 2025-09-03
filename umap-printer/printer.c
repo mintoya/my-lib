@@ -6,6 +6,20 @@
 #define or ||
 #define min(a, b) ((a < b) ? (a) : (b))
 
+void print_StringUmap(const void *ref) {
+  UMap *u = *(UMap **)ref;
+  printf("{\n");
+  for (int i = 0; i < u->keys->List_stringMetaData.length; i++) {
+    um_fp key = UMap_getKeyAtIndex(u, i);
+    um_fp val = UMap_getValAtKey(u, key);
+    if (val.width && val.ptr) {
+      usePrint(um_fp, key);
+      printf("\t:");
+      usePrintln(um_fp, val);
+    }
+  }
+  printf("}\n");
+}
 void print_int(const void *integer) { printf("%i", *(int *)integer); }
 void print_chars(const void *charf) { printf("%s", *(char **)charf); }
 void print_umfp(const void *umfp) {
@@ -44,13 +58,13 @@ void print_UMap(const void *ref) {
 }
 typedef void (*printer)(const void *);
 
-char *defined[] = {"int", "char *", "um_fp", "List *", "UMap *"};
+char *defined[] = {"int", "char *", "um_fp", "List *", "UMap *","UMap<string>"};
 
 List *typeList = NULL; // pointers to places in definedRef
 List *typeBuf = NULL;
 
 printer definedCallers[] = {print_int, print_chars, print_umfp, print_rawList,
-                            print_UMap};
+                            print_UMap,print_StringUmap};
 List *callers = NULL; // function pointers
 
 void printerInit() {

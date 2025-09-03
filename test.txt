@@ -1,4 +1,5 @@
 parser : {
+  string: example;
   modeArr: [
     words,
     lists,
