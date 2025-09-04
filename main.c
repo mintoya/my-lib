@@ -30,7 +30,7 @@ um_fp inside(char limits[2], um_fp string) {
         }
         if (!counter)
           return (um_fp){.ptr = ((char *)string.ptr) + i + 1, .width = ii - 1};
-        if(i+ii==string.width-1)
+        if (i + ii == string.width - 1)
           return (um_fp){.ptr = ((char *)string.ptr) + i + 1, .width = ii - 1};
       }
     }
@@ -51,9 +51,9 @@ um_fp around(char limits[2], um_fp string) {
         } else if (((char *)string.ptr)[i + ii] == back) {
           counter--;
         }
-        if (!counter )
+        if (!counter)
           return (um_fp){.ptr = ((char *)string.ptr) + i, .width = ii + 1};
-        if(i+ii==string.width-1)
+        if (i + ii == string.width - 1)
           return (um_fp){.ptr = ((char *)string.ptr) + i, .width = ii + 1};
       }
     }
@@ -78,8 +78,10 @@ um_fp behind(char delim, um_fp string) {
   return string;
 }
 um_fp after(um_fp main, um_fp slice) {
-  if(!(main.ptr&&main.width)) return nullUmf;
-  if(!(slice.ptr&&slice.width)) return main;
+  if (!(main.ptr && main.width))
+    return nullUmf;
+  if (!(slice.ptr && slice.width))
+    return main;
   char *mainStart = main.ptr;
   char *mainEnd = mainStart + main.width;
   char *sliceStart = slice.ptr;
@@ -108,24 +110,28 @@ um_fp after(um_fp main, um_fp slice) {
     result[sizeof(args) / sizeof(unsigned int)] =                              \
         (um_fp){.ptr = last, .width = string.width - (last - string.ptr)};     \
   } while (0);
-char isExtrenuous(char c){
+char isExtrenuous(char c) {
   switch (c) {
-    case ' ':return 1;
-    case '\n':return 1;
-    case '\0':return 1;
-    case '\t':return 1;
-    default:
-      return 0;
+  case ' ':
+    return 1;
+  case '\n':
+    return 1;
+  case '\0':
+    return 1;
+  case '\t':
+    return 1;
+  default:
+    return 0;
   }
 }
 um_fp removeSpacesPadding(um_fp in) {
   um_fp res = in;
   int front = 0;
   int back = in.width - 1;
-  while (front < in.width &&  isExtrenuous(((char *)in.ptr)[front]) ) {
+  while (front < in.width && isExtrenuous(((char *)in.ptr)[front])) {
     front++;
   }
-  while (back > front && isExtrenuous(((char *)in.ptr)[back] )) {
+  while (back > front && isExtrenuous(((char *)in.ptr)[back])) {
     back--;
   }
   back++;
@@ -133,16 +139,20 @@ um_fp removeSpacesPadding(um_fp in) {
   res = splits[1];
   return res;
 }
-typedef struct {um_fp key; um_fp value;um_fp footprint;}kVf;
-kVf parseNext(um_fp string){
+typedef struct {
+  um_fp key;
+  um_fp value;
+  um_fp footprint;
+} kVf;
+kVf parseNext(um_fp string) {
   if (!(string.ptr && string.width)) {
-    return (kVf){nullUmf,nullUmf};
+    return (kVf){nullUmf, nullUmf};
   }
 
   um_fp name = until(':', string);
   name = removeSpacesPadding(name);
   if (name.ptr == string.ptr && name.width == string.width) {
-    return (kVf){nullUmf,nullUmf};
+    return (kVf){nullUmf, nullUmf};
   }
 
   um_fp next = after(string, behind(':', string));
@@ -150,7 +160,7 @@ kVf parseNext(um_fp string){
   next = removeSpacesPadding(next);
 
   if (!(next.ptr && next.width)) {
-    return (kVf){nullUmf,nullUmf};
+    return (kVf){nullUmf, nullUmf};
   }
 
   um_fp toParse;
@@ -159,83 +169,113 @@ kVf parseNext(um_fp string){
   switch (((char *)next.ptr)[0]) {
   case '[':
     toParse = around("[]", next);
-    value =removeSpacesPadding(inside("[]", next));
+    value = removeSpacesPadding(inside("[]", next));
     break;
   case '{':
     toParse = around("{}", next);
-    value =removeSpacesPadding(inside("{}", next));
+    value = removeSpacesPadding(inside("{}", next));
     break;
   default:
     toParse = behind(';', next);
     value = removeSpacesPadding(until(';', next));
     break;
   }
-  return (kVf){name,value,toParse};
+  return (kVf){name, value, toParse};
 }
-um_fp findIndex(um_fp str, unsigned int index){
+um_fp findIndex(um_fp str, unsigned int index) {
   str = removeSpacesPadding(str);
   um_fp thisValue;
   char isobj = 0;
-  switch(*(char*)str.ptr){
-    case('['):thisValue = around("[]",str);isobj = 1;break;
-    case('{'):thisValue = around("{}",str);isobj = 2;break;
-    default: thisValue = until(',',str);
+  switch (*(char *)str.ptr) {
+  case ('['):
+    thisValue = around("[]", str);
+    isobj = 1;
+    break;
+  case ('{'):
+    thisValue = around("{}", str);
+    isobj = 2;
+    break;
+  default:
+    thisValue = until(',', str);
   }
-  if(!index){
-    if(isobj){
-      if(isobj==1)
-        return inside("[]",thisValue);
-      if(isobj==2)
-        return inside("{}",thisValue);
+  if (!index) {
+    if (isobj) {
+      if (isobj == 1)
+        return inside("[]", thisValue);
+      if (isobj == 2)
+        return inside("{}", thisValue);
     }
     return thisValue;
-  }else{
+  } else {
     // thisValue.width++;
     // um_fp next = after(str,thisValue);
     // if(isobj){
     //   next = after(str,behind(',',next));
     // }
-    um_fp next = after(str,thisValue);
-    next=after(str,behind(',',next));
-    return findIndex(next,index-1);
+    um_fp next = after(str, thisValue);
+    next = after(str, behind(',', next));
+    return findIndex(next, index - 1);
   }
 }
-um_fp find_Functoin(um_fp str,um_fp key){
+um_fp findKey(um_fp str, um_fp key) {
   key = removeSpacesPadding(key);
   while (str.ptr) {
     kVf read = parseNext(str);
     if (!(read.key.ptr && read.key.width)) {
       // usePrintln(char * ,"null");
       return nullUmf;
-    }else if(um_eq(key,read.key)){
+    } else if (um_eq(key, read.key)) {
       return read.value;
     }
     str = after(str, read.footprint);
   }
   return nullUmf;
 }
-um_fp find_many(um_fp str, ...) {
-    va_list ap;
-    va_start(ap, str);
-    um_fp key;
-    while (!um_eq(key = va_arg(ap, um_fp),nullUmf)) {
-        str = find_Functoin(str, key);
-    }
 
-    va_end(ap);
-    return str;
+typedef struct {
+  enum {
+    NONE = 0,
+    STRING = 1,
+    INDEX = 2,
+  } type;
+  union {
+    um_fp pArg;
+    unsigned int index;
+  } data;
+} parseArg;
+
+um_fp findAny(um_fp str, parseArg ki) {
+  um_fp res;
+  switch (ki.type) {
+  case STRING:
+    break;
+  case INDEX:
+    break;
+  case NONE:
+    break;
+  }
+  return res;
 }
-#define find(um,...) find_many(um,__VA_ARGS__,nullUmf)
 
+um_fp find_many(um_fp str, ...) {
+  va_list ap;
+  va_start(ap, str);
+  um_fp key;
+  while (!um_eq(key = va_arg(ap, um_fp), nullUmf)) {
+    str = find_Functoin(str, key);
+  }
 
+  va_end(ap);
+  return str;
+}
+#define find(um, ...) find_many(um, __VA_ARGS__, nullUmf)
 
-char* inputString = 
-R"d(
+char *inputString =
+    R"d(
 x  : y ;
 x2 :{ x2 : y2; } 
 x3 : [ [i], [i0,i2,i3], { index:1; }, { index:2; }, ]
 )d";
-
 
 int main(void) {
   // printf(inputString);
@@ -243,7 +283,7 @@ int main(void) {
 
   // usePrintln(um_fp, find(str,um_from("x")));
   // usePrintln(um_fp, find(str,um_from("x2")));
-  usePrintln(um_fp, find(str,um_from("x2"),um_from("x2")));
+  usePrintln(um_fp, find(str, um_from("x2"), um_from("x2")));
 
   return 0;
 }
