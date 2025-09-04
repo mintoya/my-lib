@@ -77,11 +77,11 @@ List *List_combine(List *l, List *l2);
   List_fromArr(array, sizeof(type), sizeof(array) / sizeof(type))
 
 // Macro to select correct macro based on argument count
-#define _GET_MACRO(_1, _2, NAME, ...) NAME
+#define _GET_MLIST_MACRO(_1, _2, NAME, ...) NAME
 
 // Dispatcher macro
 #define mList(...)                                                             \
-  _GET_MACRO(__VA_ARGS__, mList_fromList, mList_fromType)(__VA_ARGS__)
+  _GET_MLIST_MACRO(__VA_ARGS__, mList_fromList, mList_fromType)(__VA_ARGS__)
 
 #ifdef __cplusplus
 }

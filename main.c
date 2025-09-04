@@ -108,29 +108,41 @@ um_fp after(um_fp main, um_fp slice) {
     result[sizeof(args) / sizeof(unsigned int)] =                              \
         (um_fp){.ptr = last, .width = string.width - (last - string.ptr)};     \
   } while (0);
-
+char isExtrenuous(char c){
+  switch (c) {
+    case ' ':return 1;
+    case '\n':return 1;
+    case '\0':return 1;
+    case '\t':return 1;
+    default:
+      return 0;
+  }
+}
 um_fp removeSpacesPadding(um_fp in) {
   um_fp res = in;
   int front = 0;
   int back = in.width - 1;
-  while (front < in.width && ((char *)in.ptr)[front] == ' ') {
+  while (front < in.width &&  isExtrenuous(((char *)in.ptr)[front]) ) {
     front++;
   }
-  while (back > front && ((char *)in.ptr)[back] == ' ') {
+  while (back > front && isExtrenuous(((char *)in.ptr)[back] )) {
     back--;
   }
+  back++;
   um_fp *splits = stack_split(splits, in, front, back);
   res = splits[1];
   return res;
 }
-um_fp parseNext(um_fp string, UMap parent[static 1]) {
+typedef struct {um_fp key; um_fp value;um_fp footprint;}kVf;
+kVf parseNext(um_fp string){
   if (!(string.ptr && string.width)) {
-    return nullUmf;
+    return (kVf){nullUmf,nullUmf};
   }
 
   um_fp name = until(':', string);
+  name = removeSpacesPadding(name);
   if (name.ptr == string.ptr && name.width == string.width) {
-    return nullUmf;
+    return (kVf){nullUmf,nullUmf};
   }
 
   um_fp next = after(string, behind(':', string));
@@ -138,77 +150,94 @@ um_fp parseNext(um_fp string, UMap parent[static 1]) {
   next = removeSpacesPadding(next);
 
   if (!(next.ptr && next.width)) {
-    return nullUmf;
+    return (kVf){nullUmf,nullUmf};
   }
 
-  um_fp toParse = string ;
+  um_fp toParse;
+  um_fp value;
 
   switch (((char *)next.ptr)[0]) {
   case '[':
     toParse = around("[]", next);
-    UMap_set(parent, name, um_from("list here!"));
+    value =removeSpacesPadding(inside("[]", next));
     break;
   case '{':
     toParse = around("{}", next);
-    UMap_set(parent, name, um_from("object here!"));
+    value =removeSpacesPadding(inside("{}", next));
     break;
   default:
     toParse = behind(';', next);
-    UMap_set(parent, name, until(';', next));
+    value = removeSpacesPadding(until(';', next));
     break;
   }
-  return toParse;
+  return (kVf){name,value,toParse};
 }
 
-// char inputString[] = {
-// #embed "test.txt"
-// };
 
 char* inputString = 
 R"d(
 
 x  : y ;
 x2 :{ x2 : y2; } 
-x3 :[ y3 , y4 ] 
+x3 :[ 
+      [i],
+      [i0,i2,i3],
+      { index:1; },
+      { index:2; },
+    ]
 
 )d";
 
-
-void stringList_printMeta(const stringList *sl) {
-  if (!sl) {
-    printf("stringList (null)\n");
-    return;
+um_fp findIndex(um_fp str, unsigned int index){
+  str = removeSpacesPadding(str);
+  um_fp thisValue;
+  char isobj = 0;
+  switch(*(char*)str.ptr){
+    case('['):thisValue = around("[]",str);isobj = 1;break;
+    case('{'):thisValue = around("{}",str);isobj = 2;break;
+    default: thisValue = until(',',str);
   }
-
-  List *metaList = &sl->List_stringMetaData;
-  printf("stringList metadata (length=%u):\n", metaList->length);
-
-  for (unsigned int i = 0; i < metaList->length; i++) {
-    stringMetaData *meta = (stringMetaData *)List_gst(metaList, i);
-    if (!meta) {
-      printf("  [%u] <null>\n", i);
-      continue;
+  if(!index){
+    if(isobj){
+      if(isobj==1)
+        return inside("[]",thisValue);
+      if(isobj==2)
+        return inside("{}",thisValue);
     }
-    printf("  [%u] index=%u, width=%u, size=%u\n", i, meta->index, meta->width,
-           meta->_size);
+    return thisValue;
+  }else{
+    // thisValue.width++;
+    // um_fp next = after(str,thisValue);
+    // if(isobj){
+    //   next = after(str,behind(',',next));
+    // }
+    um_fp next = after(str,thisValue);
+    next=after(str,behind(',',next));
+    return findIndex(next,index-1);
   }
+}
+um_fp find(um_fp str,um_fp key){
+  key = removeSpacesPadding(key);
+  while (str.ptr) {
+    kVf read = parseNext(str);
+    if (!(read.key.ptr && read.key.width)) {
+      // usePrintln(char * ,"null");
+      return nullUmf;
+    }else if(um_eq(key,read.key)){
+      return read.value;
+    }
+    str = after(str, read.footprint);
+  }
+  return nullUmf;
 }
 
 int main(void) {
-  printf(inputString);
+  // printf(inputString);
   um_fp str = um_from(inputString);
 
-  UMap *parent = UMap_new();
+  usePrintln(um_fp, find(str,um_from("x")));
+  usePrintln(um_fp, find(find(str,um_from("x2")),um_from("x2")));
+  usePrintln(um_fp, findIndex(findIndex(find(str,um_from("x3")),1),2));
 
-  while (str.ptr) {
-    um_fp read = parseNext(str, parent);
-    if (!(read.ptr && read.width)) {
-      break;
-    }
-    str = after(str, read);
-  }
-
-  mPrint("UMap<string>", &parent);
-  // usePrint(UMap *, parent);
   return 0;
 }

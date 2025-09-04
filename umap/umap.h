@@ -9,16 +9,18 @@
 typedef struct umap {
   stringList* keys;
   stringList* vals;
+  List* refs;
 } UMap;
 
 UMap *UMap_new();
 um_fp UMap_getValAtKey(UMap *map, um_fp key);
 um_fp UMap_getKeyAtIndex(UMap *map, unsigned int index);
 um_fp UMap_get(UMap *map, char *key);
-void UMap_set(UMap *map, um_fp key, um_fp val);
+unsigned int UMap_set(UMap *map, um_fp key, um_fp val);
 // make a copy without unused keys & vals
 UMap *UMap_remake(UMap *map);
 void UMap_free(UMap *map);
+void UMap_addChild(UMap *map, um_fp key, UMap* ref);
 
 /*
  * not modifiable

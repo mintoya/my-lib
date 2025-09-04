@@ -25,11 +25,17 @@ um_fp stringList_get(stringList *l, unsigned int index);
 void stringList_insert(stringList *l, um_fp, unsigned int index);
 void stringList_set(stringList *l, um_fp, unsigned int index);
 void stringList_append(stringList *l, um_fp);
+stringList *stringList_remake(stringList *);
 void stringList_free(stringList *l);
-static inline unsigned int stringList_length(stringList*l){
+static inline unsigned int stringList_length(stringList *l) {
   return l->List_stringMetaData.length;
 }
+static inline char um_eq(um_fp a, um_fp b){
+  return a.width==b.width && !um_fp_cmp(a,b);
+}
 #define nullUmf ((um_fp){.ptr = NULL, .width = 0})
+#define um_fromExplicit(type, val)                                             \
+  ((um_fp){.ptr = (type[1]){type}, .width = sizeof(type)})
 #define um_from(val)                                                           \
   _Generic((val),                                                              \
       char *: (um_fp){.ptr = (val), .width = strlen(val)},                     \
