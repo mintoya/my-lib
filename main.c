@@ -172,22 +172,6 @@ kVf parseNext(um_fp string){
   }
   return (kVf){name,value,toParse};
 }
-
-
-char* inputString = 
-R"d(
-
-x  : y ;
-x2 :{ x2 : y2; } 
-x3 :[ 
-      [i],
-      [i0,i2,i3],
-      { index:1; },
-      { index:2; },
-    ]
-
-)d";
-
 um_fp findIndex(um_fp str, unsigned int index){
   str = removeSpacesPadding(str);
   um_fp thisValue;
@@ -216,7 +200,7 @@ um_fp findIndex(um_fp str, unsigned int index){
     return findIndex(next,index-1);
   }
 }
-um_fp find(um_fp str,um_fp key){
+um_fp find_Functoin(um_fp str,um_fp key){
   key = removeSpacesPadding(key);
   while (str.ptr) {
     kVf read = parseNext(str);
@@ -230,14 +214,36 @@ um_fp find(um_fp str,um_fp key){
   }
   return nullUmf;
 }
+um_fp find_many(um_fp str, ...) {
+    va_list ap;
+    va_start(ap, str);
+    um_fp key;
+    while (!um_eq(key = va_arg(ap, um_fp),nullUmf)) {
+        str = find_Functoin(str, key);
+    }
+
+    va_end(ap);
+    return str;
+}
+#define find(um,...) find_many(um,__VA_ARGS__,nullUmf)
+
+
+
+char* inputString = 
+R"d(
+x  : y ;
+x2 :{ x2 : y2; } 
+x3 : [ [i], [i0,i2,i3], { index:1; }, { index:2; }, ]
+)d";
+
 
 int main(void) {
   // printf(inputString);
   um_fp str = um_from(inputString);
 
-  usePrintln(um_fp, find(str,um_from("x")));
-  usePrintln(um_fp, find(find(str,um_from("x2")),um_from("x2")));
-  usePrintln(um_fp, findIndex(findIndex(find(str,um_from("x3")),1),2));
+  // usePrintln(um_fp, find(str,um_from("x")));
+  // usePrintln(um_fp, find(str,um_from("x2")));
+  usePrintln(um_fp, find(str,um_from("x2"),um_from("x2")));
 
   return 0;
 }
