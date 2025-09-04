@@ -245,30 +245,35 @@ typedef struct {
 } parseArg;
 
 um_fp findAny(um_fp str, parseArg ki) {
-  um_fp res;
   switch (ki.type) {
   case STRING:
+    return findKey(str, ki.data.pArg);
     break;
   case INDEX:
+    return findIndex(str, ki.data.index);
     break;
-  case NONE:
-    break;
+  default:
+    return nullUmf;
   }
-  return res;
 }
+#define fIndex(val) ((parseArg){.type = INDEX, .data.index = val})
+#define fKEY(val) ((parseArg){.type = STRING, .data.pArg = val})
 
 um_fp find_many(um_fp str, ...) {
   va_list ap;
   va_start(ap, str);
-  um_fp key;
-  while (!um_eq(key = va_arg(ap, um_fp), nullUmf)) {
-    str = find_Functoin(str, key);
+  parseArg key;
+  while ((key = va_arg(ap, parseArg)).type) {
+    if (key.type == STRING)
+      str = findKey(str, key.data.pArg);
+    if (key.type == INDEX)
+      str = findIndex(str, key.data.index);
   }
 
   va_end(ap);
   return str;
 }
-#define find(um, ...) find_many(um, __VA_ARGS__, nullUmf)
+#define find(um, ...) find_many(um, __VA_ARGS__, ((parseArg){.type = NONE}))
 
 char *inputString =
     R"d(
@@ -283,7 +288,8 @@ int main(void) {
 
   // usePrintln(um_fp, find(str,um_from("x")));
   // usePrintln(um_fp, find(str,um_from("x2")));
-  usePrintln(um_fp, find(str, um_from("x2"), um_from("x2")));
+  usePrintln(um_fp, find(str, fKEY("x2"), fKEY("x2")));
+  usePrintln(um_fp, find(str, fKEY("x3"), fIndex(1), fIndex(1)));
 
   return 0;
 }
