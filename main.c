@@ -119,7 +119,7 @@ um_fp after(um_fp main, um_fp slice) {
     result[sizeof(args) / sizeof(unsigned int)] =                              \
         (um_fp){.ptr = last, .width = string.width - (last - string.ptr)};     \
   } while (0);
-char isExtrenuous(char c) {
+char isSkip(char c) {
   switch (c) {
   case ' ':
     return 1;
@@ -137,16 +137,29 @@ um_fp removeSpacesPadding(um_fp in) {
   um_fp res = in;
   int front = 0;
   int back = in.width - 1;
-  while (front < in.width && isExtrenuous(((char *)in.ptr)[front])) {
+  while (front < in.width && isSkip(((char *)in.ptr)[front])) {
     front++;
   }
-  while (back > front && isExtrenuous(((char *)in.ptr)[back])) {
+  while (back > front && isSkip(((char *)in.ptr)[back])) {
     back--;
   }
-  back++;
-  um_fp *splits = stack_split(splits, in, front, back);
+  um_fp *splits = stack_split(splits, in, front, back + 1);
   res = splits[1];
   return res;
+}
+um_fp skipComments(um_fp source) {
+  if (um_indexOf(source, '/') < source.width) {
+    unsigned int start = um_indexOf(source, '/');
+    um_fp *splits = stack_split(splits, source, start);
+    if (removeSpacesPadding(splits[0]).width < 1) {
+      unsigned int end = um_indexOf(splits[1], '\n');
+      um_fp comment = around("/\n", source);
+      return after(source, comment);
+    }
+    return source;
+  } else {
+    return source;
+  }
 }
 typedef struct {
   um_fp key;
@@ -157,7 +170,6 @@ kVf parseNext(um_fp string) {
   if (!(string.ptr && string.width)) {
     return (kVf){nullUmf, nullUmf};
   }
-
   um_fp name = until(':', string);
   name = removeSpacesPadding(name);
   if (name.ptr == string.ptr && name.width == string.width) {
@@ -189,23 +201,33 @@ kVf parseNext(um_fp string) {
     value = removeSpacesPadding(until(';', next));
     break;
   }
+  if (name.width == 2 && ((char *)name.ptr)[1] == '/' &&
+      ((char *)name.ptr)[0] == '/')
+    usePrintln(char *, "key found a comment");
   return (kVf){name, value, toParse};
 }
 um_fp findIndex(um_fp str, unsigned int index) {
   str = removeSpacesPadding(str);
   um_fp thisValue;
-  char isobj = 0;
+  char isobj = 0, isComment = 0;
   switch (*(char *)str.ptr) {
   case ('['):
     thisValue = around("[]", str);
     isobj = 1;
     break;
+  case ('/'):
+    isComment = 1;
   case ('{'):
     thisValue = around("{}", str);
     isobj = 2;
     break;
   default:
     thisValue = until(',', str);
+  }
+  if (isComment) {
+    um_fp next = after(str, thisValue);
+    usePrintln(char *, "index found a comment");
+    return findIndex(next, index);
   }
   if (!index) {
     if (isobj) {
@@ -284,25 +306,36 @@ um_fp find_many(um_fp str, ...) {
 #define find(um, ...) find_many(um, __VA_ARGS__, ((parseArg){.type = NONE}))
 
 char *inputString =
-R"d(
-
-layer0: [
-    KEY_TAB, C('q'), C('w'), C('e'), C('r'), C('t'),        C('y'), C('u'), C('i'), C('o'), C('p'),  KEY_BACKSPACE,
-    M('s') , C('a'), C('s'), C('d'), C('f'), C('g'),        C('h'), C('j'), C('k'), C('l'), C(';'),  KEY_LEFTBRACE,
-    M('c') , C('z'), C('x'), C('c'), C('v'), C('b'),        C('n'), C('m'), C(','), C('.'), C('/'),  KEY_ENTER,
-    0      , 0     , 0     , M('a'), C(' '),  TD(0),        L(1)  ,   L(2),      0,      0,      0,  0,
-]
-layer1: [
-    KEY_ESC, C('1'), C('2'), C('3'), C('4'), C('5'),        C('6'), C('7'), C('8'), C('9'), C('0'),  KEY_DELETE,
-    0      , 0     , 0     , 0     , 0     , 0     ,        0     , 0     , 0     , 0     , 0     ,  0,
-    0      , 0     , 0     , 0     , 0     , 0     ,        C('='),C('-') , 0     , 0     , 0     ,  0,
-    0      , 0     , 0     , 0     , 0     , 0     ,        0     , 0     , 0     , 0     , 0     ,  0,
-]
-layer2:[
-    0      , 0     , 0     , 0     , 0     , 0     ,        0     , 0     , D('W'), 0     , 0     ,  0,
-    0      , 0     , 0     , 0     , 0     , 0     ,        0     , D('A'), D('S'), D('D'), 0     ,  0,
-    0      , 0     , 0     , 0     , 0     , 0     ,        0     , 0     , 0     , 0     , 0     ,  0,
-    0      , 0     , 0     , 0     , 0     , 0     ,        0     , 0     , 0     , 0     , 0     ,  0,
+    R"d(
+  //:{ comments have to be surrounded by /:{} objects with the name // are ignored }
+  //:{ [] and {} are treated the same, what matters is the presence of separators }
+  tapDances:[
+    [ C('a'), C('b'), C('c'), C('d') ]
+  ]
+  //:{ ^^^ list ^^^ }
+  functions:{ printDebug, bootLoader, reset}
+  //:{ ^^^ list ^^^ }
+  layers:[
+     [
+       //:{heres a comment}
+        KEY_TAB, C('q'), C('w'), C('e'), C('r'), C('t'),        C('y'), C('u'), C('i'), C('o'), C('p'),  KEY_BACKSPACE,
+        M('s') , C('a'), C('s'), C('d'), C('f'), C('g'),        C('h'), C('j'), C('k'), C('l'), C(';'),  KEY_LEFTBRACE,
+        M('c') , C('z'), C('x'), C('c'), C('v'), C('b'),        C('n'), C('m'), C(','), C('.'), C('/'),  KEY_ENTER,
+        0      , 0     , 0     , M('a'), C(' '),  TD(0),        L(1)  ,   L(2),      0,      0,      0,  0,
+      //:{unclosed brackets will break comments}
+    ],
+    [
+        KEY_ESC, C('1'), C('2'), C('3'), C('4'), C('5'),        C('6'), C('7'), C('8'), C('9'), C('0'),  KEY_DELETE,
+        0      , 0     , 0     , 0     , 0     , 0     ,        0     , 0     , 0     , 0     , 0     ,  0,
+        0      , 0     , 0     , 0     , 0     , 0     ,        C('='),C('-') , 0     , 0     , 0     ,  0,
+        0      , 0     , 0     , 0     , 0     , 0     ,        0     , 0     , 0     , 0     , 0     ,  0,
+    ],
+    [
+        0      , 0     , 0     , 0     , 0     , 0     ,        0     , 0     , D('W'), 0     , 0     ,  0,
+        0      , 0     , 0     , 0     , 0     , 0     ,        0     , D('A'), D('S'), D('D'), 0     ,  0,
+        0      , 0     , 0     , 0     , 0     , 0     ,        0     , 0     , 0     , 0     , 0     ,  0,
+        0      , 0     , 0     , 0     , 0     , 0     ,        0     , 0     , 0     , 0     , 0     ,  0,
+    ]
 ]
 
 )d";
@@ -311,7 +344,8 @@ int main(void) {
   // printf(inputString);
   um_fp str = um_from(inputString);
 
-  usePrintln(um_fp,find(str,fKey("layer0"),fIndex(30)));
+  usePrintln(um_fp, find(str, fKey("layers"), fIndex(0), fIndex(11)));
+  usePrintln(um_fp, find(str, fKey("tapDances"), fIndex(0)));
 
   return 0;
 }
