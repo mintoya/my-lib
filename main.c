@@ -14,7 +14,16 @@
 
 #define min(a, b) ((a < b) ? (a) : (b))
 #define max(a, b) ((a > b) ? (a) : (b))
-
+// index after end if c not present
+unsigned int um_indexOf(um_fp string, char c) {
+  int i;
+  for (i = 0; i < string.width; i++) {
+    if (((char *)string.ptr)[i] == c) {
+      return i;
+    }
+  }
+  return i;
+}
 um_fp inside(char limits[2], um_fp string) {
   char front = limits[0];
   char back = limits[1];
@@ -207,14 +216,13 @@ um_fp findIndex(um_fp str, unsigned int index) {
     }
     return thisValue;
   } else {
-    // thisValue.width++;
-    // um_fp next = after(str,thisValue);
-    // if(isobj){
-    //   next = after(str,behind(',',next));
-    // }
     um_fp next = after(str, thisValue);
-    next = after(str, behind(',', next));
-    return findIndex(next, index - 1);
+    if (um_indexOf(next, ',') < next.width) {
+      next = after(str, behind(',', next));
+      return findIndex(next, index - 1);
+    } else {
+      return nullUmf;
+    }
   }
 }
 um_fp findKey(um_fp str, um_fp key) {
@@ -257,7 +265,7 @@ um_fp findAny(um_fp str, parseArg ki) {
   }
 }
 #define fIndex(val) ((parseArg){.type = INDEX, .data.index = val})
-#define fKEY(val) ((parseArg){.type = STRING, .data.pArg = val})
+#define fKey(val) ((parseArg){.type = STRING, .data.pArg = um_from(val)})
 
 um_fp find_many(um_fp str, ...) {
   va_list ap;
@@ -276,20 +284,34 @@ um_fp find_many(um_fp str, ...) {
 #define find(um, ...) find_many(um, __VA_ARGS__, ((parseArg){.type = NONE}))
 
 char *inputString =
-    R"d(
-x  : y ;
-x2 :{ x2 : y2; } 
-x3 : [ [i], [i0,i2,i3], { index:1; }, { index:2; }, ]
+R"d(
+
+layer0: [
+    KEY_TAB, C('q'), C('w'), C('e'), C('r'), C('t'),        C('y'), C('u'), C('i'), C('o'), C('p'),  KEY_BACKSPACE,
+    M('s') , C('a'), C('s'), C('d'), C('f'), C('g'),        C('h'), C('j'), C('k'), C('l'), C(';'),  KEY_LEFTBRACE,
+    M('c') , C('z'), C('x'), C('c'), C('v'), C('b'),        C('n'), C('m'), C(','), C('.'), C('/'),  KEY_ENTER,
+    0      , 0     , 0     , M('a'), C(' '),  TD(0),        L(1)  ,   L(2),      0,      0,      0,  0,
+]
+layer1: [
+    KEY_ESC, C('1'), C('2'), C('3'), C('4'), C('5'),        C('6'), C('7'), C('8'), C('9'), C('0'),  KEY_DELETE,
+    0      , 0     , 0     , 0     , 0     , 0     ,        0     , 0     , 0     , 0     , 0     ,  0,
+    0      , 0     , 0     , 0     , 0     , 0     ,        C('='),C('-') , 0     , 0     , 0     ,  0,
+    0      , 0     , 0     , 0     , 0     , 0     ,        0     , 0     , 0     , 0     , 0     ,  0,
+]
+layer2:[
+    0      , 0     , 0     , 0     , 0     , 0     ,        0     , 0     , D('W'), 0     , 0     ,  0,
+    0      , 0     , 0     , 0     , 0     , 0     ,        0     , D('A'), D('S'), D('D'), 0     ,  0,
+    0      , 0     , 0     , 0     , 0     , 0     ,        0     , 0     , 0     , 0     , 0     ,  0,
+    0      , 0     , 0     , 0     , 0     , 0     ,        0     , 0     , 0     , 0     , 0     ,  0,
+]
+
 )d";
 
 int main(void) {
   // printf(inputString);
   um_fp str = um_from(inputString);
 
-  // usePrintln(um_fp, find(str,um_from("x")));
-  // usePrintln(um_fp, find(str,um_from("x2")));
-  usePrintln(um_fp, find(str, fKEY("x2"), fKEY("x2")));
-  usePrintln(um_fp, find(str, fKEY("x3"), fIndex(1), fIndex(1)));
+  usePrintln(um_fp,find(str,fKey("layer0"),fIndex(30)));
 
   return 0;
 }
