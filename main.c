@@ -201,12 +201,13 @@ kVf parseNext(um_fp string) {
     value = removeSpacesPadding(until(';', next));
     break;
   }
-  if (name.width == 2 && ((char *)name.ptr)[1] == '/' &&
-      ((char *)name.ptr)[0] == '/')
-    usePrintln(char *, "key found a comment");
+  // if (name.width == 2 && ((char *)name.ptr)[1] == '/' &&
+  //     ((char *)name.ptr)[0] == '/')
+  //   usePrintln(char *, "key found a comment");
   return (kVf){name, value, toParse};
 }
 um_fp findIndex(um_fp str, unsigned int index) {
+  if(!(str.ptr&&str.width))return nullUmf;
   str = removeSpacesPadding(str);
   um_fp thisValue;
   char isobj = 0, isComment = 0;
@@ -226,7 +227,7 @@ um_fp findIndex(um_fp str, unsigned int index) {
   }
   if (isComment) {
     um_fp next = after(str, thisValue);
-    usePrintln(char *, "index found a comment");
+    // usePrintln(char *, "index found a comment");
     return findIndex(next, index);
   }
   if (!index) {
@@ -320,7 +321,7 @@ char *inputString =
        //:{heres a comment}
         KEY_TAB, C('q'), C('w'), C('e'), C('r'), C('t'),        C('y'), C('u'), C('i'), C('o'), C('p'),  KEY_BACKSPACE,
         M('s') , C('a'), C('s'), C('d'), C('f'), C('g'),        C('h'), C('j'), C('k'), C('l'), C(';'),  KEY_LEFTBRACE,
-        M('c') , C('z'), C('x'), C('c'), C('v'), C('b'),        C('n'), C('m'), C(','), C('.'), C('/'),  KEY_ENTER,
+        M('c') , C('z'), C('x'), C('c'), C('v'), C('b'),        C('n'), C('m'), { C(',') }, C('.'), C('/'),  KEY_ENTER,//:{ comma isnt allowed in  a list  } 
         0      , 0     , 0     , M('a'), C(' '),  TD(0),        L(1)  ,   L(2),      0,      0,      0,  0,
       //:{unclosed brackets will break comments}
     ],
@@ -336,7 +337,7 @@ char *inputString =
         0      , 0     , 0     , 0     , 0     , 0     ,        0     , 0     , 0     , 0     , 0     ,  0,
         0      , 0     , 0     , 0     , 0     , 0     ,        0     , 0     , 0     , 0     , 0     ,  0,
     ]
-]
+  ]
 
 )d";
 
@@ -344,7 +345,7 @@ int main(void) {
   // printf(inputString);
   um_fp str = um_from(inputString);
 
-  usePrintln(um_fp, find(str, fKey("layers"), fIndex(0), fIndex(11)));
+  usePrintln(um_fp, find(str, fKey("layers"), fIndex(0), fIndex(32)));
   usePrintln(um_fp, find(str, fKey("tapDances"), fIndex(0)));
 
   return 0;
