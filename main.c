@@ -1,6 +1,4 @@
 #include "alloc.h"
-
-#include "string-List/stringList.h"
 #include "umap-printer/printer.h"
 #include <ctype.h>
 #include <stdio.h>
@@ -10,7 +8,8 @@
 #include "my-list/my-list.h"
 #define KML_PARSER_C
 #include "kml/kml.h"
-
+#define STRING_LIST_C
+#include "string-List/stringList.h"
 
 um_fp read_stdin() {
   List fl = {
