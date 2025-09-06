@@ -1,9 +1,3 @@
-#include "string-List/stringList.h"
-#include "umap-printer/printer.h"
-#define KML_PARSER_C
-#include "kml/kml.h"
-char *inputString =
-    R"d(
   //:{ comments have to be surrounded by /:{} objects with the name // are ignored }
   //:{ [] and {} are treated the same, what matters is the presence of separators }
   tapDances:[
@@ -34,11 +28,3 @@ char *inputString =
         0      , 0     , 0     , 0     , 0     , 0     ,        0     , 0     , 0     , 0     , 0     ,  0,
     ]
   ]
-
-)delim";
-
-int main(void) {
-  um_fp kml = um_from(inputString);
-  usePrintln(um_fp, find(kml, fKey("tapDances"),fIndex(0),fIndex(2)));
-  return EXIT_SUCCESS;
-}
