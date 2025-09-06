@@ -1,8 +1,8 @@
 CC = clang
 DIR = build
-CFLAGS = -w 
-# CFLAGS = -w -g -fsanitize=address
-OBJECTS = main.c my-list/my-list.c umap/umap.c umap-printer/printer.c string-List/stringList.c
+# CFLAGS = -w 
+CFLAGS = -w -g -fsanitize=address
+OBJECTS = main.c  umap/umap.c umap-printer/printer.c string-List/stringList.c
 make: $(DIR) $(OBJECTS)
 	$(CC) -o $(DIR)/a $(OBJECTS) $(CFLAGS)
 
@@ -25,8 +25,6 @@ a: $(OBJECTS)
 
 main.o: main.c
 	$(CC) -c main.c $(CFLAGS)
-my-list.o: my-list/my-list.c
-	$(CC) -c my-list/my-list.c $(CFLAGS)
 umap.o: umap/umap.c
 	$(CC) -c umap/umap.c $(CFLAGS)
 printer.o: umap-printer/printer.c

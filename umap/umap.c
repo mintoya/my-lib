@@ -13,16 +13,11 @@ unsigned int UMap_linearSearch(UMap *map, um_fp key) {
   }
   return res;
 }
-enum {
-  RAW = 0,
-  MAP = 1,
-} meta;
 UMap *UMap_new() {
   UMap *res = malloc(sizeof(UMap));
   *res = (UMap){
       .keys = stringList_new(),
       .vals = stringList_new(),
-      .refs = mList(meta),
   };
   return res;
 }
@@ -55,6 +50,7 @@ unsigned int  UMap_set(UMap *map, um_fp key, um_fp val) {
     stringList_insert(map->keys, key, index);
     stringList_insert(map->vals, val, index);
   }
+  return index;
 };
 
 void UMap_addChild(UMap *map, um_fp key, UMap *ref) {

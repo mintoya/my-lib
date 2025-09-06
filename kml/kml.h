@@ -63,13 +63,15 @@ um_fp findAny(um_fp str, parseArg ki);
 #define fIndex(val) ((parseArg){.type = INDEX, .data.index = val})
 #define fKey(val) ((parseArg){.type = STRING, .data.pArg = um_from(val)})
 
+// must be none terminated
 um_fp find_many(um_fp str, ...);
 #define find(um, ...) find_many(um, __VA_ARGS__, ((parseArg){.type = NONE}))
 #endif
+#define KML_PARSER_C
 #ifdef KML_PARSER_C
 
 // index after end if c not present
-unsigned int um_indexOf(um_fp string, char c) {
+static unsigned int um_indexOf(um_fp string, char c) {
   int i;
   for (i = 0; i < string.width; i++) {
     if (((char *)string.ptr)[i] == c) {
@@ -78,7 +80,7 @@ unsigned int um_indexOf(um_fp string, char c) {
   }
   return i;
 }
-um_fp inside(char limits[2], um_fp string) {
+static um_fp inside(char limits[2], um_fp string) {
   char front = limits[0];
   char back = limits[1];
 
@@ -100,7 +102,7 @@ um_fp inside(char limits[2], um_fp string) {
   }
   return nullUmf;
 }
-um_fp around(char limits[2], um_fp string) {
+static um_fp around(char limits[2], um_fp string) {
 
   char front = limits[0];
   char back = limits[1];
@@ -124,7 +126,7 @@ um_fp around(char limits[2], um_fp string) {
   return nullUmf;
 }
 
-um_fp until(char delim, um_fp string) {
+static um_fp until(char delim, um_fp string) {
   int i = 0;
   while (i < string.width && ((char *)string.ptr)[i] != delim) {
     i++;
@@ -132,7 +134,7 @@ um_fp until(char delim, um_fp string) {
   string.width = i;
   return string;
 }
-um_fp behind(char delim, um_fp string) {
+static um_fp behind(char delim, um_fp string) {
   int i = 0;
   while (i < string.width && ((char *)string.ptr)[i] != delim) {
     i++;
@@ -140,7 +142,7 @@ um_fp behind(char delim, um_fp string) {
   string.width = min(i + 1, string.width);
   return string;
 }
-um_fp after(um_fp main, um_fp slice) {
+static um_fp after(um_fp main, um_fp slice) {
   if (!(main.ptr && main.width))
     return nullUmf;
   if (!(slice.ptr && slice.width))
@@ -173,7 +175,7 @@ um_fp after(um_fp main, um_fp slice) {
     result[sizeof(args) / sizeof(unsigned int)] =                              \
         (um_fp){.ptr = last, .width = string.width - (last - string.ptr)};     \
   } while (0);
-char isSkip(char c) {
+static char isSkip(char c) {
   switch (c) {
   case ' ':
     return 1;
@@ -187,7 +189,7 @@ char isSkip(char c) {
     return 0;
   }
 }
-um_fp removeSpacesPadding(um_fp in) {
+static um_fp removeSpacesPadding(um_fp in) {
   um_fp res = in;
   int front = 0;
   int back = in.width - 1;
@@ -201,21 +203,7 @@ um_fp removeSpacesPadding(um_fp in) {
   res = splits[1];
   return res;
 }
-um_fp skipComments(um_fp source) {
-  if (um_indexOf(source, '/') < source.width) {
-    unsigned int start = um_indexOf(source, '/');
-    um_fp *splits = stack_split(splits, source, start);
-    if (removeSpacesPadding(splits[0]).width < 1) {
-      unsigned int end = um_indexOf(splits[1], '\n');
-      um_fp comment = around("/\n", source);
-      return after(source, comment);
-    }
-    return source;
-  } else {
-    return source;
-  }
-}
-kVf parseNext(um_fp string) {
+static kVf parseNext(um_fp string) {
   if (!(string.ptr && string.width)) {
     return (kVf){nullUmf, nullUmf};
   }
@@ -312,7 +300,6 @@ um_fp findKey(um_fp str, um_fp key) {
   }
   return nullUmf;
 }
-
 
 um_fp findAny(um_fp str, parseArg ki) {
   switch (ki.type) {
