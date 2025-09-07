@@ -2,7 +2,9 @@
 #define KML_PARSER_H
 
 #include "../string-List/stringList.h"
-#include <alloca.h>
+#include <malloc.h>
+#include <assert.h>
+// #include <alloca.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -152,7 +154,7 @@ static um_fp after(um_fp main, um_fp slice) {
   char *sliceStart = slice.ptr;
   char *sliceEnd = sliceStart + slice.width;
 
-  // assert(sliceStart >= mainStart && sliceEnd <= mainEnd);
+  assert(sliceStart >= mainStart && sliceEnd <= mainEnd);
 
   return (um_fp){.ptr = sliceEnd, .width = mainEnd - sliceEnd};
 }
@@ -178,11 +180,9 @@ static um_fp after(um_fp main, um_fp slice) {
 static char isSkip(char c) {
   switch (c) {
   case ' ':
-    return 1;
+  // case '"':
   case '\n':
-    return 1;
   case '\0':
-    return 1;
   case '\t':
     return 1;
   default:
@@ -233,6 +233,19 @@ static kVf parseNext(um_fp string) {
     toParse = around("{}", next);
     value = removeSpacesPadding(inside("{}", next));
     break;
+  // case '"':
+  //   next.ptr = (char*)next.ptr + 1;
+  //   next.width--;
+  //
+  //   value = removeSpacesPadding(until('"', next));
+  //   toParse = behind('"', next);
+  //
+  //   toParse.ptr = (char*)toParse.ptr - 1;
+  //   toParse.width++;
+  //
+  //   next.ptr = (char*)next.ptr - 1;
+  //   next.width++;
+  //   break;
   default:
     toParse = behind(';', next);
     value = removeSpacesPadding(until(';', next));
