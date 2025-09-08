@@ -1,19 +1,18 @@
 // LIST_5d3bd19_C needs to be defined for the inplementation
 
-#ifndef LIST_5d3bd19_H
-#define LIST_5d3bd19_H
+#ifndef MY_LIST_H
+#define MY_LIST_H
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "../alloc.h"
-// #ifdef REGULARALLOCATE
-//   #include <stdlib.h>
-//   #define clearAllocate(length,size) calloc(length,size)
-//   #define regularAllocate(size) malloc(size)
-//   #define reAllocate(source,newsize) realloc(source, newSize)
-//   #define freAllocate(ptr) free(ptr)
-// #endif
+#ifndef LIST_ALLOCATOR
+#include <stdlib.h>
+#define clearAllocate(length, size) calloc(length, size)
+#define regularAllocate(size) malloc(size)
+#define reAllocate(source, newsize) realloc(source, newSize)
+#define freAllocate(ptr) free(ptr)
+#endif
+#include <string.h>
 
 typedef struct List {
   unsigned long width;
@@ -22,15 +21,14 @@ typedef struct List {
   char *head;
 } List;
 
-
 List *List_new(unsigned long bytes);
 void List_set(List *l, unsigned int i, const void *element);
 void *List_gst(const List *l, unsigned int i);
 void List_resize(List *l, unsigned int newSize);
 void List_append(List *l, const void *element);
-void List_pad(List*l,unsigned int ammount);
+void List_pad(List *l, unsigned int ammount);
 List *List_fromArr(const void *source, unsigned int size, unsigned int length);
-void List_appendFromArr(List *l, const void *source, unsigned int i);
+List *List_appendFromArr(List *l, const void *source, unsigned int i);
 int List_search(List *l, const void *value);
 void List_insert(List *l, unsigned int i, void *element);
 void List_remove(List *l, unsigned int i);
@@ -39,7 +37,7 @@ void List_free(List *l);
 void List_print(const List *l);
 int List_filter(List *l, int (*function)(void *));
 void *List_toBuffer(List *l);
-/*
+/*;List_appendFromArr((type[]){__VA_ARGS__},)
  * fromBuffer is the inverse of toBuffer
  * cannot be list_freed
  * does not allocate memory
@@ -57,24 +55,18 @@ List *List_combine(List *l, List *l2);
   }
 
 #define mList_get(list, type, index) *(type *)List_gst(list, index)
-#define mList_add(list, value) List_append(list, (typeof(value)[1]){value})
-#define mList_insert(list, value,index) List_insert(list, index, (typeof(value)[1]){value})
+#define mList_add(list,type, value) List_append(list, (type[1]){value})
+#define mList_insert(list, value, index)                                       \
+  List_insert(list, index, (typeof(value)[1]){value})
 
-// Actual implementations
-#define mList_fromType(type) List_new(sizeof(type))
-#define mList_fromList(type, array)                                            \
-  List_fromArr(array, sizeof(type), sizeof(array) / sizeof(type))
+#define mList(type, ...)                                                       \
+List_fromArr((type[]){__VA_ARGS__}, sizeof(type),sizeof((type[]){__VA_ARGS__})/sizeof(type) )
 
-// Macro to select correct macro based on argument count
-#define _GET_MLIST_MACRO(_1, _2, NAME, ...) NAME
-
-// Dispatcher macro
-#define mList(...)                                                             \
-  _GET_MLIST_MACRO(__VA_ARGS__, mList_fromList, mList_fromType)(__VA_ARGS__)
-
+// getmlistmac( a,b,fromtype,fromarr )
+// a,b,ft
 
 #endif
-#ifdef LIST_5d3bd19_C
+#ifdef MY_LIST_C
 
 #ifdef DEBUGLISTS
 #define errprint(str)                                                          \
@@ -106,18 +98,18 @@ List *List_new(unsigned long bytes) {
   l->size = 1;
   return l;
 }
-#define LIST_GROW_EQ(uint) ( (uint + ( uint <<1 ))+1 )
+#define LIST_GROW_EQ(uint) ((uint + (uint << 1)) + 1)
 
 //
-//prins  hex representatins of list data 
+// prins  hex representatins of list data
 //
-void List_print(const List* l){
+void List_print(const List *l) {
   printf("{");
-  for(int i = 0;i<l->length;i++){
-    const char* refw = List_gst(l,i);
+  for (int i = 0; i < l->length; i++) {
+    const char *refw = List_gst(l, i);
     printf("0x");
-    for(int ii = l->width/sizeof(char) - 1; ii >= 0; ii--){
-        printf("%02x", *((unsigned char*)refw + ii));
+    for (int ii = l->width / sizeof(char) - 1; ii >= 0; ii--) {
+      printf("%02x", *((unsigned char *)refw + ii));
     }
     printf(", ");
   }
@@ -160,15 +152,15 @@ void List_append(List *l, const void *element) {
   memcpy(l->head + l->width * l->length, element, l->width);
   l->length++;
 }
-void List_pad(List*l,unsigned int ammount){
-  List_resize(l, l->length+ammount);
+void List_pad(List *l, unsigned int ammount) {
+  List_resize(l, l->length + ammount);
   // memset(l->head+l->width*l->length, 0, ammount*l->width);
-  l->length+=ammount;
+  l->length += ammount;
 }
 void List_remove(List *l, unsigned int i) {
   if (checkBounds(l, i)) {
     memmove(l->head + i * l->width, l->head + (i + 1) * l->width,
-           (l->length - i) * l->width);
+            (l->length - i) * l->width);
     l->length--;
   }
 }
@@ -180,15 +172,21 @@ void List_set(List *l, unsigned int i, const void *element) {
 
 void List_insert(List *l, unsigned int i, void *element) {
 
-    if (i == l->length) { List_append(l, element); return; }
+  if (i == l->length) {
+    List_append(l, element);
+    return;
+  }
 
-    if (l->length + 1 > l->size) { List_resize(l, l->size * 2); }
+  if (l->length + 1 > l->size) {
+    List_resize(l, l->size * 2);
+  }
 
-    memmove((char*)l->head + (i + 1) * l->width, (char*)l->head + i * l->width, l->width * (l->length - i));
+  memmove((char *)l->head + (i + 1) * l->width, (char *)l->head + i * l->width,
+          l->width * (l->length - i));
 
-    memcpy((char*)l->head + i * l->width, element, l->width);
+  memcpy((char *)l->head + i * l->width, element, l->width);
 
-    l->length++;
+  l->length++;
 }
 int List_forEach(List *l, int (*function)(void *)) {
   int result = 1;
@@ -197,9 +195,9 @@ int List_forEach(List *l, int (*function)(void *)) {
   }
   return result;
 }
-List* List_fromArr(const void *source,unsigned int size, unsigned int length) {
+List *List_fromArr(const void *source, unsigned int size, unsigned int length) {
   // helper function for turning arrays into lists
-  List*l = List_new(size);
+  List *l = List_new(size);
   memcpy(l->head + l->length * l->width, source, length * l->width);
   l->length = length;
   return l;
@@ -224,15 +222,16 @@ int List_search(List *l, const void *value) {
   }
   return -1;
 }
-void List_appendFromArr(List *l, const void *source, unsigned int size) {
+List *List_appendFromArr(List *l, const void *source, unsigned int size) {
   if (l->size < l->length + size) {
     List_resize(l, l->length + size + 1);
   }
   memcpy(l->head + l->length * l->width, source, size * l->width);
-  l->length +=size;
+  l->length += size;
   // for (unsigned int i = 0; i < index; i++) {
   //   List_append(l, source + (l->width * i));
   // }
+  return l;
 }
 // buffer containing list and its data (head is meaningles)
 void *List_toBuffer(List *l) {
@@ -254,8 +253,8 @@ List *List_deepCopy(List *l) {
   memcpy(res->head, l->head, l->length * l->width);
   return res;
 }
-List* List_combine(List*l,List*l2){
-  List* l3 = List_fromArr(l->head, l->size, l->length);
+List *List_combine(List *l, List *l2) {
+  List *l3 = List_fromArr(l->head, l->size, l->length);
   List_appendFromArr(l3, l2->head, l2->length);
   return l3;
 }
@@ -263,4 +262,3 @@ List* List_combine(List*l,List*l2){
 #ifdef __cplusplus
 }
 #endif
-

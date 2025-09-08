@@ -11,42 +11,7 @@
 
 #define min(a, b) ((a < b) ? (a) : (b))
 #define max(a, b) ((a > b) ? (a) : (b))
-// index after end if c not present
-// unsigned int um_indexOf(um_fp string, char c) ;
-// um_fp inside(char limits, um_fp string);
-// um_fp around(char limits[2], um_fp string);
-//
-// um_fp until(char delim, um_fp string);
-// um_fp behind(char delim, um_fp string);
-// um_fp after(um_fp main, um_fp slice) ;
-// #define stack_split(result, string, ...) \
-//   result = alloca( \
-//       sizeof(um_fp) * \
-//       (sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1)); \
-//   do { \
-//     void *last; \
-//     unsigned int args[] = {__VA_ARGS__}; \
-//     for (int i = 0; i < sizeof(args) / sizeof(unsigned int); i++) { \
-//       args[i] = (i == 0) ? (min(args[i], string.width)) \
-//                          : (min(string.width, max(args[i], args[i - 1]))); \
-//       result[i] = (um_fp){ \
-//           .ptr = (i == 0) ? (string.ptr) : (last), \
-//           .width = (i == 0) ? (args[0]) : (args[i] - args[i - 1]), \
-//       }; \
-//       last = ((char *)result[i].ptr) + result[i].width; \
-//     } \
-//     result[sizeof(args) / sizeof(unsigned int)] = \
-//         (um_fp){.ptr = last, .width = string.width - (last - string.ptr)}; \
-//   } while (0);
-// char isSkip(char c) ;
-// um_fp removeSpacesPadding(um_fp in) ;
-// um_fp skipComments(um_fp source) ;
-typedef struct {
-  um_fp key;
-  um_fp value;
-  um_fp footprint;
-} kVf;
-// kVf parseNext(um_fp string);
+
 um_fp findIndex(um_fp str, unsigned int index);
 um_fp findKey(um_fp str, um_fp key);
 typedef struct {
@@ -68,8 +33,8 @@ um_fp findAny(um_fp str, parseArg ki);
 // must be none terminated
 um_fp find_many(um_fp str, ...);
 #define find(um, ...) find_many(um, __VA_ARGS__, ((parseArg){.type = NONE}))
+
 #endif
-#define KML_PARSER_C
 #ifdef KML_PARSER_C
 
 // index after end if c not present
@@ -203,6 +168,11 @@ static um_fp removeSpacesPadding(um_fp in) {
   res = splits[1];
   return res;
 }
+typedef struct {
+  um_fp key;
+  um_fp value;
+  um_fp footprint;
+} kVf;
 static kVf parseNext(um_fp string) {
   if (!(string.ptr && string.width)) {
     return (kVf){nullUmf, nullUmf};

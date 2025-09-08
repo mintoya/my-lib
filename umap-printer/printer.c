@@ -1,4 +1,5 @@
 #include "printer.h"
+#include "../string-List/stringList.h"
 #include <stdio.h>
 #include <string.h>
 

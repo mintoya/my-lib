@@ -2,6 +2,7 @@
 #define UPRINTER_H
 
 #include "../umap/umap.h"
+#include "../my-list/my-list.h"
 typedef void (*printer)(const void *);
 void registerPrinter(char *, printer *);
 void mPrint(char *type, const void *ref);

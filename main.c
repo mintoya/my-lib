@@ -1,10 +1,10 @@
-#include "alloc.h"
 #include "umap-printer/printer.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#define LIST_5d3bd19_C
+#define LIST_ALLOCATOR
+#define MY_LIST_C
 #include "my-list/my-list.h"
 #define KML_PARSER_C
 #include "kml/kml.h"
