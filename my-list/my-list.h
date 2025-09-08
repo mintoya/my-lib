@@ -7,10 +7,18 @@ extern "C" {
 #endif
 #ifndef LIST_ALLOCATOR
 #include <stdlib.h>
-#define clearAllocate(length, size) calloc(length, size)
-#define regularAllocate(size) malloc(size)
-#define reAllocate(source, newsize) realloc(source, newSize)
-#define freAllocate(ptr) free(ptr)
+#define clearAllocate(length, size)                                            \
+  calloc(length, size);                                                        \
+  printf("allocation\n");
+#define regularAllocate(size)                                                  \
+  malloc(size);                                                                \
+  printf("allocation\n");
+#define reAllocate(source, newsize)                                            \
+  realloc(source, newSize);                                                    \
+  printf("reallocation\n");
+#define freAllocate(ptr)                                                       \
+  free(ptr);                                                                   \
+  printf("free\n");
 #endif
 #include <string.h>
 
@@ -55,12 +63,13 @@ List *List_combine(List *l, List *l2);
   }
 
 #define mList_get(list, type, index) *(type *)List_gst(list, index)
-#define mList_add(list,type, value) List_append(list, (type[1]){value})
+#define mList_add(list, type, ...) List_append(list, (type[1]){__VA_ARGS__})
 #define mList_insert(list, value, index)                                       \
   List_insert(list, index, (typeof(value)[1]){value})
 
 #define mList(type, ...)                                                       \
-List_fromArr((type[]){__VA_ARGS__}, sizeof(type),sizeof((type[]){__VA_ARGS__})/sizeof(type) )
+  List_fromArr((type[]){__VA_ARGS__}, sizeof(type),                            \
+               sizeof((type[]){__VA_ARGS__}) / sizeof(type))
 
 // getmlistmac( a,b,fromtype,fromarr )
 // a,b,ft
@@ -94,19 +103,20 @@ List *List_new(unsigned long bytes) {
   List *l = (List *)clearAllocate(1, sizeof(List));
   l->width = bytes;
   l->length = 0;
-  l->head = clearAllocate(1, bytes);
+  l->head = (char *)clearAllocate(1, bytes);
   l->size = 1;
   return l;
 }
+#ifndef LIST_GROW_EQ
 #define LIST_GROW_EQ(uint) ((uint + (uint << 1)) + 1)
-
+#endif
 //
 // prins  hex representatins of list data
 //
 void List_print(const List *l) {
   printf("{");
   for (int i = 0; i < l->length; i++) {
-    const char *refw = List_gst(l, i);
+    const char *refw = (char *)List_gst(l, i);
     printf("0x");
     for (int ii = l->width / sizeof(char) - 1; ii >= 0; ii--) {
       printf("%02x", *((unsigned char *)refw + ii));
@@ -129,7 +139,7 @@ void List_resize(List *l, unsigned int newSize) {
     freAllocate(l->head);
     errPrint("ran out of space for some realloc, in List_resize\n");
   }
-  l->head = newPlace;
+  l->head = (char *)newPlace;
   l->size = newSize;
   l->length = (l->length < l->size) ? (l->length) : (l->size);
 }
@@ -241,15 +251,14 @@ void *List_toBuffer(List *l) {
   return res;
 }
 void *List_fromBuffer(void *buffer) {
-  List *l = buffer;
-  l->head = buffer + sizeof(List);
-  return l;
+  List *l = (List *)buffer;
+  l->head = (char *)(buffer + sizeof(List));; return l;
 }
 List *List_deepCopy(List *l) {
-  List *res = regularAllocate(sizeof(List));
+  List *res = (List*)regularAllocate(sizeof(List));
   *res = *l;
   res->size = l->length * l->width;
-  res->head = regularAllocate(l->length * l->width);
+  res->head = (char*)regularAllocate(l->length * l->width);
   memcpy(res->head, l->head, l->length * l->width);
   return res;
 }
