@@ -5,15 +5,13 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 #ifndef LIST_ALLOCATOR
 #include <stdlib.h>
-#define clearAllocate(length, size)                                            \
-  calloc(length, size);                                                        
-#define regularAllocate(size)                               malloc(size);                                                                
-#define reAllocate(source, newsize)                                            \
-  realloc(source, newSize);                                                    
-#define freAllocate(ptr)                                                       \
-  free(ptr);                                                                   
+#define clearAllocate(length, size) calloc(length, size);
+#define regularAllocate(size) malloc(size);
+#define reAllocate(source, newsize) realloc(source, newSize);
+#define freAllocate(ptr) free(ptr);
 #endif
 #include <string.h>
 
@@ -59,15 +57,12 @@ List *List_combine(List *l, List *l2);
 
 #define mList_get(list, type, index) *(type *)List_gst(list, index)
 #define mList_add(list, type, ...) List_append(list, (type[1]){__VA_ARGS__})
-#define mList_insert(list, type, value, index)                                       \
+#define mList_insert(list, type, value, index)                                 \
   List_insert(list, index, (type[1]){value})
 
 #define mList(type, ...)                                                       \
   List_fromArr((type[]){__VA_ARGS__}, sizeof(type),                            \
                sizeof((type[]){__VA_ARGS__}) / sizeof(type))
-
-// getmlistmac( a,b,fromtype,fromarr )
-// a,b,ft
 
 #endif
 #ifdef MY_LIST_C
@@ -93,7 +88,7 @@ int checkBounds(List *l, unsigned int i) {
 #define checkBounds(a, b) 1
 #define errPrint(str) 1
 #endif
-
+#ifdef MY_LIST_C
 List *List_new(unsigned long bytes) {
   List *l = (List *)clearAllocate(1, sizeof(List));
   l->width = bytes;
@@ -102,24 +97,23 @@ List *List_new(unsigned long bytes) {
   l->size = 1;
   return l;
 }
-#ifndef LIST_GROW_EQ
 #define LIST_GROW_EQ(uint) ((uint + (uint << 1)) + 1)
-#endif
+
 //
 // prins  hex representatins of list data
 //
-void List_print(const List *l) {
-  printf("{");
-  for (int i = 0; i < l->length; i++) {
-    const char *refw = (char *)List_gst(l, i);
-    printf("0x");
-    for (int ii = l->width / sizeof(char) - 1; ii >= 0; ii--) {
-      printf("%02x", *((unsigned char *)refw + ii));
-    }
-    printf(", ");
-  }
-  printf("}\n");
-}
+// void List_print(const List *l) {
+//   printf("{");
+//   for (int i = 0; i < l->length; i++) {
+//     const char *refw = List_gst(l, i);
+//     printf("0x");
+//     for (int ii = l->width / sizeof(char) - 1; ii >= 0; ii--) {
+//       printf("%02x", *((unsigned char *)refw + ii));
+//     }
+//     printf(", ");
+//   }
+//   printf("}\n");
+// }
 void List_free(List *l) {
   freAllocate(l->head);
   freAllocate(l);
@@ -265,4 +259,5 @@ List *List_combine(List *l, List *l2) {
 #endif
 #ifdef __cplusplus
 }
+#endif
 #endif
