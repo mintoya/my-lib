@@ -14,14 +14,14 @@
 um_fp read_stdin() {
   List fl = {
       .width = sizeof(char),
-      .head = malloc(sizeof(char)),
+      .head = malloc(sizeof(char)*10),
       .length = 0,
-      .size = 1,
+      .size = 10,
   };
   int c;
 
   for (c = fgetc(stdin); c != EOF; c = fgetc(stdin)) {
-    mList_add(&fl, c);
+    mList_add(&fl,char, c);
   }
 
   um_fp res = {.ptr = (&fl)->head, .width = (&fl)->length * (&fl)->width};

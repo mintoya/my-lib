@@ -3,6 +3,7 @@
 #define initialBufferSize
 #include "../my-list/my-list.h"
 #include <string.h>
+#include <stdio.h>
 
 typedef struct stringMetaData {
   unsigned int index;
@@ -31,6 +32,7 @@ static inline unsigned int stringList_length(stringList *l) {
   return l->List_stringMetaData.length;
 }
 static inline char um_eq(um_fp a, um_fp b) {
+  // printf("comparing: %.*s -%i and  %.*s -%i\n",a.width,a.ptr,a.width,b.width,b.ptr,b.width);
   return a.width == b.width && !um_fp_cmp(a, b);
 }
 #define nullUmf ((um_fp){.ptr = NULL, .width = 0})
@@ -47,7 +49,6 @@ static inline char um_eq(um_fp a, um_fp b) {
 
 
 #ifdef STRING_LIST_C
-
 #include <stdlib.h>
 #include <string.h>
 #define STRING_LIST_minSize 20
@@ -86,10 +87,10 @@ int um_fp_cmp(um_fp a, um_fp b) {
 um_fp stringList_get(stringList *l, unsigned int index) {
   if (index > l->List_stringMetaData.length)
     return nullUmf;
-  stringMetaData this =
+  stringMetaData thisS =
       mList_get(&(l->List_stringMetaData), stringMetaData, index);
-  return ((um_fp){.ptr = (List_gst(&(l->List_char), this.index)),
-                  .width = this.width});
+  return ((um_fp){.ptr = (List_gst(&(l->List_char), thisS.index)),
+                  .width = thisS.width});
 }
 stringList *stringList_remake(stringList *origional) {
   stringList *res = stringList_new();
@@ -100,30 +101,30 @@ stringList *stringList_remake(stringList *origional) {
 }
 void stringList_append(stringList *l, um_fp value) {
   unsigned int trueSize = max(value.width, STRING_LIST_minSize);
-  stringMetaData this = {
+  stringMetaData thisS = {
       .index = l->List_char.length,
       .width = value.width,
       ._size = trueSize,
   };
-  mList_add(&(l->List_stringMetaData), this);
+  mList_add(&(l->List_stringMetaData),stringMetaData, thisS);
   List_appendFromArr(&(l->List_char), value.ptr, value.width);
   List_pad(&(l->List_char), trueSize - value.width);
 }
 void stringList_insert(stringList *l, um_fp value, unsigned int index) {
   unsigned int trueSize = max(value.width, STRING_LIST_minSize);
-  stringMetaData this = {
+  stringMetaData thisS = {
       .index = l->List_char.length,
       .width = value.width,
       ._size = trueSize,
   };
-  mList_insert(&(l->List_stringMetaData), this, index);
+  mList_insert(&(l->List_stringMetaData),stringMetaData, thisS, index);
   List_appendFromArr(&(l->List_char), value.ptr, value.width);
   List_pad(&(l->List_char), trueSize - value.width);
 }
 void stringList_set(stringList *l, um_fp value, unsigned int index) {
-  stringMetaData this =
+  stringMetaData thisS =
       mList_get(&(l->List_stringMetaData), stringMetaData, index);
-  if (this._size < value.width) {
+  if (thisS._size < value.width) {
     stringMetaData *ref = List_gst(&(l->List_stringMetaData), index);
     ref->width = value.width;
     ref->_size = value.width;

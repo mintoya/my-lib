@@ -7,20 +7,25 @@
 #include <string.h>
 
 typedef struct umap {
-  stringList* keys;
-  stringList* vals;
-  List* refs;
+  stringList *keys;
+  stringList *vals;
+  List *refs;
 } UMap;
+
+static inline um_fp UMap_getKeyAtIndex(UMap *map, unsigned int index) {
+  return stringList_get(map->keys, index);
+};
+static inline um_fp UMap_getValAtIndex(UMap *map, unsigned int index) {
+  return stringList_get(map->vals, index);
+};
 
 UMap *UMap_new();
 um_fp UMap_getValAtKey(UMap *map, um_fp key);
-um_fp UMap_getKeyAtIndex(UMap *map, unsigned int index);
-um_fp UMap_get(UMap *map, char *key);
 unsigned int UMap_set(UMap *map, um_fp key, um_fp val);
 // make a copy without unused keys & vals
 UMap *UMap_remake(UMap *map);
 void UMap_free(UMap *map);
-void UMap_addChild(UMap *map, um_fp key, UMap* ref);
+void UMap_addChild(UMap *map, um_fp key, UMap *ref);
 
 /*
  * not modifiable

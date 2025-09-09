@@ -8,17 +8,12 @@ extern "C" {
 #ifndef LIST_ALLOCATOR
 #include <stdlib.h>
 #define clearAllocate(length, size)                                            \
-  calloc(length, size);                                                        \
-  printf("allocation\n");
-#define regularAllocate(size)                                                  \
-  malloc(size);                                                                \
-  printf("allocation\n");
+  calloc(length, size);                                                        
+#define regularAllocate(size)                               malloc(size);                                                                
 #define reAllocate(source, newsize)                                            \
-  realloc(source, newSize);                                                    \
-  printf("reallocation\n");
+  realloc(source, newSize);                                                    
 #define freAllocate(ptr)                                                       \
-  free(ptr);                                                                   \
-  printf("free\n");
+  free(ptr);                                                                   
 #endif
 #include <string.h>
 
@@ -64,8 +59,8 @@ List *List_combine(List *l, List *l2);
 
 #define mList_get(list, type, index) *(type *)List_gst(list, index)
 #define mList_add(list, type, ...) List_append(list, (type[1]){__VA_ARGS__})
-#define mList_insert(list, value, index)                                       \
-  List_insert(list, index, (typeof(value)[1]){value})
+#define mList_insert(list, type, value, index)                                       \
+  List_insert(list, index, (type[1]){value})
 
 #define mList(type, ...)                                                       \
   List_fromArr((type[]){__VA_ARGS__}, sizeof(type),                            \
