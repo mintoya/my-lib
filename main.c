@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define LIST_5d3bd19_C
+#define MY_LIST_C
 #include "my-list/my-list.h"
 #define KML_PARSER_C
 #include "kml/kml.h"
@@ -22,7 +22,7 @@ um_fp read_stdin() {
   int c;
 
   for (c = fgetc(stdin); c != EOF; c = fgetc(stdin)) {
-    mList_add(&fl, c);
+    mList_add(&fl,char, c);
   }
 
   um_fp res = {.ptr = (&fl)->head, .width = (&fl)->length * (&fl)->width};

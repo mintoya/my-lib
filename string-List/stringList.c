@@ -56,7 +56,7 @@ void stringList_append(stringList *l, um_fp value) {
       .width = value.width,
       ._size = trueSize,
   };
-  mList_add(&(l->List_stringMetaData), this);
+  mList_add(&(l->List_stringMetaData),stringMetaData, this);
   List_appendFromArr(&(l->List_char), value.ptr, value.width);
   List_pad(&(l->List_char), trueSize - value.width);
 }
@@ -67,7 +67,7 @@ void stringList_insert(stringList *l, um_fp value, unsigned int index) {
       .width = value.width,
       ._size = trueSize,
   };
-  mList_insert(&(l->List_stringMetaData), this, index);
+  mList_insert(&(l->List_stringMetaData),stringMetaData, this, index);
   List_appendFromArr(&(l->List_char), value.ptr, value.width);
   List_pad(&(l->List_char), trueSize - value.width);
 }

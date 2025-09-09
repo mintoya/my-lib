@@ -39,7 +39,6 @@ static inline char um_eq(um_fp a, um_fp b){
 #define um_from(val)                                                           \
   _Generic((val),                                                              \
       char *: (um_fp){.ptr = (val), .width = strlen(val)},                     \
-      const char *: (um_fp){.ptr = (val), .width = strlen(val)},               \
       default: (um_fp){.ptr = (typeof(val)[1]){val},                           \
                        .width = sizeof(typeof(val))}) // structs
 
