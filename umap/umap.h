@@ -9,7 +9,6 @@
 typedef struct umap {
   stringList *keys;
   stringList *vals;
-  List *refs;
 } UMap;
 
 static inline um_fp UMap_getKeyAtIndex(UMap *map, unsigned int index) {

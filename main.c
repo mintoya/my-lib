@@ -18,5 +18,6 @@ int main() {
   UMap_set(m, um_from("hello2"), nullUmf);
   usePrint(UMap *, m);
   mPrint("UMap<string>", &m);
+  UMap_free(m);
   return 0;
 }

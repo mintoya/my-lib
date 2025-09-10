@@ -1,6 +1,7 @@
 #ifndef MY_LIST_H
 #define MY_LIST_H
 #include <stdlib.h>
+#include <errno.h>
 // clang-format off
 #ifndef LIST_ALLOCATOR
   #define clearAllocate(length, size) calloc(length, size)
