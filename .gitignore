@@ -1,3 +1,8 @@
 .cache/clangd/index
 build
 my-list/a.exe
+my-list/a
+my-list/a.exp
+my-list/a.lib
+my-list/a.pdb
+string-List/a.exe
