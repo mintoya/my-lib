@@ -31,7 +31,7 @@ void print_rawList(const void *ref) {
   List *l = *(List **)ref;
   printf("{");
   for (int i = 0; i < l->width; i++) {
-    const char *refw = List_gst(l, i);
+    const char *refw = List_getRef(l, i);
     printf("0x");
     for (int ii = l->width / sizeof(char) - 1; ii >= 0; ii--) {
       printf("%02x", *((unsigned char *)refw + ii));

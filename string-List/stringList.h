@@ -50,9 +50,13 @@ static inline char um_eq(um_fp a, um_fp b) {
 #ifdef STRING_LIST_C
 #include <stdlib.h>
 #include <string.h>
+
+#ifndef STRING_LIST_minSize
 #define STRING_LIST_minSize 20
+#endif
+
 stringList *stringList_new() {
-  stringList *res = malloc(sizeof(stringList));
+  stringList *res = (stringList*)malloc(sizeof(stringList));
   // clang-format off
   *res = (stringList) {
     .List_stringMetaData = {
@@ -88,7 +92,7 @@ um_fp stringList_get(stringList *l, unsigned int index) {
     return nullUmf;
   stringMetaData thisS =
       mList_get(&(l->List_stringMetaData), stringMetaData, index);
-  return ((um_fp){.ptr = (List_gst(&(l->List_char), thisS.index)),
+  return ((um_fp){.ptr = (List_getRef(&(l->List_char), thisS.index)),
                   .width = thisS.width});
 }
 stringList *stringList_remake(stringList *origional) {
@@ -124,15 +128,15 @@ void stringList_set(stringList *l, um_fp value, unsigned int index) {
   stringMetaData thisS =
       mList_get(&(l->List_stringMetaData), stringMetaData, index);
   if (thisS._size < value.width) {
-    stringMetaData *ref = List_gst(&(l->List_stringMetaData), index);
+    stringMetaData *ref = List_getRef(&(l->List_stringMetaData), index);
     ref->width = value.width;
     ref->_size = value.width;
     ref->index = l->List_char.length;
     List_appendFromArr(&(l->List_char), value.ptr, value.width);
   } else {
-    stringMetaData *ref = List_gst(&(l->List_stringMetaData), index);
+    stringMetaData *ref = List_getRef(&(l->List_stringMetaData), index);
     ref->width = value.width;
-    memcpy(List_gst(&(l->List_char), ref->index), value.ptr, value.width);
+    memcpy(List_getRef(&(l->List_char), ref->index), value.ptr, value.width);
   }
 }
 
