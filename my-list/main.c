@@ -2,21 +2,12 @@
 #define MY_LIST_C
 #include "my-list.h"
 
-typedef struct {
-  int a;
-  char b;
-} typed;
 int main(void) {
-  List *l = mList(typed, {.a = 5, .b = 'c'}, {.a = 8, .b = 'c'});
-  List_append(l, ((typed[]){{.a = 2, .b = 't'}}));
-  mList_add(l, typed, {.a = 5, .b = 'c'});
-  List_insert(l, 0, (typed[1]){{.a = 5, .b = 'c'}});
-  List_insert(l, 0, (typed[1]){{.a = 5, .b = 'c'}});
 
-  mList_forEach(l, typed, t,
-                printf("t:\n"
-                       "\t%i\n"
-                       "\t%c\n",
-                       t.a, t.b););
+  List *a = mList(int);
+  mList_add(a, int, 5);
+  mList_insert(a, int, 8, 0);
+  printf("%i\n", mList_get(a, int, 0));
+
   return EXIT_SUCCESS;
 }

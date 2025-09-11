@@ -1,16 +1,20 @@
-#include "stringList.h"
 #include "../umap-printer/printer.h"
+#include "um_fp.h"
+#define STRING_LIST_C
+#include "stringList.h"
+#define MY_LIST_C
+#include "../my-list/my-list.h"
 void stringList_printMeta(const stringList *sl) {
     if (!sl) {
         printf("stringList (null)\n");
         return;
     }
 
-    List *metaList = &sl->List_stringMetaData;
+    List *metaList = (List*)( (void*)( &sl->List_stringMetaData ) );
     printf("stringList metadata (length=%u):\n", metaList->length);
 
     for (unsigned int i = 0; i < metaList->length; i++) {
-        stringMetaData *meta = (stringMetaData *)List_gst(metaList, i);
+        stringMetaData *meta = (stringMetaData *)List_getRef(metaList, i);
         if (!meta) {
             printf("  [%u] <null>\n", i);
             continue;
@@ -29,12 +33,10 @@ int main(void)
   stringList_insert(l, um_from("hello world 1"),0);
   stringList_set(l, um_from("hhello worldhello worldhello worldhello worldello world 0"),0);
   stringList_set(l,um_from("hello world 2"),2);
-  stringList_set(l,um_from(0x69),2);
+  stringList_set(l,um_fromT(int,0x63),2);
   stringList_set(l, um_from("abc"),0);
 
-  usePrintln(um_fp, stringList_get(l, 0));
-  usePrintln(um_fp, stringList_get(l, 1));
-  usePrintln(um_fp, stringList_get(l, 2));
+
   stringList_printMeta(l);
   return EXIT_SUCCESS;
 }
