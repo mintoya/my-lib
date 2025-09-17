@@ -1,4 +1,5 @@
 #include "cSum.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,13 +9,19 @@
 
 // Flip a single random bit in the buffer
 void flip_random_bit(void *buf, size_t len) {
-  int iter = rand()%15+1;
+  static List *l = NULL;
+  if (!l)
+    l = mList(unsigned int);
+  int iter = rand() % 15 + 1;
+  l->length = 0;
   for (int i = 0; i < iter; i++) {
     if (len == 0)
       return;
     size_t byte_index = rand() % len;
-    uint8_t bit_index = rand() % 8;
-    ((uint8_t *)buf)[byte_index] ^= 1 << bit_index;
+    if (List_search(l, &byte_index) < 0) {
+      uint8_t bit_index = rand() % 8;
+      ((uint8_t *)buf)[byte_index] ^= 1 << bit_index;
+    }
   }
 }
 
@@ -22,15 +29,19 @@ int main(void) {
   srand((unsigned)time(NULL));
   dataChecker d = cSum_new();
 
-  um_fp original = um_from("The quick brown fox jumps over the lazy dog");
+  um_fp original = um_from(
+      "The quick brown fox jumps over the lazy dog"
+      "The quick brown fox jumps over the lazy dog"
+      "The quick brown fox jumps over the lazy dog"
+      );
 
-  const int total_messages = 1000000; // 1 million messages
+  const int total_messages = 10000000; // 1 million messages
   clock_t start = clock();
 
   // Benchmark checksum creation
   for (int i = 0; i < total_messages; i++) {
     checkData c = cSum_toSum(d, original);
-    (void)c; // avoid unused variable warning
+    assert(um_eq(cSum_fromSum(c), original));
   }
 
   clock_t mid = clock();
