@@ -1,4 +1,5 @@
   keyboard:{
+    str:"st;}r"
     //:{ comments have to be surrounded by /:{} objects with the name // are ignored }
     //:{ [] and {} are treated the same, what matters is the presence of separators }
     tapDances:[
@@ -22,7 +23,7 @@
          //:{heres a comment}
           KEY_TAB, C( q ), C( w ), C( e ), C( r ), C( t ),        C( y ), C( u ), C( i ), C( o ), C( p ),  KEY_BACKSPACE,
           M( s ) , C( a ), C( s ), C( d ), C( f ), C( g ),        C( h ), C( j ), C( k ), C( l ), C( ; ),  KEY_LEFTBRACE,
-          M( c ) , C( z ), C( x ), C( c ), C( v ), C( b ),        C( n ), C( m ), { C( , ) }, C( . ), C( / ),  KEY_ENTER,//:{ comma isnt allowed in  a list  } 
+          M( c ) , C( z ), C( x ), C( c ), C( v ), C( b ),        C( n ), C( m ), "C( , )" , C( . ), C( / ),  KEY_ENTER,//:{ comma isnt allowed in  a list  } 
           0      , 0     , 0     , M( a ), C(   ),  TD(0),        L(1)  ,   L(2),      0,      0,      0,  0,
         //:{unclosed brackets will break comments}
       ],

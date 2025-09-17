@@ -1,9 +1,9 @@
 #ifndef KML_PARSER_H
 #define KML_PARSER_H
 
-#include "../string-List/stringList.h"
-#include <malloc.h>
+#include "../string-List/um_fp.h"
 #include <assert.h>
+#include <malloc.h>
 // #include <alloca.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -35,31 +35,51 @@ um_fp find_many(um_fp str, ...);
 #define find(um, ...) find_many(um, __VA_ARGS__, ((parseArg){.type = NONE}))
 
 #endif
-#ifdef KML_PARSER_C
+// #ifdef KML_PARSER_C
 
 // index after end if c not present
 static unsigned int um_indexOf(um_fp string, char c) {
   int i;
-  for (i = 0; i < string.width; i++) {
-    if (((char *)string.ptr)[i] == c) {
-      return i;
-    }
-  }
+  char *ptr = (char *)string.ptr;
+  for (i = 0; i < string.width && ptr[i] != c; i++)
+    ;
   return i;
 }
 static um_fp inside(char limits[2], um_fp string) {
   char front = limits[0];
   char back = limits[1];
 
+  int in_single = 0;
+  int in_double = 0;
+
   for (int i = 0; i < string.width; i++) {
-    if (((char *)string.ptr)[i] == front) {
+    char c = ((char *)string.ptr)[i];
+
+    // toggle quote state
+    if (c == '"' && !in_single)
+      in_double = !in_double;
+    else if (c == '\'' && !in_double)
+      in_single = !in_single;
+
+    if (!in_single && !in_double && c == front) {
       unsigned int counter = 1;
       for (int ii = 1; ii + i < string.width; ii++) {
-        if (((char *)string.ptr)[i + ii] == front) {
-          counter++;
-        } else if (((char *)string.ptr)[i + ii] == back) {
-          counter--;
+        c = ((char *)string.ptr)[i + ii];
+
+        // toggle quote state inside the nested scan
+        if (c == '"' && !in_single)
+          in_double = !in_double;
+        else if (c == '\'' && !in_double)
+          in_single = !in_single;
+
+        if (!in_single && !in_double) {
+          if (c == front) {
+            counter++;
+          } else if (c == back) {
+            counter--;
+          }
         }
+
         if (!counter)
           return (um_fp){.ptr = ((char *)string.ptr) + i + 1, .width = ii - 1};
         if (i + ii == string.width - 1)
@@ -69,20 +89,41 @@ static um_fp inside(char limits[2], um_fp string) {
   }
   return nullUmf;
 }
-static um_fp around(char limits[2], um_fp string) {
 
+static um_fp around(char limits[2], um_fp string) {
   char front = limits[0];
   char back = limits[1];
 
+  int in_single = 0;
+  int in_double = 0;
+
   for (int i = 0; i < string.width; i++) {
-    if (((char *)string.ptr)[i] == front) {
+    char c = ((char *)string.ptr)[i];
+
+    // toggle quote state
+    if (c == '"' && !in_single)
+      in_double = !in_double;
+    else if (c == '\'' && !in_double)
+      in_single = !in_single;
+
+    if (!in_single && !in_double && c == front) {
       unsigned int counter = 1;
       for (int ii = 1; ii + i < string.width; ii++) {
-        if (((char *)string.ptr)[i + ii] == front) {
-          counter++;
-        } else if (((char *)string.ptr)[i + ii] == back) {
-          counter--;
+        c = ((char *)string.ptr)[i + ii];
+
+        if (c == '"' && !in_single)
+          in_double = !in_double;
+        else if (c == '\'' && !in_double)
+          in_single = !in_single;
+
+        if (!in_single && !in_double) {
+          if (c == front) {
+            counter++;
+          } else if (c == back) {
+            counter--;
+          }
         }
+
         if (!counter)
           return (um_fp){.ptr = ((char *)string.ptr) + i, .width = ii + 1};
         if (i + ii == string.width - 1)
@@ -95,7 +136,8 @@ static um_fp around(char limits[2], um_fp string) {
 
 static um_fp until(char delim, um_fp string) {
   int i = 0;
-  while (i < string.width && ((char *)string.ptr)[i] != delim) {
+  char* ptr = (char*)string.ptr;
+  while (i < string.width && ptr[i] != delim) {
     i++;
   }
   string.width = i;
@@ -203,19 +245,19 @@ static kVf parseNext(um_fp string) {
     toParse = around("{}", next);
     value = removeSpacesPadding(inside("{}", next));
     break;
-  // case '"':
-  //   next.ptr = (char*)next.ptr + 1;
-  //   next.width--;
-  //
-  //   value = removeSpacesPadding(until('"', next));
-  //   toParse = behind('"', next);
-  //
-  //   toParse.ptr = (char*)toParse.ptr - 1;
-  //   toParse.width++;
-  //
-  //   next.ptr = (char*)next.ptr - 1;
-  //   next.width++;
-  //   break;
+  case '"':
+    next.ptr = (char *)next.ptr + 1;
+    next.width--;
+
+    value = removeSpacesPadding(until('"', next));
+    toParse = behind('"', next);
+
+    toParse.ptr = (char *)toParse.ptr - 1;
+    toParse.width++;
+
+    next.ptr = (char *)next.ptr - 1;
+    next.width++;
+    break;
   default:
     toParse = behind(';', next);
     value = removeSpacesPadding(until(';', next));
