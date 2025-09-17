@@ -6,22 +6,39 @@
 #define START_BIT 0x67
 #define END_BIT 0x41
 
-#define CHECK_TYPE uint64_t
-static inline CHECK_TYPE cSum_CHECK_EXPR(CHECK_TYPE val, uint8_t byte) {
-  uint32_t sum = val & 0x0000ffff;
-  uint32_t x0r = (val & 0xffff0000) >> 16;
+#define CHECK_TYPE uint32_t
 
-  sum += byte;
-  x0r ^= byte;
+static inline CHECK_TYPE cSum_CHECK_EXPR(CHECK_TYPE crc, uint8_t data) {
+  uint16_t lo = (uint16_t)crc;
+  uint16_t up = (crc >> 16);
+  up += data;
 
-  return ((uint32_t)x0r << 16) | sum;
+  lo ^= (uint16_t)data << 8;
+
+  lo = (lo & 0x8000) ? (lo << 1) ^ 0x1021 : (lo << 1);
+  lo = (lo & 0x8000) ? (lo << 1) ^ 0x1021 : (lo << 1);
+  lo = (lo & 0x8000) ? (lo << 1) ^ 0x1021 : (lo << 1);
+  lo = (lo & 0x8000) ? (lo << 1) ^ 0x1021 : (lo << 1);
+  lo = (lo & 0x8000) ? (lo << 1) ^ 0x1021 : (lo << 1);
+  lo = (lo & 0x8000) ? (lo << 1) ^ 0x1021 : (lo << 1);
+  lo = (lo & 0x8000) ? (lo << 1) ^ 0x1021 : (lo << 1);
+  lo = (lo & 0x8000) ? (lo << 1) ^ 0x1021 : (lo << 1);
+
+
+  return ((uint32_t)data << 16 | lo);
 }
 
-// #define CHECK_TYPE uint8_t
-// #define cSum_CHECK_EXPR(val, byte) val = val^byte
-
 // #define CHECK_TYPE uint32_t
-// #define cSum_CHECK_EXPR(val, byte) val = ((val + (byte)) << 1) ^ (val ^ (byte))
+// static inline CHECK_TYPE cSum_CHECK_EXPR(CHECK_TYPE val,uint8_t data){
+//   return val+data;
+// }
+// static inline CHECK_TYPE cSum_CHECK_EXPR(CHECK_TYPE val, uint8_t byte) {
+//   uint32_t sum = val & 0x0000ffff;
+//   uint32_t x0r = (val) >> 16;
+//   sum += byte;
+//   x0r ^= byte;
+//   return ((uint32_t)x0r << 16) | sum;
+// }
 
 // start_bit .. data  .. sum .. end_bit
 typedef struct {
@@ -65,7 +82,8 @@ static um_fp cSum_fromSum(checkData data) {
     return nullUmf;
   }
   CHECK_TYPE sum = 0;
-  for (unsigned int i = 1; i < data.data.width - 1 - (sizeof(CHECK_TYPE)); i++)
+  for (unsigned int i = 1; i < (data.data.width - 1 - (sizeof(CHECK_TYPE)));
+       i++)
     sum = cSum_CHECK_EXPR(sum, ptr[i]);
   if (sum !=
       *(CHECK_TYPE *)(ptr + (data.data.width - 1 - (sizeof(CHECK_TYPE))))) {
