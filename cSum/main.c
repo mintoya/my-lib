@@ -1,3 +1,5 @@
+#include <stdint.h>
+#define cSum_REDUNDANCY_AMMOUNT 4
 #include "cSum.h"
 #include <assert.h>
 #include <stdio.h>
@@ -6,7 +8,7 @@
 #include <time.h>
 #define MY_LIST_C
 #include "../my-list/my-list.h"
-#define total_messages 1000000
+#define total_messages ((uint32_t)864000000)
 
 // Flip a single random bit in the buffer
 void flip_random_bit(void *buf, size_t len) {
@@ -31,14 +33,12 @@ int main(void) {
   srand((unsigned)time(NULL));
   dataChecker d = cSum_new();
 
-  um_fp original = um_from("The quick brown fox jumps over the lazy dog"
-                           "The quick brown fox jumps over the lazy dog"
-                           "The quick brown fox jumps over the lazy dog");
+  um_fp original = um_from("abcdefghijklmn");
 
   clock_t start = clock();
 
   // Benchmark checksum creation
-  for (int i = 0; i < total_messages; i++) {
+  for (uint32_t i = 0; i < total_messages; i++) {
     checkData c = cSum_toSum(d, original);
     assert(um_eq(cSum_fromSum(c), original));
   }
@@ -46,7 +46,7 @@ int main(void) {
   clock_t mid = clock();
 
   int caught_errors = 0;
-  for (int i = 0; i < total_messages; i++) {
+  for (uint32_t i = 0; i < total_messages; i++) {
     checkData c = cSum_toSum(d, original);
     flip_random_bit(c.data.ptr, c.data.width);
     um_fp result = cSum_fromSum(c);
