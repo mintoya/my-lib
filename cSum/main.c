@@ -6,6 +6,7 @@
 #include <time.h>
 #define MY_LIST_C
 #include "../my-list/my-list.h"
+#define total_messages 1000000
 
 // Flip a single random bit in the buffer
 void flip_random_bit(void *buf, size_t len) {
@@ -21,6 +22,7 @@ void flip_random_bit(void *buf, size_t len) {
     if (List_search(l, &byte_index) < 0) {
       uint8_t bit_index = rand() % 8;
       ((uint8_t *)buf)[byte_index] ^= 1 << bit_index;
+      mList_add(l, unsigned int, bit_index);
     }
   }
 }
@@ -29,13 +31,10 @@ int main(void) {
   srand((unsigned)time(NULL));
   dataChecker d = cSum_new();
 
-  um_fp original = um_from(
-      "The quick brown fox jumps over the lazy dog"
-      "The quick brown fox jumps over the lazy dog"
-      "The quick brown fox jumps over the lazy dog"
-      );
+  um_fp original = um_from("The quick brown fox jumps over the lazy dog"
+                           "The quick brown fox jumps over the lazy dog"
+                           "The quick brown fox jumps over the lazy dog");
 
-  const int total_messages = 10000000; // 1 million messages
   clock_t start = clock();
 
   // Benchmark checksum creation
@@ -46,14 +45,17 @@ int main(void) {
 
   clock_t mid = clock();
 
-  // Benchmark checksum verification with random bit flips
   int caught_errors = 0;
   for (int i = 0; i < total_messages; i++) {
     checkData c = cSum_toSum(d, original);
     flip_random_bit(c.data.ptr, c.data.width);
     um_fp result = cSum_fromSum(c);
-    if (result.ptr == 0 && result.width == 0)
+
+    if (!result.ptr) {
       caught_errors++;
+    } else if (um_eq(result, original)) {
+      caught_errors++;
+    }
   }
 
   clock_t end = clock();
@@ -68,7 +70,9 @@ int main(void) {
          total_messages, verify_sec, total_messages / verify_sec);
   printf("Errors caught: %d / %d (%.2f%%)\n", caught_errors, total_messages,
          caught_errors * 100.0 / total_messages);
-
+  printf("Total uncaught: %d\n", total_messages - caught_errors);
+  printf("data Speed: %f Kb/ms",
+         total_messages * original.width / verify_sec / 1000 / 1000);
   cSum_free(d);
   return 0;
 }

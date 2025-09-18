@@ -6,32 +6,31 @@
 #define START_BIT ((char)0x67)
 #define END_BIT ((char)0x41)
 
-#define CHECK_TYPE uint32_t
-
-static inline uint32_t cSum_CHECK_EXPR(uint32_t crc, uint8_t data) {
-    crc ^= (uint32_t)data << 24;
-
-    for (int i = 0; i < 8; i++) {
-        if (crc & 0x80000000u) {
-            crc = (crc << 1) ^ 0x10210000u;  // polynomial aligned to top
-        } else {
-            crc <<= 1;
-        }
-    }
-
-    return crc;
-}
-
-
 // #define CHECK_TYPE uint32_t
-// static inline CHECK_TYPE cSum_CHECK_EXPR(CHECK_TYPE val,uint8_t data){
-//   uint16_t top = ( val&0xffff0000 )>>16;
-//   top+=data;
-//   uint16_t bot = val&0x0000ffff;
-//   bot^=data;
-//   bot^=top;
-//   return ( (uint32_t)top )<<16 | bot;
+// static inline uint32_t cSum_CHECK_EXPR(uint32_t crc, uint8_t data) {
+//     crc ^= (uint32_t)data << 24;
+//
+//     for (int i = 0; i < 8; i++) {
+//         if (crc & 0x80000000u) {
+//             crc = (crc << 1) ^ 0x10210000u;  // polynomial aligned to top
+//         } else {
+//             crc <<= 1;
+//         }
+//     }
+//
+//     return crc;
 // }
+
+
+#define CHECK_TYPE uint32_t
+static inline CHECK_TYPE cSum_CHECK_EXPR(CHECK_TYPE val,uint8_t data){
+  uint16_t top = ( val&0xffff0000 )>>16;
+  top+=data;
+  uint16_t bot = val&0x0000ffff;
+  bot^=data;
+  bot^=top;
+  return ( (uint32_t)top )<<16 | bot;
+}
 
 // start_bit .. data .. data .. checksum .. end_bit
 typedef struct {
