@@ -47,7 +47,7 @@ typedef struct {
 
 static dataChecker cSum_new() {
   printf("new csum item with  %ix redundancy\n", cSum_REDUNDANCY_AMMOUNT);
-  List *l = mList(char);
+  List *l = List_new(sizeof(char));
   List_resize(l, 20);
   return (dataChecker){.checkSumScratch = l};
 }
@@ -64,12 +64,18 @@ static checkData cSum_toSum(dataChecker d, um_fp data) {
   if (newWidth > d.checkSumScratch->width)
     List_resize(d.checkSumScratch, newWidth);
 
-  mList_add(d.checkSumScratch, char, START_BIT);
+  char tmp[1] = { (char)START_BIT };
+
+  List_append(d.checkSumScratch, tmp);
+
   for (unsigned int i = 0; i < cSum_REDUNDANCY_AMMOUNT; i++)
     List_appendFromArr(d.checkSumScratch, data.ptr, data.width);
+  
   List_appendFromArr(d.checkSumScratch, &sum, sizeof(CHECK_TYPE));
 
-  mList_add(d.checkSumScratch, char, END_BIT);
+  tmp[0] = (char)END_BIT ;
+  List_append(d.checkSumScratch, tmp);
+
   checkData res = {.data = {
                        .ptr = d.checkSumScratch->head,
                        .width = d.checkSumScratch->length,

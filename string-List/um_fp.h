@@ -25,6 +25,7 @@ static inline char um_eq(um_fp a, um_fp b) {
 }
 
 #define nullUmf ((um_fp){.ptr = NULL, .width = 0})
+#ifndef __cplusplus
 #define um_fromT(type, val)                                             \
   ((um_fp){.ptr = (type[1]){val}, .width = sizeof(type)})
 #define um_from(val)                                                           \
@@ -32,5 +33,12 @@ static inline char um_eq(um_fp a, um_fp b) {
       char *: (um_fp){.ptr = (val), .width = strlen(val)},                     \
       default: (um_fp){.ptr = (typeof(val)[1]){val},                           \
                        .width = sizeof(typeof(val))}) // structs
+#else
+template <typename T>
+inline um_fp um_from(T& val) {
+    return { (void*)&val, sizeof(T) };
+}
+
+#endif
 
 #endif // UM_FP_H
