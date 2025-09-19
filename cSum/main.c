@@ -8,24 +8,17 @@
 #include <time.h>
 #define MY_LIST_C
 #include "../my-list/my-list.h"
-#define total_messages ((uint32_t)864000000)
+#define total_messages ((uint32_t)8640000)
 
 // Flip a single random bit in the buffer
 void flip_random_bit(void *buf, size_t len) {
-  static List *l = NULL;
-  if (!l)
-    l = mList(unsigned int);
-  int iter = rand() % 15 + 1;
-  l->length = 0;
+  if (len == 0)
+    return;
+  int iter = rand() % len + 1;
   for (int i = 0; i < iter; i++) {
-    if (len == 0)
-      return;
     size_t byte_index = rand() % len;
-    if (List_search(l, &byte_index) < 0) {
-      uint8_t bit_index = rand() % 8;
-      ((uint8_t *)buf)[byte_index] ^= 1 << bit_index;
-      mList_add(l, unsigned int, bit_index);
-    }
+    uint8_t bit_index = rand() % 8;
+    ((uint8_t *)buf)[byte_index] ^= 1 << bit_index;
   }
 }
 
@@ -45,7 +38,7 @@ int main(void) {
 
   clock_t mid = clock();
 
-  int caught_errors = 0;
+  int caught_errors = 0, fake_errors = 0;
   for (uint32_t i = 0; i < total_messages; i++) {
     checkData c = cSum_toSum(d, original);
     flip_random_bit(c.data.ptr, c.data.width);
@@ -55,6 +48,7 @@ int main(void) {
       caught_errors++;
     } else if (um_eq(result, original)) {
       caught_errors++;
+      fake_errors++;
     }
   }
 
@@ -70,6 +64,7 @@ int main(void) {
          total_messages, verify_sec, total_messages / verify_sec);
   printf("Errors caught: %d / %d (%.2f%%)\n", caught_errors, total_messages,
          caught_errors * 100.0 / total_messages);
+  printf("False errors: %d\n", fake_errors);
   printf("Total uncaught: %d\n", total_messages - caught_errors);
   printf("data Speed: %f Kb/ms",
          total_messages * original.width / verify_sec / 1000 / 1000);
