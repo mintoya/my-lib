@@ -1,7 +1,9 @@
+#ifdef __cplusplus
+#include "../string-List/um_fp.h"
+extern "C" {
+#endif
 #ifndef KML_PARSER_H
 #define KML_PARSER_H
-
-#include "../string-List/um_fp.h"
 #include <assert.h>
 #include <malloc.h>
 // #include <alloca.h>
@@ -27,15 +29,34 @@ typedef struct {
 } parseArg;
 
 um_fp findAny(um_fp str, parseArg ki);
+
+#ifndef __cplusplus 
 #define fIndex(val) ((parseArg){.type = INDEX, .data.index = val})
 #define fKey(val) ((parseArg){.type = STRING, .data.pArg = um_from(val)})
 
 // must be none terminated
 um_fp find_many(um_fp str, ...);
 #define find(um, ...) find_many(um, __VA_ARGS__, ((parseArg){.type = NONE}))
+#else
+static inline parseArg fIndex(unsigned int idx){
+  parseArg res;
+  res.type = parseArg::INDEX;
+  res.data.index = idx;
+  return res;
+}
+static inline parseArg fKey(char* str){
+  parseArg res;
+  res.type = parseArg::STRING;
+  res.data.pArg = um_from(str);
+  return res;
+}
+static const parseArg parseArg_terminator_v = {
+  .type = parseArg::NONE
+};
+#endif
 
 #endif
-// #ifdef KML_PARSER_C
+#ifdef KML_PARSER_C
 
 // index after end if c not present
 static unsigned int um_indexOf(um_fp string, char c) {
@@ -81,9 +102,11 @@ static um_fp inside(char limits[2], um_fp string) {
         }
 
         if (!counter)
-          return (um_fp){.ptr = ((char *)string.ptr) + i + 1, .width = ii - 1};
+          return (um_fp){.ptr = ((char *)string.ptr) + i + 1,
+                         .width = (size_t)ii - 1};
         if (i + ii == string.width - 1)
-          return (um_fp){.ptr = ((char *)string.ptr) + i + 1, .width = ii - 1};
+          return (um_fp){.ptr = ((char *)string.ptr) + i + 1,
+                         .width = (size_t)ii - 1};
       }
     }
   }
@@ -125,9 +148,11 @@ static um_fp around(char limits[2], um_fp string) {
         }
 
         if (!counter)
-          return (um_fp){.ptr = ((char *)string.ptr) + i, .width = ii + 1};
+          return (um_fp){.ptr = ((char *)string.ptr) + i,
+                         .width = (size_t)ii + 1};
         if (i + ii == string.width - 1)
-          return (um_fp){.ptr = ((char *)string.ptr) + i, .width = ii + 1};
+          return (um_fp){.ptr = ((char *)string.ptr) + i,
+                         .width = (size_t)ii + 1};
       }
     }
   }
@@ -136,7 +161,7 @@ static um_fp around(char limits[2], um_fp string) {
 
 static um_fp until(char delim, um_fp string) {
   int i = 0;
-  char* ptr = (char*)string.ptr;
+  char *ptr = (char *)string.ptr;
   while (i < string.width && ptr[i] != delim) {
     i++;
   }
@@ -156,17 +181,17 @@ static um_fp after(um_fp main, um_fp slice) {
     return nullUmf;
   if (!(slice.ptr && slice.width))
     return main;
-  char *mainStart = main.ptr;
+  char *mainStart = (char *)main.ptr;
   char *mainEnd = mainStart + main.width;
-  char *sliceStart = slice.ptr;
+  char *sliceStart = (char *)slice.ptr;
   char *sliceEnd = sliceStart + slice.width;
 
   assert(sliceStart >= mainStart && sliceEnd <= mainEnd);
 
-  return (um_fp){.ptr = sliceEnd, .width = mainEnd - sliceEnd};
+  return (um_fp){.ptr = sliceEnd, .width = (size_t)(mainEnd - sliceEnd)};
 }
 #define stack_split(result, string, ...)                                       \
-  result = alloca(                                                             \
+  result = (um_fp *)alloca(                                                    \
       sizeof(um_fp) *                                                          \
       (sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1));     \
   do {                                                                         \
@@ -182,7 +207,8 @@ static um_fp after(um_fp main, um_fp slice) {
       last = ((char *)result[i].ptr) + result[i].width;                        \
     }                                                                          \
     result[sizeof(args) / sizeof(unsigned int)] =                              \
-        (um_fp){.ptr = last, .width = string.width - (last - string.ptr)};     \
+        (um_fp){.ptr = last,                                                   \
+                .width = string.width - ((char *)last - (char *)string.ptr)};  \
   } while (0);
 static char isSkip(char c) {
   switch (c) {
@@ -206,7 +232,9 @@ static um_fp removeSpacesPadding(um_fp in) {
   while (back > front && isSkip(((char *)in.ptr)[back])) {
     back--;
   }
-  um_fp *splits = stack_split(splits, in, front, back + 1);
+  um_fp *splits =
+      stack_split(splits, in, (unsigned int)front, (unsigned int)back + 1);
+
   res = splits[1];
   return res;
 }
@@ -327,6 +355,18 @@ um_fp findKey(um_fp str, um_fp key) {
 }
 
 um_fp findAny(um_fp str, parseArg ki) {
+#ifdef __cplusplus
+  switch (ki.type) {
+  case parseArg::STRING:
+    return findKey(str, ki.data.pArg);
+    break;
+  case parseArg::INDEX:
+    return findIndex(str, ki.data.index);
+    break;
+  default:
+    return nullUmf;
+  }
+#else
   switch (ki.type) {
   case STRING:
     return findKey(str, ki.data.pArg);
@@ -337,23 +377,38 @@ um_fp findAny(um_fp str, parseArg ki) {
   default:
     return nullUmf;
   }
+#endif
 }
 
 um_fp find_many(um_fp str, ...) {
   va_list ap;
   va_start(ap, str);
   parseArg key;
+
+#ifdef __cplusplus
+  while ((key = va_arg(ap, parseArg)).type) {
+    if (key.type == parseArg::STRING)
+      str = findKey(str, key.data.pArg);
+    if (key.type == parseArg::INDEX)
+      str = findIndex(str, key.data.index);
+  }
+#else
   while ((key = va_arg(ap, parseArg)).type) {
     if (key.type == STRING)
       str = findKey(str, key.data.pArg);
     if (key.type == INDEX)
       str = findIndex(str, key.data.index);
   }
+#endif
 
   va_end(ap);
   return str;
 }
-#endif // KML_PARSER_C
-
 #undef max
 #undef min
+#endif
+
+
+#ifdef __cplusplus
+}
+#endif

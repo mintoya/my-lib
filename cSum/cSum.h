@@ -1,3 +1,5 @@
+#ifndef MY_CSUM_H
+#define MY_CSUM_H
 #include "../my-list/my-list.h"
 #include "../string-List/um_fp.h"
 #include <stdint.h>
@@ -45,13 +47,13 @@ typedef struct {
   um_fp data;
 } checkData;
 
-static dataChecker cSum_new() {
+dataChecker cSum_new() {
   printf("new csum item with  %ix redundancy\n", cSum_REDUNDANCY_AMMOUNT);
   List *l = List_new(sizeof(char));
   List_resize(l, 20);
   return (dataChecker){.checkSumScratch = l};
 }
-static void cSum_free(dataChecker a) { List_free(a.checkSumScratch); }
+static inline void cSum_free(dataChecker a) { List_free(a.checkSumScratch); }
 
 static checkData cSum_toSum(dataChecker d, um_fp data) {
   CHECK_TYPE sum = 0;
@@ -128,3 +130,4 @@ static um_fp cSum_fromSum(checkData data) {
 #undef CHECK_EXPR
 #undef CHECK_TYPE
 #undef cSum_REDUNDANCY_AMMOUNT
+#endif

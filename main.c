@@ -19,7 +19,7 @@ um_fp read_stdin() {
   };
   int c;
 
-  for (c = fgetc(stdin); c != EOF; c = fgetc(stdin)) {
+  while(( c = fgetc(stdin) ) != EOF){
     mList_add(&fl,char, c);
   }
 
