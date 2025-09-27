@@ -31,13 +31,16 @@ static inline void *List_getRef(const List *l, unsigned int i) {
   res = (i < l->length) ? (l->head + l->width * i) : (NULL);
   return res;
 }
+static inline void *List_getRefForce(const List *l, unsigned int i) {
+  return (l->head + l->width * i);
+}
 void List_resize(List *l, unsigned int newSize);
 void List_forceResize(List *l, unsigned int newSize);
 
 static inline void List_set(List *l, unsigned int i, const void *element) {
   if (i < l->length) {
     memcpy(l->head + i * l->width, element, l->width);
-  } 
+  }
   // else {
   //   exit(1);
   // }
@@ -64,6 +67,7 @@ void *List_toBuffer(List *l);
 void *List_fromBuffer(void *ref);
 List *List_deepCopy(List *l);
 List *List_combine(List *l, List *l2);
+#ifndef __cplusplus
 #define mList_forEach(list, type, item, scope)                                 \
   {                                                                            \
     type item;                                                                 \
@@ -72,7 +76,7 @@ List *List_combine(List *l, List *l2);
       scope                                                                    \
     }                                                                          \
   }
-
+#define mList_T(type) List_new(sizeof(type))
 #define mList_get(list, type, index) *(type *)List_getRef(list, index)
 #define mList_add(list, type, ...) List_append(list, (type[1]){__VA_ARGS__})
 #define mList_insert(list, type, value, index)                                 \
@@ -81,11 +85,11 @@ List *List_combine(List *l, List *l2);
 #define mList(type, ...)                                                       \
   List_fromArr((type[]){__VA_ARGS__}, sizeof(type),                            \
                sizeof((type[]){__VA_ARGS__}) / sizeof(type))
+#endif
 
 #endif
 
 #ifdef MY_LIST_C
-
 
 #include <stdio.h>
 List *List_new(unsigned long bytes) {
@@ -104,8 +108,8 @@ void List_free(List *l) {
   freAllocate(l->head);
   freAllocate(l);
 }
-//same as list_resize but it enforces size
-void List_forceResize(List *l, unsigned int newSize){
+// same as list_resize but it enforces size
+void List_forceResize(List *l, unsigned int newSize) {
   char *newPlace = (char *)reAllocate(l->head, newSize * l->width);
   if (!newPlace) {
     exit(ENOMEM); // maybe something else idk
@@ -115,7 +119,8 @@ void List_forceResize(List *l, unsigned int newSize){
   l->length = (l->length < l->size) ? (l->length) : (l->size);
 }
 void List_resize(List *l, unsigned int newSize) {
-  if(newSize<=l->size)return;
+  if (newSize <= l->size)
+    return;
   char *newPlace = (char *)reAllocate(l->head, newSize * l->width);
   if (!newPlace) {
     exit(ENOMEM); // maybe something else idk
@@ -191,4 +196,3 @@ int List_search(List *l, const void *value) {
   return -1;
 }
 #endif
-

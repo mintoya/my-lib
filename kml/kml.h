@@ -28,9 +28,29 @@ typedef struct {
   } data;
 } parseArg;
 
+#define stack_split(result, string, ...)                                       \
+  result = (um_fp *)alloca(                                                    \
+      sizeof(um_fp) *                                                          \
+      (sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1));     \
+  do {                                                                         \
+    void *last;                                                                \
+    unsigned int args[] = {__VA_ARGS__};                                       \
+    for (int i = 0; i < sizeof(args) / sizeof(unsigned int); i++) {            \
+      args[i] = (i == 0) ? (min(args[i], string.width))                        \
+                         : (min(string.width, max(args[i], args[i - 1])));     \
+      result[i] = (um_fp){                                                     \
+          .ptr = (i == 0) ? (string.ptr) : (last),                             \
+          .width = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),             \
+      };                                                                       \
+      last = ((char *)result[i].ptr) + result[i].width;                        \
+    }                                                                          \
+    result[sizeof(args) / sizeof(unsigned int)] =                              \
+        (um_fp){.ptr = last,                                                   \
+                .width = string.width - ((char *)last - (char *)string.ptr)};  \
+  } while (0);
 um_fp findAny(um_fp str, parseArg ki);
 
-#ifndef __cplusplus 
+#ifndef __cplusplus
 #define fIndex(val) ((parseArg){.type = INDEX, .data.index = val})
 #define fKey(val) ((parseArg){.type = STRING, .data.pArg = um_from(val)})
 
@@ -38,35 +58,39 @@ um_fp findAny(um_fp str, parseArg ki);
 um_fp find_many(um_fp str, ...);
 #define find(um, ...) find_many(um, __VA_ARGS__, ((parseArg){.type = NONE}))
 #else
-static inline parseArg fIndex(unsigned int idx){
+static inline parseArg fIndex(unsigned int idx) {
   parseArg res;
   res.type = parseArg::INDEX;
   res.data.index = idx;
   return res;
 }
-static inline parseArg fKey(char* str){
+static inline parseArg fKey(char *str) {
   parseArg res;
   res.type = parseArg::STRING;
   res.data.pArg = um_from(str);
   return res;
 }
-static const parseArg parseArg_terminator_v = {
-  .type = parseArg::NONE
-};
+static const parseArg parseArg_terminator_v = {.type = parseArg::NONE};
 #endif
 
+unsigned int um_indexOf(um_fp string, char c);
+um_fp inside(char limits[2], um_fp string);
+um_fp after(um_fp main, um_fp slice);
+um_fp removeSpacesPadding(um_fp in);
+um_fp behind(char delim, um_fp string);
+um_fp until(char delim, um_fp string);
 #endif
 #ifdef KML_PARSER_C
 
 // index after end if c not present
-static unsigned int um_indexOf(um_fp string, char c) {
+unsigned int um_indexOf(um_fp string, char c) {
   int i;
   char *ptr = (char *)string.ptr;
   for (i = 0; i < string.width && ptr[i] != c; i++)
     ;
   return i;
 }
-static um_fp inside(char limits[2], um_fp string) {
+um_fp inside(char limits[2], um_fp string) {
   char front = limits[0];
   char back = limits[1];
 
@@ -113,7 +137,7 @@ static um_fp inside(char limits[2], um_fp string) {
   return nullUmf;
 }
 
-static um_fp around(char limits[2], um_fp string) {
+um_fp around(char limits[2], um_fp string) {
   char front = limits[0];
   char back = limits[1];
 
@@ -159,7 +183,7 @@ static um_fp around(char limits[2], um_fp string) {
   return nullUmf;
 }
 
-static um_fp until(char delim, um_fp string) {
+um_fp until(char delim, um_fp string) {
   int i = 0;
   char *ptr = (char *)string.ptr;
   while (i < string.width && ptr[i] != delim) {
@@ -168,7 +192,7 @@ static um_fp until(char delim, um_fp string) {
   string.width = i;
   return string;
 }
-static um_fp behind(char delim, um_fp string) {
+um_fp behind(char delim, um_fp string) {
   int i = 0;
   while (i < string.width && ((char *)string.ptr)[i] != delim) {
     i++;
@@ -176,7 +200,7 @@ static um_fp behind(char delim, um_fp string) {
   string.width = min(i + 1, string.width);
   return string;
 }
-static um_fp after(um_fp main, um_fp slice) {
+um_fp after(um_fp main, um_fp slice) {
   if (!(main.ptr && main.width))
     return nullUmf;
   if (!(slice.ptr && slice.width))
@@ -190,27 +214,7 @@ static um_fp after(um_fp main, um_fp slice) {
 
   return (um_fp){.ptr = sliceEnd, .width = (size_t)(mainEnd - sliceEnd)};
 }
-#define stack_split(result, string, ...)                                       \
-  result = (um_fp *)alloca(                                                    \
-      sizeof(um_fp) *                                                          \
-      (sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1));     \
-  do {                                                                         \
-    void *last;                                                                \
-    unsigned int args[] = {__VA_ARGS__};                                       \
-    for (int i = 0; i < sizeof(args) / sizeof(unsigned int); i++) {            \
-      args[i] = (i == 0) ? (min(args[i], string.width))                        \
-                         : (min(string.width, max(args[i], args[i - 1])));     \
-      result[i] = (um_fp){                                                     \
-          .ptr = (i == 0) ? (string.ptr) : (last),                             \
-          .width = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),             \
-      };                                                                       \
-      last = ((char *)result[i].ptr) + result[i].width;                        \
-    }                                                                          \
-    result[sizeof(args) / sizeof(unsigned int)] =                              \
-        (um_fp){.ptr = last,                                                   \
-                .width = string.width - ((char *)last - (char *)string.ptr)};  \
-  } while (0);
-static char isSkip(char c) {
+char isSkip(char c) {
   switch (c) {
   case ' ':
   // case '"':
@@ -222,7 +226,7 @@ static char isSkip(char c) {
     return 0;
   }
 }
-static um_fp removeSpacesPadding(um_fp in) {
+um_fp removeSpacesPadding(um_fp in) {
   um_fp res = in;
   int front = 0;
   int back = in.width - 1;
@@ -407,7 +411,6 @@ um_fp find_many(um_fp str, ...) {
 #undef max
 #undef min
 #endif
-
 
 #ifdef __cplusplus
 }

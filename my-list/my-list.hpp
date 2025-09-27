@@ -20,7 +20,7 @@ template <typename T> struct listPlus {
   //   List_delete(ptr);
   // }
 
-  void pad(unsigned int ammount){List_pad(ptr, ammount);}
+  void pad(unsigned int ammount) { List_pad(ptr, ammount); }
   void resize(unsigned int newSize) { List_resize(ptr, newSize); }
   void unmake() { List_free(ptr); }
 
@@ -33,7 +33,8 @@ template <typename T> struct listPlus {
   void insert(const T &value, int index) {
     List_insert(ptr, index, (void *)&value);
   }
-  T get(unsigned int i) const { return *((T *)List_getRef(ptr, i)); }
+  // T get(unsigned int i) const { return *((T *)List_getRef(ptr, i)); }
+  T get(unsigned int i) const { return *((T *)List_getRefForce(ptr, i)); }
 
   void set(unsigned int i, const T &value) { List_set(ptr, i, &value); }
   int searchFor(const T &value) { return List_search(ptr, &value); }
