@@ -2,6 +2,7 @@
 #define UM_FP_H
 #include <stdio.h>
 #include <stdlib.h>
+#include <string>
 typedef struct fat_pointer {
   void *ptr;
   size_t width;
@@ -25,6 +26,10 @@ static inline int um_fp_cmp(um_fp a, um_fp b) {
 static char um_eq(um_fp a, um_fp b) {
   return a.width == b.width && !um_fp_cmp(a, b);
 }
+
+inline bool operator==(const um_fp &a, const um_fp &b) { return um_eq(a, b); }
+
+inline bool operator!=(const um_fp &a, const um_fp &b) { return !um_eq(a, b); }
 
 #define nullUmf ((um_fp){.ptr = NULL, .width = 0})
 
@@ -70,10 +75,21 @@ static um_fp um_readFile(char *filename) {
       default: (um_fp){.ptr = (typeof(val)[1]){val},                           \
                        .width = sizeof(typeof(val))}) // structs
 #else
+#include <string>
+#include <string.h>
 template <typename T> inline um_fp um_from(T &val) {
   return {(void *)&val, sizeof(T)};
 }
-
+template <> inline um_fp um_from<std::string>(std::string &s) {
+  return {(void *)s.data(), s.size()};
+}
+template <> inline um_fp um_from<const std::string>(const std::string &s) {
+  return {(void *)s.data(), s.size()};
+}
+inline um_fp um_from(const char *s) { return {(void *)s, strlen(s)}; }
+template <size_t N> inline um_fp um_from(const char (&s)[N]) {
+  return {(void *)s, N - 1};
+}
 #endif
 
 #endif // UM_FP_H
