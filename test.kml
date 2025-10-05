@@ -1,7 +1,6 @@
   keyboard:{
     str:"st;}r"
-    //:{ comments have to be surrounded by /:{} objects with the name // are ignored }
-    //:{ [] and {} are treated the same, what matters is the presence of separators }
+    //:{ comments have to be surrounded by //:{} objects with the name // are ignored }
     tapDances:[
       {
         //:{

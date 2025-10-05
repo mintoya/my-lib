@@ -52,6 +52,13 @@ static inline void List_append(List *l, const void *element) {
   l->length++;
   List_set(l, l->length - 1, element);
 }
+static inline void List_zeroOut(List *l) {
+  memset(l->head, 0, l->size * l->width);
+}
+static inline void List_free(List *l) {
+  freAllocate(l->head);
+  freAllocate(l);
+}
 // helper function to pad with 0s
 void List_pad(List *l, unsigned int ammount);
 List *List_fromArr(const void *source, unsigned int size, unsigned int length);
@@ -59,10 +66,6 @@ void List_appendFromArr(List *l, const void *source, unsigned int i);
 int List_search(List *l, const void *value);
 void List_insert(List *l, unsigned int i, void *element);
 void List_remove(List *l, unsigned int i);
-static inline void List_zeroOut(List *l) {
-  memset(l->head, 0, l->size * l->width);
-}
-void List_free(List *l);
 void *List_toBuffer(List *l);
 void *List_fromBuffer(void *ref);
 List *List_deepCopy(List *l);
@@ -91,10 +94,7 @@ List *List_combine(List *l, List *l2);
 
 #ifdef MY_LIST_C
 
-#include <stdio.h>
 List *List_new(unsigned long bytes) {
-  // printf("new list with %i size", bytes);
-  // fflush(stdout);
   List *l = (List *)clearAllocate(1, sizeof(List));
   *l = (List){
       .width = bytes,
@@ -103,10 +103,6 @@ List *List_new(unsigned long bytes) {
       .head = (char *)regularAllocate(bytes),
   };
   return l;
-}
-void List_free(List *l) {
-  freAllocate(l->head);
-  freAllocate(l);
 }
 // same as list_resize but it enforces size
 void List_forceResize(List *l, unsigned int newSize) {
@@ -139,7 +135,7 @@ void List_pad(List *l, unsigned int ammount) {
     }
     List_resize(l, newsize);
   }
-  memset(l->head + l->length * l->width, 0, ammount * l->width);
+  memset(l->head + l->length * l->width, 0, l->size-l->length * l->width);
   l->length += ammount;
 }
 List *List_fromArr(const void *source, unsigned int width,
@@ -177,7 +173,6 @@ void List_insert(List *l, unsigned int i, void *element) {
   l->length++;
 }
 void List_remove(List *l, unsigned int i) {
-
   memmove(l->head + i * l->width, l->head + (i + 1) * l->width,
           (l->length - i - 1) * l->width);
   l->length--;
