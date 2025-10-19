@@ -14,6 +14,13 @@ extern "C" {
 #define min(a, b) ((a < b) ? (a) : (b))
 #define max(a, b) ((a > b) ? (a) : (b))
 
+unsigned int kml_indexOf(um_fp string, char c);
+um_fp kml_until(char delim, um_fp string);
+um_fp kml_inside(char limits[2], um_fp string);
+um_fp kml_around(char limits[2], um_fp string);
+um_fp kml_behind(char delim, um_fp string);
+um_fp kml_after(um_fp main, um_fp slice);
+um_fp kml_removeSpacesPadding(um_fp in);
 um_fp findIndex(um_fp str, unsigned int index);
 um_fp findKey(um_fp str, um_fp key);
 typedef struct {
@@ -28,26 +35,6 @@ typedef struct {
   } data;
 } parseArg;
 
-#define stack_split(result, string, ...)                                       \
-  result = (um_fp *)alloca(                                                    \
-      sizeof(um_fp) *                                                          \
-      (sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1));     \
-  do {                                                                         \
-    void *last;                                                                \
-    unsigned int args[] = {__VA_ARGS__};                                       \
-    for (int i = 0; i < sizeof(args) / sizeof(unsigned int); i++) {            \
-      args[i] = (i == 0) ? (min(args[i], string.width))                        \
-                         : (min(string.width, max(args[i], args[i - 1])));     \
-      result[i] = (um_fp){                                                     \
-          .ptr = (i == 0) ? (string.ptr) : (last),                             \
-          .width = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),             \
-      };                                                                       \
-      last = ((char *)result[i].ptr) + result[i].width;                        \
-    }                                                                          \
-    result[sizeof(args) / sizeof(unsigned int)] =                              \
-        (um_fp){.ptr = last,                                                   \
-                .width = string.width - ((char *)last - (char *)string.ptr)};  \
-  } while (0);
 um_fp findAny(um_fp str, parseArg ki);
 
 #ifndef __cplusplus
@@ -73,24 +60,18 @@ static inline parseArg fKey(char *str) {
 static const parseArg parseArg_terminator_v = {.type = parseArg::NONE};
 #endif
 
-unsigned int um_indexOf(um_fp string, char c);
-um_fp inside(char limits[2], um_fp string);
-um_fp after(um_fp main, um_fp slice);
-um_fp removeSpacesPadding(um_fp in);
-um_fp behind(char delim, um_fp string);
-um_fp until(char delim, um_fp string);
 #endif
 #ifdef KML_PARSER_C
 
 // index after end if c not present
-unsigned int um_indexOf(um_fp string, char c) {
+unsigned int kml_indexOf(um_fp string, char c) {
   int i;
   char *ptr = (char *)string.ptr;
   for (i = 0; i < string.width && ptr[i] != c; i++)
     ;
   return i;
 }
-um_fp inside(char limits[2], um_fp string) {
+um_fp kml_inside(char limits[2], um_fp string) {
   char front = limits[0];
   char back = limits[1];
 
@@ -137,7 +118,7 @@ um_fp inside(char limits[2], um_fp string) {
   return nullUmf;
 }
 
-um_fp around(char limits[2], um_fp string) {
+um_fp kml_around(char limits[2], um_fp string) {
   char front = limits[0];
   char back = limits[1];
 
@@ -183,7 +164,7 @@ um_fp around(char limits[2], um_fp string) {
   return nullUmf;
 }
 
-um_fp until(char delim, um_fp string) {
+um_fp kml_until(char delim, um_fp string) {
   int i = 0;
   char *ptr = (char *)string.ptr;
   while (i < string.width && ptr[i] != delim) {
@@ -192,7 +173,7 @@ um_fp until(char delim, um_fp string) {
   string.width = i;
   return string;
 }
-um_fp behind(char delim, um_fp string) {
+um_fp kml_behind(char delim, um_fp string) {
   int i = 0;
   while (i < string.width && ((char *)string.ptr)[i] != delim) {
     i++;
@@ -200,7 +181,7 @@ um_fp behind(char delim, um_fp string) {
   string.width = min(i + 1, string.width);
   return string;
 }
-um_fp after(um_fp main, um_fp slice) {
+um_fp kml_after(um_fp main, um_fp slice) {
   if (!(main.ptr && main.width))
     return nullUmf;
   if (!(slice.ptr && slice.width))
@@ -214,6 +195,26 @@ um_fp after(um_fp main, um_fp slice) {
 
   return (um_fp){.ptr = sliceEnd, .width = (size_t)(mainEnd - sliceEnd)};
 }
+#define stack_split(result, string, ...)                                       \
+  result = (um_fp *)alloca(                                                    \
+      sizeof(um_fp) *                                                          \
+      (sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1));     \
+  do {                                                                         \
+    void *last;                                                                \
+    unsigned int args[] = {__VA_ARGS__};                                       \
+    for (int i = 0; i < sizeof(args) / sizeof(unsigned int); i++) {            \
+      args[i] = (i == 0) ? (min(args[i], string.width))                        \
+                         : (min(string.width, max(args[i], args[i - 1])));     \
+      result[i] = (um_fp){                                                     \
+          .ptr = (i == 0) ? (string.ptr) : (last),                             \
+          .width = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),             \
+      };                                                                       \
+      last = ((char *)result[i].ptr) + result[i].width;                        \
+    }                                                                          \
+    result[sizeof(args) / sizeof(unsigned int)] =                              \
+        (um_fp){.ptr = last,                                                   \
+                .width = string.width - ((char *)last - (char *)string.ptr)};  \
+  } while (0);
 char isSkip(char c) {
   switch (c) {
   case ' ':
@@ -226,7 +227,7 @@ char isSkip(char c) {
     return 0;
   }
 }
-um_fp removeSpacesPadding(um_fp in) {
+um_fp kml_removeSpacesPadding(um_fp in) {
   um_fp res = in;
   int front = 0;
   int back = in.width - 1;
@@ -247,19 +248,19 @@ typedef struct {
   um_fp value;
   um_fp footprint;
 } kVf;
-static kVf parseNext(um_fp string) {
+kVf parseNext(um_fp string) {
   if (!(string.ptr && string.width)) {
     return (kVf){nullUmf, nullUmf};
   }
-  um_fp name = until(':', string);
-  name = removeSpacesPadding(name);
+  um_fp name = kml_until(':', string);
+  name = kml_removeSpacesPadding(name);
   if (name.ptr == string.ptr && name.width == string.width) {
     return (kVf){nullUmf, nullUmf};
   }
 
-  um_fp next = after(string, behind(':', string));
+  um_fp next = kml_after(string, kml_behind(':', string));
 
-  next = removeSpacesPadding(next);
+  next = kml_removeSpacesPadding(next);
 
   if (!(next.ptr && next.width)) {
     return (kVf){nullUmf, nullUmf};
@@ -270,19 +271,19 @@ static kVf parseNext(um_fp string) {
 
   switch (((char *)next.ptr)[0]) {
   case '[':
-    toParse = around("[]", next);
-    value = removeSpacesPadding(inside("[]", next));
+    toParse = kml_around("[]", next);
+    value = kml_removeSpacesPadding(kml_inside("[]", next));
     break;
   case '{':
-    toParse = around("{}", next);
-    value = removeSpacesPadding(inside("{}", next));
+    toParse = kml_around("{}", next);
+    value = kml_removeSpacesPadding(kml_inside("{}", next));
     break;
   case '"':
     next.ptr = (char *)next.ptr + 1;
     next.width--;
 
-    value = removeSpacesPadding(until('"', next));
-    toParse = behind('"', next);
+    value = kml_removeSpacesPadding(kml_until('"', next));
+    toParse = kml_behind('"', next);
 
     toParse.ptr = (char *)toParse.ptr - 1;
     toParse.width++;
@@ -291,8 +292,8 @@ static kVf parseNext(um_fp string) {
     next.width++;
     break;
   default:
-    toParse = behind(';', next);
-    value = removeSpacesPadding(until(';', next));
+    toParse = kml_behind(';', next);
+    value = kml_removeSpacesPadding(kml_until(';', next));
     break;
   }
   // if (name.width == 2 && ((char *)name.ptr)[1] == '/' &&
@@ -303,40 +304,40 @@ static kVf parseNext(um_fp string) {
 um_fp findIndex(um_fp str, unsigned int index) {
   if (!(str.ptr && str.width))
     return nullUmf;
-  str = removeSpacesPadding(str);
+  str = kml_removeSpacesPadding(str);
   um_fp thisValue;
   char isobj = 0, isComment = 0;
   switch (*(char *)str.ptr) {
   case ('['):
-    thisValue = around("[]", str);
+    thisValue = kml_around("[]", str);
     isobj = 1;
     break;
   case ('/'):
     isComment = 1;
   case ('{'):
-    thisValue = around("{}", str);
+    thisValue = kml_around("{}", str);
     isobj = 2;
     break;
   default:
-    thisValue = until(',', str);
+    thisValue = kml_until(',', str);
   }
   if (isComment) {
-    um_fp next = after(str, thisValue);
+    um_fp next = kml_after(str, thisValue);
     // usePrintln(char *, "index found a comment");
     return findIndex(next, index);
   }
   if (!index) {
     if (isobj) {
       if (isobj == 1)
-        return inside("[]", thisValue);
+        return kml_inside("[]", thisValue);
       if (isobj == 2)
-        return inside("{}", thisValue);
+        return kml_inside("{}", thisValue);
     }
     return thisValue;
   } else {
-    um_fp next = after(str, thisValue);
-    if (um_indexOf(next, ',') < next.width) {
-      next = after(str, behind(',', next));
+    um_fp next = kml_after(str, thisValue);
+    if (kml_indexOf(next, ',') < next.width) {
+      next = kml_after(str, kml_behind(',', next));
       return findIndex(next, index - 1);
     } else {
       return nullUmf;
@@ -344,7 +345,7 @@ um_fp findIndex(um_fp str, unsigned int index) {
   }
 }
 um_fp findKey(um_fp str, um_fp key) {
-  key = removeSpacesPadding(key);
+  key = kml_removeSpacesPadding(key);
   while (str.ptr) {
     kVf read = parseNext(str);
     if (!(read.key.ptr && read.key.width)) {
@@ -353,7 +354,7 @@ um_fp findKey(um_fp str, um_fp key) {
     } else if (um_eq(key, read.key)) {
       return read.value;
     }
-    str = after(str, read.footprint);
+    str = kml_after(str, read.footprint);
   }
   return nullUmf;
 }
@@ -415,3 +416,4 @@ um_fp find_many(um_fp str, ...) {
 #ifdef __cplusplus
 }
 #endif
+
