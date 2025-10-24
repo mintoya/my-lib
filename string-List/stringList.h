@@ -136,4 +136,5 @@ unsigned int stringList_search(stringList *l, um_fp what) {
   }
   return res;
 }
+#undef max
 #endif // STRING_LIST_C

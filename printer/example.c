@@ -1,5 +1,4 @@
 #include "print.h"
-#include <stdio.h>
 #define STRING_LIST_C
 #include "../string-List/stringList.h"
 #define MY_LIST_C

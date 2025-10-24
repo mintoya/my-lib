@@ -1,24 +1,15 @@
-#pragma once 
+#pragma once
 #include "../my-list/my-list.h"
 #include "../string-List/stringList.h"
 #include "../string-List/um_fp.h"
 #include "variadic.h"
-#include <stdio.h>
-#ifndef __cplusplus
 #include <stdarg.h>
-#else
-#include <cstdarg>
-#endif
-
+#include <stdio.h>
 typedef void (*outputFunction)(char *, unsigned int length);
 typedef void (*printerFunction)(outputFunction, void *);
 
 static List *printerFunctions;
 static stringList *typeNamesList;
-
-void putChar(char *c, unsigned int length) {
-  fwrite(c, sizeof(char), length, stdout);
-}
 
 __attribute__((constructor(200))) static void printerInit() {
   printerFunctions = List_new(sizeof(printerFunction));
@@ -83,4 +74,8 @@ static void print_f(outputFunction put, um_fp fmt, ...) {
 }
 #define MAKE_REFERANCE(a) ((typeof(a)[1]){a})
 #define print(fmt, ...)                                                        \
-  print_f(putChar, um_from(fmt), APPLY_N(MAKE_REFERANCE, __VA_ARGS__))
+  print_f(defaultPrinter, um_from(fmt), APPLY_N(MAKE_REFERANCE, __VA_ARGS__))
+
+static void defaultPrinter(char *c, unsigned int length) {
+  fwrite(c, sizeof(char), length, stdout);
+}
