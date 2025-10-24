@@ -6,7 +6,6 @@ extern "C" {
 #define KML_PARSER_H
 #include <assert.h>
 #include <malloc.h>
-// #include <alloca.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>

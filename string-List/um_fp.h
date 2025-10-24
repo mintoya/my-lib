@@ -25,39 +25,34 @@ static char um_eq(um_fp a, um_fp b) {
 }
 
 #ifdef __cplusplus
-inline bool operator==(const um_fp& a, const um_fp& b) {
-  return um_eq(a, b);
-}
-inline bool operator!=(const um_fp& a, const um_fp& b) {
-    return !(a == b);
-}
+inline bool operator==(const um_fp &a, const um_fp &b) { return um_eq(a, b); }
+inline bool operator!=(const um_fp &a, const um_fp &b) { return !(a == b); }
 #endif
-
 
 #define nullUmf ((um_fp){.ptr = NULL, .width = 0})
 
 #ifndef __cplusplus
 #define um_fromT(type, val)                                                    \
   ((um_fp){.ptr = (type[1]){val}, .width = sizeof(type)})
-#define um_fromR(voidS,sizet) ((um_fp){.ptr=voidS,.width=sizet})
+#define um_fromR(type, length)                                                 \
+  ((um_fp){.ptr = type, .width = length * sizeof(typeof(type[0]))})
 #define um_from(val)                                                           \
   _Generic((val),                                                              \
       char *: (um_fp){.ptr = (val), .width = strlen(val)},                     \
       default: (um_fp){.ptr = (typeof(val)[1]){val},                           \
                        .width = sizeof(typeof(val))}) // structs
 #else
+#define um_fromT(type, val) ((um_fp){.ptr = &val, .width = sizeof(type)})
+
 template <typename T> inline um_fp um_from(T &val) {
   return {(void *)&val, sizeof(T)};
 }
 #include <string>
-template <>
-inline um_fp um_from<std::string>(std::string& s) {
-    return { (void*)s.data(), s.size() };
+#include <cstring>
+template <> inline um_fp um_from<std::string>(std::string &s) {
+  return {(void *)s.data(), s.size()};
 }
-inline um_fp um_from(const char* s) {
-    return { (void*)s, strlen(s) };
-}
-
+inline um_fp um_from(const char *s) { return {(void *)s, strlen(s)}; }
 
 #endif
 

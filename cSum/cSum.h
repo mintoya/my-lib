@@ -2,11 +2,13 @@
 #define MY_CSUM_H
 #include "../my-list/my-list.h"
 #include "../string-List/um_fp.h"
+#include <cstdint>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#define START_BIT ((char)0x67)
-#define END_BIT ((char)0x41)
+#include <sys/types.h>
+#define CSUM_START_BIT ((uint8_t)0x67)
+#define CSUM_END_BIT ((uint8_t)0x41)
 // clang-format off
 #ifndef cSum_REDUNDANCY_AMMOUNT
   #define cSum_REDUNDANCY_AMMOUNT ((unsigned int)4) // cant be 0
@@ -47,35 +49,41 @@ typedef struct {
   um_fp data;
 } checkData;
 
-dataChecker cSum_new() {
+static dataChecker cSum_new() {
   printf("new csum item with  %ix redundancy\n", cSum_REDUNDANCY_AMMOUNT);
-  List *l = List_new(sizeof(char));
+  List *l = List_new(sizeof(uint8_t));
   List_resize(l, 20);
   return (dataChecker){.checkSumScratch = l};
 }
 static inline void cSum_free(dataChecker a) { List_free(a.checkSumScratch); }
 
+static inline unsigned int csum_expectedLength(int messageLength) {
+  return sizeof(CSUM_START_BIT) + sizeof(CSUM_END_BIT) + sizeof(CHECK_TYPE) +
+         (messageLength * cSum_REDUNDANCY_AMMOUNT);
+}
+
 static checkData cSum_toSum(dataChecker d, um_fp data) {
   CHECK_TYPE sum = 0;
   for (unsigned int i = 0; i < data.width; i++) {
-    sum = cSum_CHECK_EXPR(sum, ((char *)data.ptr)[i]);
+    sum = cSum_CHECK_EXPR(sum, ((uint8_t *)data.ptr)[i]);
   }
   d.checkSumScratch->length = 0;
-  unsigned int newWidth =
-      data.width * 2 + sizeof(char) * 2 + sizeof(CHECK_TYPE);
+  unsigned int newWidth = sizeof(CSUM_START_BIT) + sizeof(CSUM_END_BIT) +
+                          sizeof(CHECK_TYPE) +
+                          (data.width * cSum_REDUNDANCY_AMMOUNT);
   if (newWidth > d.checkSumScratch->width)
     List_resize(d.checkSumScratch, newWidth);
 
-  char tmp[1] = { (char)START_BIT };
+  uint8_t tmp[1] = {(uint8_t)CSUM_START_BIT};
 
   List_append(d.checkSumScratch, tmp);
 
   for (unsigned int i = 0; i < cSum_REDUNDANCY_AMMOUNT; i++)
     List_appendFromArr(d.checkSumScratch, data.ptr, data.width);
-  
+
   List_appendFromArr(d.checkSumScratch, &sum, sizeof(CHECK_TYPE));
 
-  tmp[0] = (char)END_BIT ;
+  tmp[0] = (uint8_t)CSUM_END_BIT;
   List_append(d.checkSumScratch, tmp);
 
   checkData res = {.data = {
@@ -86,24 +94,24 @@ static checkData cSum_toSum(dataChecker d, um_fp data) {
 }
 static um_fp cSum_fromSum(checkData data) {
   // char *ptr1, *ptr2;
-  char *ptrs[cSum_REDUNDANCY_AMMOUNT];
+  uint8_t *ptrs[cSum_REDUNDANCY_AMMOUNT];
   CHECK_TYPE check;
   CHECK_TYPE checkResult = 0;
-  ptrs[0] = (char *)data.data.ptr;
-  if (ptrs[0][0] != START_BIT) {
+  ptrs[0] = (uint8_t *)data.data.ptr;
+  if (ptrs[0][0] != CSUM_START_BIT) {
     return nullUmf;
   }
-  if (ptrs[0][data.data.width - 1] != END_BIT) {
+  if (ptrs[0][data.data.width - 1] != CSUM_END_BIT) {
     return nullUmf;
   }
   unsigned int dataLength = data.data.width;
-  dataLength -= (sizeof(char) + sizeof(CHECK_TYPE));
+  dataLength -= (sizeof(uint8_t) + sizeof(CHECK_TYPE));
 
-  check = *(CHECK_TYPE *)((char *)data.data.ptr + dataLength);
+  check = *(CHECK_TYPE *)((uint8_t *)data.data.ptr + dataLength);
 
-  dataLength -= sizeof(char);
+  dataLength -= sizeof(uint8_t);
   dataLength /= cSum_REDUNDANCY_AMMOUNT;
-  ptrs[0] += sizeof(char);
+  ptrs[0] += sizeof(uint8_t);
   for (unsigned int i = 1; i < cSum_REDUNDANCY_AMMOUNT; i++)
     ptrs[i] = ptrs[0];
 
@@ -114,7 +122,7 @@ static um_fp cSum_fromSum(checkData data) {
   // ptr2 += dataLength;
 
   for (unsigned int i = 0; i < dataLength; i++) {
-    char c = ptrs[0][i];
+    uint8_t c = ptrs[0][i];
     for (unsigned int ii = 0; ii < cSum_REDUNDANCY_AMMOUNT; ii++)
       if (ptrs[ii][i] != c)
         return nullUmf;
@@ -125,8 +133,6 @@ static um_fp cSum_fromSum(checkData data) {
   }
   return (um_fp){.ptr = ptrs[0], .width = dataLength};
 }
-#undef START_BIT
-#undef END_BIT
 #undef CHECK_EXPR
 #undef CHECK_TYPE
 #undef cSum_REDUNDANCY_AMMOUNT
