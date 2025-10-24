@@ -4,6 +4,7 @@
 #include "../string-List/um_fp.h"
 #include "variadic.h"
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 typedef void (*outputFunction)(char *, unsigned int length);
 typedef void (*printerFunction)(outputFunction, void *);
@@ -21,10 +22,10 @@ __attribute__((destructor)) static void printerDeinit() {
 }
 
 #define GETTYPEFN(T) _##T##_printer
-#define REGISTER_PRINTER(T, expr)                                              \
+#define REGISTER_PRINTER(T, ...)                                               \
   void _##T##_printer(outputFunction put, void *_v_in_ptr) {                   \
     T in = *(T *)_v_in_ptr;                                                    \
-    expr                                                                       \
+    __VA_ARGS__                                                                \
   }                                                                            \
   __attribute__((constructor(201))) static void register_##T() {               \
     stringList_append(typeNamesList,                                           \
@@ -35,10 +36,10 @@ __attribute__((destructor)) static void printerDeinit() {
 #define LABEL_(l, a) MERGE_(l, a)
 #define UNIQUE_FN LABEL_(PRINTERFN, __LINE__)
 #define UNIQUE_FN2 LABEL_(PRINTERFN2, __LINE__)
-#define REGISTER_SPECIAL_PRINTER(str, type, expr)                              \
+#define REGISTER_SPECIAL_PRINTER(str, type, ...)                               \
   void UNIQUE_FN(outputFunction put, void *_v_in_ptr) {                        \
     type in = *(type *)_v_in_ptr;                                              \
-    expr                                                                       \
+    __VA_ARGS__                                                                \
   }                                                                            \
   __attribute__((constructor(201))) static void UNIQUE_FN2() {                 \
     stringList_append(typeNamesList,                                           \
@@ -57,6 +58,7 @@ struct print_arg {
   um_fp name;
 };
 
+REGISTER_PRINTER(char, { put(&in, 1); });
 REGISTER_PRINTER(um_fp, { put((char *)in.ptr, in.width); });
 REGISTER_PRINTER(int, {
   if (in < 0) {
@@ -73,7 +75,54 @@ REGISTER_PRINTER(int, {
     l /= 10;
   }
 });
-REGISTER_PRINTER(char, { put(&in, 1); });
+
+// in case of binary data
+REGISTER_SPECIAL_PRINTER("um_fp<void>", um_fp, {
+  put("0x{", 3);
+  while (in.width) {
+    uint8_t c = ((uint8_t *)in.ptr)[in.width - 1];
+    unsigned char top = c >> 4;
+    unsigned char bottom = c & 0x0f;
+    switch(top){
+      case 0x0:put("0",1);break;
+      case 0x1:put("1",1);break;
+      case 0x2:put("2",1);break;
+      case 0x3:put("3",1);break;
+      case 0x4:put("4",1);break;
+      case 0x5:put("5",1);break;
+      case 0x6:put("6",1);break;
+      case 0x7:put("7",1);break;
+      case 0x8:put("8",1);break;
+      case 0x9:put("9",1);break;
+      case 0xa:put("a",1);break;
+      case 0xb:put("b",1);break;
+      case 0xc:put("c",1);break;
+      case 0xd:put("d",1);break;
+      case 0xe:put("e",1);break;
+      case 0xf:put("f",1);break;
+    }
+    switch(bottom){
+      case 0x0:put("0",1);break;
+      case 0x1:put("1",1);break;
+      case 0x2:put("2",1);break;
+      case 0x3:put("3",1);break;
+      case 0x4:put("4",1);break;
+      case 0x5:put("5",1);break;
+      case 0x6:put("6",1);break;
+      case 0x7:put("7",1);break;
+      case 0x8:put("8",1);break;
+      case 0x9:put("9",1);break;
+      case 0xa:put("a",1);break;
+      case 0xb:put("b",1);break;
+      case 0xc:put("c",1);break;
+      case 0xd:put("d",1);break;
+      case 0xe:put("e",1);break;
+      case 0xf:put("f",1);break;
+    }
+    in.width -= sizeof(uint8_t);
+  }
+  put("}", 2);
+});
 static void print_f_helper(struct print_arg p, um_fp typeName,
                            outputFunction put) {
   void *ref = p.ref;
@@ -124,23 +173,27 @@ static void print_f(outputFunction put, um_fp fmt, ...) {
   va_end(l);
 }
 
-#define ASSUME_TYPE(a)                                                         \
-  _Generic((a),                                                                \
-      int: ((um_fp){.ptr = "int", .width = 3}),                                \
-      char: ((um_fp){.ptr = "char", .width = 4}),                              \
-      um_fp: ((um_fp){.ptr = "um_fp", .width = 5}),                            \
-      default: ((um_fp){.ptr = NULL, .width = 0}))
-
-#define MAKE_REFERANCE(a) ((typeof(a)[1]){a})
 #define MAKE_PRINT_ARG(a)                                                      \
-  ((struct print_arg){.ref = MAKE_REFERANCE(a), .name = ASSUME_TYPE(a)})
+  ((struct print_arg){.ref = ((typeof(a)[1]){a}),                              \
+                      .name = _Generic((a),                                    \
+                          int: ((um_fp){.ptr = "int", .width = 3}),            \
+                          char: ((um_fp){.ptr = "char", .width = 4}),          \
+                          um_fp: ((um_fp){.ptr = "um_fp", .width = 5}),        \
+                          default: ((um_fp){.ptr = NULL, .width = 0}))})
+
 #define print(fmt, ...)                                                        \
   print_f(defaultPrinter, um_from(fmt), APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__))
 #define print_wf(fmt, printerfunction, ...)                                    \
   print_f(printerfunction, um_from(fmt), APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__))
+
+#define println(fmt, ...)                                                        \
+  print_f(defaultPrinter, um_from(fmt"\n"), APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__))
+#define println_wf(fmt, printerfunction, ...)                                    \
+  print_f(printerfunction, um_from(fmt"\n"), APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__))
 static void defaultPrinter(char *c, unsigned int length) {
   fwrite(c, sizeof(char), length, stdout);
 }
+#define PRINTER_LIST_TYPENAMES
 #ifdef PRINTER_LIST_TYPENAMES
 __attribute__((constructor(203))) static void post_init() {
   _um_fp_printer(defaultPrinter, (um_fp[1]){um_from("list of type names:\n")});
