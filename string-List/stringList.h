@@ -27,9 +27,10 @@ void stringList_free(stringList *l);
 static inline unsigned int stringList_length(stringList *l) {
   return l->List_stringMetaData.length;
 }
+// returns length if not found
+unsigned int stringList_search(stringList *l, um_fp);
 
 #endif // STRING_LIST_H
-
 
 #ifdef STRING_LIST_C
 #include <stdlib.h>
@@ -119,5 +120,20 @@ void stringList_free(stringList *l) {
   free(l->List_char.head);
   free(l->List_stringMetaData.head);
   free(l);
+}
+unsigned int stringList_search(stringList *l, um_fp what) {
+  stringMetaData *meta = (stringMetaData *)l->List_stringMetaData.head;
+  unsigned int res;
+  unsigned int length = stringList_length(l);
+
+  for (res = 0; res < length; res++) {
+    if (meta[res].width == what.width &&
+        !strncmp((char *)what.ptr,
+                 (char *)List_getRef(&(l->List_char), meta[res].index),
+                 what.width)) {
+      return res;
+    }
+  }
+  return res;
 }
 #endif // STRING_LIST_C
