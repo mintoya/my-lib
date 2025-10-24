@@ -1,30 +1,36 @@
 #include "print.h"
+#include "variadic.h"
 #define STRING_LIST_C
 #include "../string-List/stringList.h"
 #define MY_LIST_C
 #include "../my-list/my-list.h"
 
-REGISTER_PRINTER(char, { put(&in, 1); });
-REGISTER_PRINTER(int, {
-  if (in < 0) {
-    put("0", 1);
-    in = -in;
-  }
-  int l = 1;
-  while (l <= in / 10)
-    l *= 10;
-  while (l) {
-    char c = in / l + '0';
-    put(&c, 1);
-    in %= l;
-    l /= 10;
+// only char,int,and um_fp are registered by default
+// those can be ascessed by USETYPEPRINTER inside a REGISTER_PRINTER
+
+REGISTER_SPECIAL_PRINTER("char*", char *, {
+  while (*in) {
+    put(in, 1);
+    in++;
   }
 });
-REGISTER_PRINTER(um_fp, { put(in.ptr, in.width); });
-
+typedef struct test {
+  int i;
+  char c;
+} testStruct;
+REGISTER_PRINTER(testStruct, {
+  put("{", 1);
+  USETYPEPRINTER(int, in.i);
+  put(",", 1);
+  USETYPEPRINTER(char, in.c);
+  put("}", 1);
+});
 int main(void) {
-  int i = 6;
-  print("${int}${int} ${char} ${um_fp}", i, 7, 'c', um_from("hello world"));
 
+  testStruct ts = {.c = 'c', .i = 1};
+  print("${}", 1, 2, 3, 4, 5, 6, 7);
+
+  print("special printer ${testStruct}", ts);
+  COUNT_ARGS(1);
   return 0;
 }
