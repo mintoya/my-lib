@@ -41,13 +41,10 @@ REGISTER_PRINTER(testStruct, {
 
 int main(void) {
   testStruct ts = {.c = 'c', .i = -1, .u = 0x67, .u2 = 0x41};
-  // println();
-  // COUNT_ARGS( );
-
+  println("lntest");
   println("${}", 1, 2, 3, 4, 5, 6, 7);
   println("special printer ${testStruct}", ts);
-  println("special printer ${um_fp<void>}",
-          ((um_fp){.ptr = &ts, .width = sizeof(ts)}));
+  println("special printer ${um_fp<void>}", um_from("hello"));
   List *l = mList(int, 1, 2, 4);
   println("${List}", *l);
   return 0;

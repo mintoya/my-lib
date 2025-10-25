@@ -258,17 +258,19 @@ static void print_f(outputFunction put, um_fp fmt, ...) {
 #define EMPTY_PRINT_ARG ((struct print_arg){.ref = NULL, .name = nullUmf})
 
 #define print(fmt, ...)                                                        \
-  print_f(defaultPrinter, um_from(fmt), APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__))
+  print_f(defaultPrinter,                                                      \
+          um_from(fmt) __VA_OPT__(, APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)))
 #define print_wf(fmt, printerfunction, ...)                                    \
-  print_f(printerfunction, um_from(fmt), APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__))
+  print_f(printerfunction, um_from(fmt),                                       \
+          __VA_OPT__(, APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)))
 
 #define println(fmt, ...)                                                      \
-  print_f(defaultPrinter, um_from(fmt "\n"),                                   \
-          APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__))
+  print_f(defaultPrinter, um_from(fmt "\n") __VA_OPT__(                        \
+                              , APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)))
 
 #define println_wf(fmt, printerfunction, ...)                                  \
-  print_f(printerfunction, um_from(fmt "\n"),                                  \
-          APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__))
+  print_f(printerfunction, um_from(fmt "\n") __VA_OPT__(                       \
+                               , APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)))
 static void defaultPrinter(char *c, unsigned int length) {
   fwrite(c, sizeof(char), length, stdout);
 }

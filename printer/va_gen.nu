@@ -1,4 +1,4 @@
-let ammount = 127
+let ammount = 32
 do {
   mut $filec = "\n"
   $filec = $filec + "#ifndef VARIADIC_APPLY_H\n"
