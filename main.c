@@ -41,10 +41,12 @@ int main() {
   // println("${UMap}", *m);
 
   println("${UMap}", *m);
+  UMap *map2 = UMap_remake(m);
+  println("${UMap}", *map2);
   // println("${int}", m);
   // println("${typenm}",5);
 
-
   UMap_free(m);
+  UMap_free(map2);
   return 0;
 }

@@ -74,10 +74,20 @@ unsigned int UMap_set(UMap *map, um_fp key, um_fp val) {
 void UMap_addChild(UMap *map, um_fp key, UMap *ref) {
   UMap_set(map, key, (um_fp){.ptr = &ref, .width = sizeof(UMap *)});
 }
-void UMap_free(UMap *map){
+void UMap_free(UMap *map) {
   stringList_free(map->keys);
   stringList_free(map->vals);
   free(map);
+}
+UMap *UMap_remake(UMap *map) {
+  UMap *res = UMap_new();
+  for (unsigned int i = 0; i < stringList_length(map->keys); i++) {
+    um_fp key = UMap_getKeyAtIndex(map, i);
+    um_fp val = UMap_getValAtIndex(map, i);
+    if (key.ptr && key.width && val.ptr && val.width)
+      UMap_set(res, key, val);
+  }
+  return res;
 }
 
 #ifdef __cplusplus

@@ -26,7 +26,7 @@ typedef struct List {
   uint8_t *head;
 } List;
 
-List *List_new(unsigned long bytes);
+List *List_new(size_t bytes);
 
 static inline void *List_getRef(const List *l, unsigned int i) {
   void *res;
