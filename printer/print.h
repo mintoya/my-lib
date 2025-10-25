@@ -20,8 +20,7 @@ __attribute__((destructor)) static void printerDeinit() {
   List_free(printerFunctions);
   stringList_free(typeNamesList);
 }
-
-#define GETTYPEFN(T) _##T##_printer
+#define GETTYPEPRINTERFN(T) _##T##_printer
 #define REGISTER_PRINTER(T, ...)                                               \
   void _##T##_printer(outputFunction put, void *_v_in_ptr) {                   \
     T in = *(T *)_v_in_ptr;                                                    \
@@ -30,29 +29,38 @@ __attribute__((destructor)) static void printerDeinit() {
   __attribute__((constructor(201))) static void register_##T() {               \
     stringList_append(typeNamesList,                                           \
                       (um_fp){.ptr = (void *)#T, .width = sizeof(#T) - 1});    \
-    List_append(printerFunctions, (printerFunction[1]){GETTYPEFN(T)});         \
+    List_append(printerFunctions, (printerFunction[1]){GETTYPEPRINTERFN(T)});  \
   }
-#define MERGE_(a, b) a##b
-#define LABEL_(l, a) MERGE_(l, a)
-#define UNIQUE_FN LABEL_(PRINTERFN, __LINE__)
-#define UNIQUE_FN2 LABEL_(PRINTERFN2, __LINE__)
-#define REGISTER_SPECIAL_PRINTER(str, type, ...)                               \
-  void UNIQUE_FN(outputFunction put, void *_v_in_ptr) {                        \
+
+#define MERGE_PRINTER_M(a, b) a##b
+#define LABEL_PRINTER_GEN(l, a) MERGE_PRINTER_M(l, a)
+
+#define UNIQUE_GEN_PRINTER                                                     \
+  LABEL_PRINTER_GEN(LABEL_PRINTER_GEN(__LINE__, _), __COUNTER__)
+#define UNIQUE_PRINTER_FN LABEL_PRINTER_GEN(PRINTERFN, UNIQUE_GEN_PRINTER)
+#define UNIQUE_PRINTER_FN2                                                     \
+  LABEL_PRINTER_GEN(printerConstructor, UNIQUE_GEN_PRINTER)
+#define REGISTER_SPECIAL_PRINTER_NEEDID(id, str, type, ...)                    \
+  void id(outputFunction put, void *_v_in_ptr) {                               \
     type in = *(type *)_v_in_ptr;                                              \
     __VA_ARGS__                                                                \
   }                                                                            \
-  __attribute__((constructor(201))) static void UNIQUE_FN2() {                 \
+  __attribute__((constructor(201))) static void UNIQUE_PRINTER_FN2() {         \
     stringList_append(typeNamesList,                                           \
                       (um_fp){.ptr = (void *)str, .width = strlen(str)});      \
-    List_append(printerFunctions, (printerFunction[1]){UNIQUE_FN});            \
+    List_append(printerFunctions, (printerFunction[1]){id});                   \
   }
 
+#define REGISTER_SPECIAL_PRINTER(str, type, ...)                               \
+  REGISTER_SPECIAL_PRINTER_NEEDID(UNIQUE_PRINTER_FN, str, type, __VA_ARGS__)
 // for use inside of a registerprinter
 // helps use builtin printers
-#define USETYPEPRINTER(T, v) GETTYPEFN(T)(put, &(v))
+#define USETYPEPRINTER(T, v) GETTYPEPRINTERFN(T)(put, &(v))
 
+#define USENAMEDPRINTER(strname, umname)                                       \
+  print_f_helper((struct print_arg){.name = nullUmf, .ref = &umname},          \
+                 um_from(strname), put);
 #define um_charArr(um) ((char *)(um.ptr))
-
 struct print_arg {
   void *ref;
   um_fp name;
@@ -83,46 +91,111 @@ REGISTER_SPECIAL_PRINTER("um_fp<void>", um_fp, {
     uint8_t c = ((uint8_t *)in.ptr)[in.width - 1];
     unsigned char top = c >> 4;
     unsigned char bottom = c & 0x0f;
-    switch(top){
-      case 0x0:put("0",1);break;
-      case 0x1:put("1",1);break;
-      case 0x2:put("2",1);break;
-      case 0x3:put("3",1);break;
-      case 0x4:put("4",1);break;
-      case 0x5:put("5",1);break;
-      case 0x6:put("6",1);break;
-      case 0x7:put("7",1);break;
-      case 0x8:put("8",1);break;
-      case 0x9:put("9",1);break;
-      case 0xa:put("a",1);break;
-      case 0xb:put("b",1);break;
-      case 0xc:put("c",1);break;
-      case 0xd:put("d",1);break;
-      case 0xe:put("e",1);break;
-      case 0xf:put("f",1);break;
+    switch (top) {
+    case 0x0:
+      put("0", 1);
+      break;
+    case 0x1:
+      put("1", 1);
+      break;
+    case 0x2:
+      put("2", 1);
+      break;
+    case 0x3:
+      put("3", 1);
+      break;
+    case 0x4:
+      put("4", 1);
+      break;
+    case 0x5:
+      put("5", 1);
+      break;
+    case 0x6:
+      put("6", 1);
+      break;
+    case 0x7:
+      put("7", 1);
+      break;
+    case 0x8:
+      put("8", 1);
+      break;
+    case 0x9:
+      put("9", 1);
+      break;
+    case 0xa:
+      put("a", 1);
+      break;
+    case 0xb:
+      put("b", 1);
+      break;
+    case 0xc:
+      put("c", 1);
+      break;
+    case 0xd:
+      put("d", 1);
+      break;
+    case 0xe:
+      put("e", 1);
+      break;
+    case 0xf:
+      put("f", 1);
+      break;
     }
-    switch(bottom){
-      case 0x0:put("0",1);break;
-      case 0x1:put("1",1);break;
-      case 0x2:put("2",1);break;
-      case 0x3:put("3",1);break;
-      case 0x4:put("4",1);break;
-      case 0x5:put("5",1);break;
-      case 0x6:put("6",1);break;
-      case 0x7:put("7",1);break;
-      case 0x8:put("8",1);break;
-      case 0x9:put("9",1);break;
-      case 0xa:put("a",1);break;
-      case 0xb:put("b",1);break;
-      case 0xc:put("c",1);break;
-      case 0xd:put("d",1);break;
-      case 0xe:put("e",1);break;
-      case 0xf:put("f",1);break;
+    switch (bottom) {
+    case 0x0:
+      put("0", 1);
+      break;
+    case 0x1:
+      put("1", 1);
+      break;
+    case 0x2:
+      put("2", 1);
+      break;
+    case 0x3:
+      put("3", 1);
+      break;
+    case 0x4:
+      put("4", 1);
+      break;
+    case 0x5:
+      put("5", 1);
+      break;
+    case 0x6:
+      put("6", 1);
+      break;
+    case 0x7:
+      put("7", 1);
+      break;
+    case 0x8:
+      put("8", 1);
+      break;
+    case 0x9:
+      put("9", 1);
+      break;
+    case 0xa:
+      put("a", 1);
+      break;
+    case 0xb:
+      put("b", 1);
+      break;
+    case 0xc:
+      put("c", 1);
+      break;
+    case 0xd:
+      put("d", 1);
+      break;
+    case 0xe:
+      put("e", 1);
+      break;
+    case 0xf:
+      put("f", 1);
+      break;
     }
     in.width -= sizeof(uint8_t);
   }
   put("}", 2);
 });
+
 static void print_f_helper(struct print_arg p, um_fp typeName,
                            outputFunction put) {
   void *ref = p.ref;
@@ -131,9 +204,9 @@ static void print_f_helper(struct print_arg p, um_fp typeName,
   }
   unsigned int index = stringList_search(typeNamesList, typeName);
   if (index == printerFunctions->length) {
-    GETTYPEFN(um_fp)(put, (um_fp[1]){(um_from("_NO_TYPE("))});
-    GETTYPEFN(um_fp)(put, (um_fp[1]){typeName});
-    GETTYPEFN(um_fp)(put, (um_fp[1]){(um_from(")"))});
+    GETTYPEPRINTERFN(um_fp)(put, (um_fp[1]){(um_from("_NO_TYPE("))});
+    GETTYPEPRINTERFN(um_fp)(put, (um_fp[1]){typeName});
+    GETTYPEPRINTERFN(um_fp)(put, (um_fp[1]){(um_from(")"))});
   }
   (*((printerFunction *)List_getRef(printerFunctions, index)))(put, ref);
 }
@@ -179,17 +252,23 @@ static void print_f(outputFunction put, um_fp fmt, ...) {
                           int: ((um_fp){.ptr = "int", .width = 3}),            \
                           char: ((um_fp){.ptr = "char", .width = 4}),          \
                           um_fp: ((um_fp){.ptr = "um_fp", .width = 5}),        \
+                          struct print_arg: a,                                 \
                           default: ((um_fp){.ptr = NULL, .width = 0}))})
+
+#define EMPTY_PRINT_ARG ((struct print_arg){.ref = NULL, .name = nullUmf})
 
 #define print(fmt, ...)                                                        \
   print_f(defaultPrinter, um_from(fmt), APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__))
 #define print_wf(fmt, printerfunction, ...)                                    \
   print_f(printerfunction, um_from(fmt), APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__))
 
-#define println(fmt, ...)                                                        \
-  print_f(defaultPrinter, um_from(fmt"\n"), APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__))
-#define println_wf(fmt, printerfunction, ...)                                    \
-  print_f(printerfunction, um_from(fmt"\n"), APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__))
+#define println(fmt, ...)                                                      \
+  print_f(defaultPrinter, um_from(fmt "\n"),                                   \
+          APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__))
+
+#define println_wf(fmt, printerfunction, ...)                                  \
+  print_f(printerfunction, um_from(fmt "\n"),                                  \
+          APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__))
 static void defaultPrinter(char *c, unsigned int length) {
   fwrite(c, sizeof(char), length, stdout);
 }
