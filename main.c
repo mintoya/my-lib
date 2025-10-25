@@ -1,47 +1,50 @@
-#include "printer/print.h"
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-
 #include "string-List/um_fp.h"
-#define KML_PARSER_C
-#include "kml/kml.h"
+#define PRINTER_LIST_TYPENAMES
+#include "printer/print.h"
+#include "umap/umap.h"
 #define STRING_LIST_C
 #include "string-List/stringList.h"
 #define MY_LIST_C
 #include "my-list/my-list.h"
 
-um_fp read_stdin() {
-  List fl = {
-      .width = sizeof(char),
-      .head = malloc(sizeof(char) * 10),
-      .length = 0,
-      .size = 10,
-  };
-  int c;
-
-  while ((c = fgetc(stdin)) != EOF) {
-    mList_add(&fl, char, c);
+REGISTER_PRINTER(stringList, {
+  for (int i = 0; i < stringList_length(&in); i++) {
+    put("{", 1);
+    um_fp um = stringList_get(&in, i);
+    USETYPEPRINTER(um_fp, um);
+    put("}", 1);
   }
-
-  um_fp res = {.ptr = (&fl)->head, .width = (&fl)->length * (&fl)->width};
-  return res;
-}
-
-
-int main(int narg, char *args[]) {
-  um_fp res = read_stdin();
-  um_fp result = res;
-
-  for (int i = 1; i < narg; i++) {
-    if (isdigit(args[i][0])) {
-      result = find(result, fIndex(strtol(args[i], NULL, 10)));
-    } else {
-      result = find(result, fKey(args[i]));
-    }
+})
+REGISTER_PRINTER(UMap, {
+  for (int i = 0; i < stringList_length(in.keys); i++) {
+    put("{", 1);
+    um_fp key = stringList_get(in.keys, i);
+    um_fp val = stringList_get(in.vals, i);
+    USETYPEPRINTER(um_fp, key);
+    put("->", 2);
+    USETYPEPRINTER(um_fp, val);
+    put("}", 1);
   }
-  print("${}", result);
+});
+int main() {
+  UMap *m = UMap_new();
+  UMap_set(m, um_from("hello0"), um_from("world"));
+  UMap_set(m, um_from("hello1"), um_from("world"));
+  UMap_set(m, um_from("hello2"), um_from("world"));
+  UMap_set(m, um_from("hello3"), um_from("world"));
+  UMap_set(m, um_from("hello0"), um_from("world"));
+  UMap_set(m, um_from("hello2"), um_from("world"));
+  UMap_set(m, um_from("hello2"), um_from("world"));
+  UMap_set(m, um_from("hello0"), um_from("world"));
+  UMap_set(m, um_from("hello2"), nullUmf);
 
-  freAllocate(res.ptr);
-  return EXIT_SUCCESS;
+  // println("${UMap}", *m);
+
+  println("${UMap}", *m);
+  // println("${int}", m);
+  // println("${typenm}",5);
+
+
+  UMap_free(m);
+  return 0;
 }

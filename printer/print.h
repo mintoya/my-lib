@@ -28,7 +28,7 @@ __attribute__((destructor)) static void printerDeinit() {
   }                                                                            \
   __attribute__((constructor(201))) static void register_##T() {               \
     stringList_append(typeNamesList,                                           \
-                      (um_fp){.ptr = (void *)#T, .width = sizeof(#T) - 1});    \
+                      (um_fp){.ptr = (uint8_t *)#T, .width = sizeof(#T) - 1}); \
     List_append(printerFunctions, (printerFunction[1]){GETTYPEPRINTERFN(T)});  \
   }
 
@@ -47,7 +47,7 @@ __attribute__((destructor)) static void printerDeinit() {
   }                                                                            \
   __attribute__((constructor(201))) static void UNIQUE_PRINTER_FN2() {         \
     stringList_append(typeNamesList,                                           \
-                      (um_fp){.ptr = (void *)str, .width = strlen(str)});      \
+                      (um_fp){.ptr = (uint8_t *)str, .width = strlen(str)});   \
     List_append(printerFunctions, (printerFunction[1]){id});                   \
   }
 
@@ -203,12 +203,13 @@ static void print_f_helper(struct print_arg p, um_fp typeName,
     typeName = p.name;
   }
   unsigned int index = stringList_search(typeNamesList, typeName);
-  if (index == printerFunctions->length) {
+  if (index >= printerFunctions->length) {
     GETTYPEPRINTERFN(um_fp)(put, (um_fp[1]){(um_from("_NO_TYPE("))});
     GETTYPEPRINTERFN(um_fp)(put, (um_fp[1]){typeName});
     GETTYPEPRINTERFN(um_fp)(put, (um_fp[1]){(um_from(")"))});
+  } else {
+    (*((printerFunction *)List_getRef(printerFunctions, index)))(put, ref);
   }
-  (*((printerFunction *)List_getRef(printerFunctions, index)))(put, ref);
 }
 
 static void print_f(outputFunction put, um_fp fmt, ...) {
@@ -229,7 +230,8 @@ static void print_f(outputFunction put, um_fp fmt, ...) {
         unsigned int j;
         for (j = i + 1; j < fmt.width && um_charArr(fmt)[j] != '}'; j++)
           ;
-        um_fp typeName = {.ptr = ((char *)fmt.ptr) + i + 1, .width = j - i - 1};
+        um_fp typeName = {.ptr = ((uint8_t *)fmt.ptr) + i + 1,
+                          .width = j - i - 1};
         struct print_arg assumedName = va_arg(l, struct print_arg);
         print_f_helper(assumedName, typeName, put);
         i = j;
@@ -247,13 +249,14 @@ static void print_f(outputFunction put, um_fp fmt, ...) {
 }
 
 #define MAKE_PRINT_ARG(a)                                                      \
-  ((struct print_arg){.ref = ((typeof(a)[1]){a}),                              \
-                      .name = _Generic((a),                                    \
-                          int: ((um_fp){.ptr = "int", .width = 3}),            \
-                          char: ((um_fp){.ptr = "char", .width = 4}),          \
-                          um_fp: ((um_fp){.ptr = "um_fp", .width = 5}),        \
-                          struct print_arg: a,                                 \
-                          default: ((um_fp){.ptr = NULL, .width = 0}))})
+  ((struct print_arg){                                                         \
+      .ref = ((typeof(a)[1]){a}),                                              \
+      .name = _Generic((a),                                                    \
+          int: ((um_fp){.ptr = (uint8_t *)"int", .width = 3}),                 \
+          char: ((um_fp){.ptr = (uint8_t *)"char", .width = 4}),               \
+          um_fp: ((um_fp){.ptr = (uint8_t *)"um_fp", .width = 5}),             \
+          struct print_arg: a,                                                 \
+          default: ((um_fp){.ptr = NULL, .width = 0}))})
 
 #define EMPTY_PRINT_ARG ((struct print_arg){.ref = NULL, .name = nullUmf})
 
@@ -274,7 +277,6 @@ static void print_f(outputFunction put, um_fp fmt, ...) {
 static void defaultPrinter(char *c, unsigned int length) {
   fwrite(c, sizeof(char), length, stdout);
 }
-#define PRINTER_LIST_TYPENAMES
 #ifdef PRINTER_LIST_TYPENAMES
 __attribute__((constructor(203))) static void post_init() {
   _um_fp_printer(defaultPrinter, (um_fp[1]){um_from("list of type names:\n")});

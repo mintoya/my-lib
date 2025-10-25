@@ -6,6 +6,7 @@ extern "C" {
 #define KML_PARSER_H
 #include <assert.h>
 #include <malloc.h>
+// #include <alloca.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -106,10 +107,10 @@ um_fp kml_inside(char limits[2], um_fp string) {
         }
 
         if (!counter)
-          return (um_fp){.ptr = ((char *)string.ptr) + i + 1,
+          return (um_fp){.ptr = ((uint8_t *)string.ptr) + i + 1,
                          .width = (size_t)ii - 1};
         if (i + ii == string.width - 1)
-          return (um_fp){.ptr = ((char *)string.ptr) + i + 1,
+          return (um_fp){.ptr = ((uint8_t *)string.ptr) + i + 1,
                          .width = (size_t)ii - 1};
       }
     }
@@ -152,10 +153,10 @@ um_fp kml_around(char limits[2], um_fp string) {
         }
 
         if (!counter)
-          return (um_fp){.ptr = ((char *)string.ptr) + i,
+          return (um_fp){.ptr = ((uint8_t *)string.ptr) + i,
                          .width = (size_t)ii + 1};
         if (i + ii == string.width - 1)
-          return (um_fp){.ptr = ((char *)string.ptr) + i,
+          return (um_fp){.ptr = ((uint8_t *)string.ptr) + i,
                          .width = (size_t)ii + 1};
       }
     }
@@ -192,14 +193,15 @@ um_fp kml_after(um_fp main, um_fp slice) {
 
   assert(sliceStart >= mainStart && sliceEnd <= mainEnd);
 
-  return (um_fp){.ptr = sliceEnd, .width = (size_t)(mainEnd - sliceEnd)};
+  return (um_fp){.ptr = (uint8_t *)sliceEnd,
+                 .width = (size_t)(mainEnd - sliceEnd)};
 }
 #define stack_split(result, string, ...)                                       \
   result = (um_fp *)alloca(                                                    \
       sizeof(um_fp) *                                                          \
       (sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1));     \
   do {                                                                         \
-    void *last;                                                                \
+    uint8_t *last;                                                             \
     unsigned int args[] = {__VA_ARGS__};                                       \
     for (int i = 0; i < sizeof(args) / sizeof(unsigned int); i++) {            \
       args[i] = (i == 0) ? (min(args[i], string.width))                        \
@@ -208,11 +210,11 @@ um_fp kml_after(um_fp main, um_fp slice) {
           .ptr = (i == 0) ? (string.ptr) : (last),                             \
           .width = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),             \
       };                                                                       \
-      last = ((char *)result[i].ptr) + result[i].width;                        \
+      last = ((uint8_t *)result[i].ptr) + result[i].width;                     \
     }                                                                          \
-    result[sizeof(args) / sizeof(unsigned int)] =                              \
-        (um_fp){.ptr = last,                                                   \
-                .width = string.width - ((char *)last - (char *)string.ptr)};  \
+    result[sizeof(args) / sizeof(unsigned int)] = (um_fp){                     \
+        .ptr = last,                                                           \
+        .width = string.width - ((uint8_t *)last - (uint8_t *)string.ptr)};    \
   } while (0);
 char isSkip(char c) {
   switch (c) {
@@ -278,16 +280,16 @@ kVf parseNext(um_fp string) {
     value = kml_removeSpacesPadding(kml_inside("{}", next));
     break;
   case '"':
-    next.ptr = (char *)next.ptr + 1;
+    next.ptr = (uint8_t *)next.ptr + 1;
     next.width--;
 
     value = kml_removeSpacesPadding(kml_until('"', next));
     toParse = kml_behind('"', next);
 
-    toParse.ptr = (char *)toParse.ptr - 1;
+    toParse.ptr = (uint8_t *)toParse.ptr - 1;
     toParse.width++;
 
-    next.ptr = (char *)next.ptr - 1;
+    next.ptr = (uint8_t *)next.ptr - 1;
     next.width++;
     break;
   default:
@@ -410,9 +412,9 @@ um_fp find_many(um_fp str, ...) {
 }
 #undef max
 #undef min
+
 #endif
 
 #ifdef __cplusplus
 }
 #endif
-

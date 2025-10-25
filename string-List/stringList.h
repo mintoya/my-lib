@@ -3,13 +3,14 @@
 #define initialBufferSize
 #include "../my-list/my-list.h"
 #include "um_fp.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
 typedef struct stringMetaData {
   unsigned int index;
-  unsigned int width;
-  unsigned int _size;
+  size_t width;
+  size_t _size;
 } stringMetaData;
 
 typedef struct {
@@ -22,13 +23,13 @@ um_fp stringList_get(stringList *l, unsigned int index);
 void stringList_insert(stringList *l, um_fp, unsigned int index);
 void stringList_set(stringList *l, um_fp, unsigned int index);
 void stringList_append(stringList *l, um_fp);
+// returns length if not found
+unsigned int stringList_search(stringList *l, um_fp key);
 stringList *stringList_remake(stringList *);
 void stringList_free(stringList *l);
 static inline unsigned int stringList_length(stringList *l) {
   return l->List_stringMetaData.length;
 }
-// returns length if not found
-unsigned int stringList_search(stringList *l, um_fp);
 
 #endif // STRING_LIST_H
 
@@ -48,13 +49,13 @@ stringList *stringList_new() {
       .width = sizeof(char),
       .length = 0,
       .size = 1,
-      .head = (char*)malloc(sizeof(char)),
+      .head = (uint8_t*)malloc(sizeof(char)),
     },
     .List_stringMetaData = {
         .width = sizeof(stringMetaData),
         .length = 0,
         .size = 1,
-        .head = (char*)malloc(sizeof(stringMetaData)),
+        .head = (uint8_t*)malloc(sizeof(stringMetaData)),
     },
 
   };
@@ -68,8 +69,23 @@ um_fp stringList_get(stringList *l, unsigned int index) {
     return nullUmf;
   stringMetaData thisS =
       mList_get(&(l->List_stringMetaData), stringMetaData, index);
-  return ((um_fp){.ptr = (List_getRef(&(l->List_char), thisS.index)),
+  return ((um_fp){.ptr = (uint8_t *)(List_getRef(&(l->List_char), thisS.index)),
                   .width = thisS.width});
+}
+unsigned int stringList_search(stringList *l, um_fp what) {
+  stringMetaData *meta = (stringMetaData *)l->List_stringMetaData.head;
+  unsigned int res;
+  unsigned int length = stringList_length(l);
+
+  for (res = 0; res < length; res++) {
+    if (meta[res].width == what.width &&
+        !strncmp((char *)what.ptr,
+                 (char *)List_getRef(&(l->List_char), meta[res].index),
+                 what.width)) {
+      return res;
+    }
+  }
+  return res;
 }
 stringList *stringList_remake(stringList *origional) {
   stringList *res = stringList_new();
@@ -104,13 +120,15 @@ void stringList_set(stringList *l, um_fp value, unsigned int index) {
   stringMetaData thisS =
       mList_get(&(l->List_stringMetaData), stringMetaData, index);
   if (thisS._size < value.width) {
-    stringMetaData *ref = List_getRef(&(l->List_stringMetaData), index);
+    stringMetaData *ref =
+        (stringMetaData *)List_getRef(&(l->List_stringMetaData), index);
     ref->width = value.width;
     ref->_size = value.width;
     ref->index = l->List_char.length;
     List_appendFromArr(&(l->List_char), value.ptr, value.width);
   } else {
-    stringMetaData *ref = List_getRef(&(l->List_stringMetaData), index);
+    stringMetaData *ref =
+        (stringMetaData *)List_getRef(&(l->List_stringMetaData), index);
     ref->width = value.width;
     memcpy(List_getRef(&(l->List_char), ref->index), value.ptr, value.width);
   }
@@ -121,20 +139,4 @@ void stringList_free(stringList *l) {
   free(l->List_stringMetaData.head);
   free(l);
 }
-unsigned int stringList_search(stringList *l, um_fp what) {
-  stringMetaData *meta = (stringMetaData *)l->List_stringMetaData.head;
-  unsigned int res;
-  unsigned int length = stringList_length(l);
-
-  for (res = 0; res < length; res++) {
-    if (meta[res].width == what.width &&
-        !strncmp((char *)what.ptr,
-                 (char *)List_getRef(&(l->List_char), meta[res].index),
-                 what.width)) {
-      return res;
-    }
-  }
-  return res;
-}
-#undef max
 #endif // STRING_LIST_C

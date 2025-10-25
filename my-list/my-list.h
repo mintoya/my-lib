@@ -1,7 +1,9 @@
 #ifndef MY_LIST_H
 #define MY_LIST_H
 #include <errno.h>
+#include <stdint.h>
 #include <stdlib.h>
+#include <sys/types.h>
 // clang-format off
 #ifndef LIST_ALLOCATOR
   #define clearAllocate(length, size) calloc(length, size)
@@ -18,10 +20,10 @@
 // clang-format on
 #include <string.h>
 typedef struct List {
-  unsigned long width;
+  size_t width;
   unsigned int length;
   unsigned int size;
-  char *head;
+  uint8_t *head;
 } List;
 
 List *List_new(unsigned long bytes);
@@ -30,9 +32,6 @@ static inline void *List_getRef(const List *l, unsigned int i) {
   void *res;
   res = (i < l->length) ? (l->head + l->width * i) : (NULL);
   return res;
-}
-static inline void *List_getRefForce(const List *l, unsigned int i) {
-  return (l->head + l->width * i);
 }
 void List_resize(List *l, unsigned int newSize);
 void List_forceResize(List *l, unsigned int newSize);
@@ -52,13 +51,6 @@ static inline void List_append(List *l, const void *element) {
   l->length++;
   List_set(l, l->length - 1, element);
 }
-static inline void List_zeroOut(List *l) {
-  memset(l->head, 0, l->size * l->width);
-}
-static inline void List_free(List *l) {
-  freAllocate(l->head);
-  freAllocate(l);
-}
 // helper function to pad with 0s
 void List_pad(List *l, unsigned int ammount);
 List *List_fromArr(const void *source, unsigned int size, unsigned int length);
@@ -66,11 +58,14 @@ void List_appendFromArr(List *l, const void *source, unsigned int i);
 int List_search(List *l, const void *value);
 void List_insert(List *l, unsigned int i, void *element);
 void List_remove(List *l, unsigned int i);
+static inline void List_zeroOut(List *l) {
+  memset(l->head, 0, l->size * l->width);
+}
+void List_free(List *l);
 void *List_toBuffer(List *l);
 void *List_fromBuffer(void *ref);
 List *List_deepCopy(List *l);
 List *List_combine(List *l, List *l2);
-#ifndef __cplusplus
 #define mList_forEach(list, type, item, scope)                                 \
   {                                                                            \
     type item;                                                                 \
@@ -79,7 +74,7 @@ List *List_combine(List *l, List *l2);
       scope                                                                    \
     }                                                                          \
   }
-#define mList_T(type) List_new(sizeof(type))
+
 #define mList_get(list, type, index) *(type *)List_getRef(list, index)
 #define mList_add(list, type, ...) List_append(list, (type[1]){__VA_ARGS__})
 #define mList_insert(list, type, value, index)                                 \
@@ -88,25 +83,31 @@ List *List_combine(List *l, List *l2);
 #define mList(type, ...)                                                       \
   List_fromArr((type[]){__VA_ARGS__}, sizeof(type),                            \
                sizeof((type[]){__VA_ARGS__}) / sizeof(type))
-#endif
 
 #endif
 
 #ifdef MY_LIST_C
 
-List *List_new(unsigned long bytes) {
+#include <stdio.h>
+List *List_new(size_t bytes) {
+  // printf("new list with %i size", bytes);
+  // fflush(stdout);
   List *l = (List *)clearAllocate(1, sizeof(List));
   *l = (List){
       .width = bytes,
       .length = 0,
       .size = 1,
-      .head = (char *)regularAllocate(bytes),
+      .head = (uint8_t *)regularAllocate(bytes),
   };
   return l;
 }
+void List_free(List *l) {
+  freAllocate(l->head);
+  freAllocate(l);
+}
 // same as list_resize but it enforces size
 void List_forceResize(List *l, unsigned int newSize) {
-  char *newPlace = (char *)reAllocate(l->head, newSize * l->width);
+  uint8_t *newPlace = (uint8_t *)reAllocate(l->head, newSize * l->width);
   if (!newPlace) {
     exit(ENOMEM); // maybe something else idk
   }
@@ -117,7 +118,7 @@ void List_forceResize(List *l, unsigned int newSize) {
 void List_resize(List *l, unsigned int newSize) {
   if (newSize <= l->size)
     return;
-  char *newPlace = (char *)reAllocate(l->head, newSize * l->width);
+  uint8_t *newPlace = (uint8_t *)reAllocate(l->head, newSize * l->width);
   if (!newPlace) {
     exit(ENOMEM); // maybe something else idk
   }
@@ -135,7 +136,7 @@ void List_pad(List *l, unsigned int ammount) {
     }
     List_resize(l, newsize);
   }
-  memset(l->head + l->length * l->width, 0, l->size-l->length * l->width);
+  memset(l->head + l->length * l->width, 0, ammount * l->width);
   l->length += ammount;
 }
 List *List_fromArr(const void *source, unsigned int width,
@@ -144,7 +145,7 @@ List *List_fromArr(const void *source, unsigned int width,
   res->width = width;
   res->length = length;
   res->size = length;
-  res->head = (char *)regularAllocate(length * width);
+  res->head = (uint8_t *)regularAllocate(length * width);
   memcpy(res->head, source, length * width);
   return res;
 }
@@ -173,6 +174,7 @@ void List_insert(List *l, unsigned int i, void *element) {
   l->length++;
 }
 void List_remove(List *l, unsigned int i) {
+
   memmove(l->head + i * l->width, l->head + (i + 1) * l->width,
           (l->length - i - 1) * l->width);
   l->length--;
