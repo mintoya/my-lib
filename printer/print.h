@@ -58,14 +58,13 @@ __attribute__((destructor)) static void printerDeinit() {
 #define USETYPEPRINTER(T, v) GETTYPEPRINTERFN(T)(put, &(v))
 
 #define USENAMEDPRINTER(strname, val)                                          \
-  print_f_helper((struct print_arg){.name = nullUmf, .ref = &val},             \
+  print_f_helper((struct print_arg){.ref = &val, .name = nullUmf},             \
                  um_from(strname), put);
 #define um_charArr(um) ((char *)(um.ptr))
 struct print_arg {
   void *ref;
   um_fp name;
 };
-
 REGISTER_PRINTER(char, { put(&in, 1); });
 REGISTER_PRINTER(um_fp, { put((char *)in.ptr, in.width); });
 REGISTER_PRINTER(int, {
@@ -73,6 +72,17 @@ REGISTER_PRINTER(int, {
     put("0", 1);
     in = -in;
   }
+  int l = 1;
+  while (l <= in / 10)
+    l *= 10;
+  while (l) {
+    char c = in / l + '0';
+    put(&c, 1);
+    in %= l;
+    l /= 10;
+  }
+});
+REGISTER_PRINTER(size_t, {
   int l = 1;
   while (l <= in / 10)
     l *= 10;
@@ -248,6 +258,7 @@ static void print_f(outputFunction put, um_fp fmt, ...) {
   va_end(l);
 }
 
+#ifndef __cplusplus
 #define MAKE_PRINT_ARG(a)                                                      \
   ((struct print_arg){                                                         \
       .ref = ((typeof(a)[1]){a}),                                              \
@@ -255,8 +266,28 @@ static void print_f(outputFunction put, um_fp fmt, ...) {
           int: ((um_fp){.ptr = (uint8_t *)"int", .width = 3}),                 \
           char: ((um_fp){.ptr = (uint8_t *)"char", .width = 4}),               \
           um_fp: ((um_fp){.ptr = (uint8_t *)"um_fp", .width = 5}),             \
+          size_t: ((um_fp){.ptr = (uint8_t *)"size_t", .width = 6}),           \
           struct print_arg: a,                                                 \
           default: ((um_fp){.ptr = NULL, .width = 0}))})
+#else
+template <typename T> print_arg make_print_arg(T &a) {
+  return print_arg{.ref = &a, .name = nullUmf};
+}
+template <> print_arg make_print_arg(int &a) {
+  return print_arg{.ref = &a, .name = um_from("int")};
+}
+print_arg make_print_arg(char &a) {
+  return print_arg{.ref = &a, .name = um_from("char")};
+}
+print_arg make_print_arg(size_t &a) {
+  return print_arg{.ref = &a, .name = um_from("size_t")};
+}
+print_arg make_print_arg(um_fp &a) {
+
+  return print_arg{.ref = &a, .name = um_from("um_fp")};
+}
+#define MAKE_PRINT_ARG(a) make_print_arg(a)
+#endif
 
 #define EMPTY_PRINT_ARG ((struct print_arg){.ref = NULL, .name = nullUmf})
 

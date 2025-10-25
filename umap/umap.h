@@ -34,4 +34,4 @@ void UMap_addChild(UMap *map, um_fp key, UMap *ref);
 UMap UMap_fromBuf(um_fp mapRasterized);
 um_fp UMap_toBuf(UMap *map);
 
-#endif
+#endif // UMAP_H

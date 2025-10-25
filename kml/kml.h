@@ -40,10 +40,6 @@ um_fp findAny(um_fp str, parseArg ki);
 #ifndef __cplusplus
 #define fIndex(val) ((parseArg){.type = INDEX, .data.index = val})
 #define fKey(val) ((parseArg){.type = STRING, .data.pArg = um_from(val)})
-
-// must be none terminated
-um_fp find_many(um_fp str, ...);
-#define find(um, ...) find_many(um, __VA_ARGS__, ((parseArg){.type = NONE}))
 #else
 static inline parseArg fIndex(unsigned int idx) {
   parseArg res;
@@ -385,33 +381,6 @@ um_fp findAny(um_fp str, parseArg ki) {
   }
 #endif
 }
-
-um_fp find_many(um_fp str, ...) {
-  va_list ap;
-  va_start(ap, str);
-  parseArg key;
-
-#ifdef __cplusplus
-  while ((key = va_arg(ap, parseArg)).type) {
-    if (key.type == parseArg::STRING)
-      str = findKey(str, key.data.pArg);
-    if (key.type == parseArg::INDEX)
-      str = findIndex(str, key.data.index);
-  }
-#else
-  while ((key = va_arg(ap, parseArg)).type) {
-    if (key.type == STRING)
-      str = findKey(str, key.data.pArg);
-    if (key.type == INDEX)
-      str = findIndex(str, key.data.index);
-  }
-#endif
-
-  va_end(ap);
-  return str;
-}
-#undef max
-#undef min
 
 #endif
 

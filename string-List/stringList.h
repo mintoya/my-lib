@@ -1,6 +1,5 @@
 #ifndef STRING_LIST_H
 #define STRING_LIST_H
-#define initialBufferSize
 #include "../my-list/my-list.h"
 #include "um_fp.h"
 #include <stdint.h>
@@ -139,4 +138,5 @@ void stringList_free(stringList *l) {
   free(l->List_stringMetaData.head);
   free(l);
 }
+
 #endif // STRING_LIST_C

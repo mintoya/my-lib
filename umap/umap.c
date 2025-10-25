@@ -1,6 +1,3 @@
-#ifdef __cplusplus
-extern "C" {
-#endif
 #include "umap.h"
 #include "../string-List/stringList.h"
 #include <stdlib.h>
@@ -39,7 +36,7 @@ static inline unsigned int UMap_searchFunction(UMap *map, um_fp key) {
   return UMap_binarySearch(map, key);
 }
 UMap *UMap_new() {
-  UMap *res = malloc(sizeof(UMap));
+  UMap *res = (UMap *)malloc(sizeof(UMap));
   *res = (UMap){
       .keys = stringList_new(),
       .vals = stringList_new(),
@@ -72,7 +69,7 @@ unsigned int UMap_set(UMap *map, um_fp key, um_fp val) {
 };
 
 void UMap_addChild(UMap *map, um_fp key, UMap *ref) {
-  UMap_set(map, key, (um_fp){.ptr = &ref, .width = sizeof(UMap *)});
+  UMap_set(map, key, (um_fp){.ptr = (uint8_t *)&ref, .width = sizeof(UMap *)});
 }
 void UMap_free(UMap *map) {
   stringList_free(map->keys);
@@ -89,7 +86,3 @@ UMap *UMap_remake(UMap *map) {
   }
   return res;
 }
-
-#ifdef __cplusplus
-}
-#endif
