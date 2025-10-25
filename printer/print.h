@@ -57,8 +57,8 @@ __attribute__((destructor)) static void printerDeinit() {
 // helps use builtin printers
 #define USETYPEPRINTER(T, v) GETTYPEPRINTERFN(T)(put, &(v))
 
-#define USENAMEDPRINTER(strname, umname)                                       \
-  print_f_helper((struct print_arg){.name = nullUmf, .ref = &umname},          \
+#define USENAMEDPRINTER(strname, val)                                          \
+  print_f_helper((struct print_arg){.name = nullUmf, .ref = &val},             \
                  um_from(strname), put);
 #define um_charArr(um) ((char *)(um.ptr))
 struct print_arg {

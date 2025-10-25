@@ -15,6 +15,8 @@ REGISTER_PRINTER(stringList, {
     put("}", 1);
   }
 })
+REGISTER_SPECIAL_PRINTER("stringList*", stringList *,
+                         { USENAMEDPRINTER("stringList", *in); });
 REGISTER_PRINTER(UMap, {
   for (int i = 0; i < stringList_length(in.keys); i++) {
     put("{", 1);
@@ -26,6 +28,7 @@ REGISTER_PRINTER(UMap, {
     put("}", 1);
   }
 });
+REGISTER_SPECIAL_PRINTER("UMap*", UMap *, { USENAMEDPRINTER("UMap", *in); });
 int main() {
   UMap *m = UMap_new();
   UMap_set(m, um_from("hello0"), um_from("world"));
@@ -38,13 +41,15 @@ int main() {
   UMap_set(m, um_from("hello0"), um_from("world"));
   UMap_set(m, um_from("hello2"), nullUmf);
 
-  // println("${UMap}", *m);
+  println("${stringList*}", m->keys);
 
-  println("${UMap}", *m);
+  println("${UMap*}", m);
   UMap *map2 = UMap_remake(m);
-  println("${UMap}", *map2);
-  // println("${int}", m);
-  // println("${typenm}",5);
+  println("${stringList*}", m->keys);
+
+  println("${stringList*}", map2->keys);
+
+  println("${UMap*}", map2);
 
   UMap_free(m);
   UMap_free(map2);
