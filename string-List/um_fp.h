@@ -76,20 +76,27 @@ static um_fp um_readFile(char *filename) {
 #define um_fromP(ref, size) ((um_fp){.ptr = ref, .width = size})
 #define um_from(val) ((um_fp){.ptr = ((uint8_t *)val), .width = strlen(val)})
 #else
+#include <cstdint>
+#include <cstring>
 #include <string>
 template <typename T> inline um_fp um_from(T &val) {
-  return {(uint8_t *)&val, sizeof(T)};
+  return {reinterpret_cast<uint8_t *>(&val), sizeof(T)};
 }
-template <> inline um_fp um_from<std::string>(std::string &s) {
-  return {(uint8_t *)s.data(), s.size()};
+inline um_fp um_from(std::string &s) {
+  return {reinterpret_cast<uint8_t *>(s.data()), s.size()};
 }
-template <> inline um_fp um_from<const std::string>(const std::string &s) {
-  return {(uint8_t *)s.data(), s.size()};
+inline um_fp um_from(const std::string &s) {
+  return {const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(s.data())),
+          s.size()};
 }
-inline um_fp um_from(const char *s) { return {(uint8_t *)s, strlen(s)}; }
+inline um_fp um_from(const char *s) {
+  return {const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(s)),
+          std::strlen(s)};
+}
 template <size_t N> inline um_fp um_from(const char (&s)[N]) {
-  return {(uint8_t *)s, N - 1};
+  return {const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(s)), N - 1};
 }
+
 #endif
 
 #endif // UM_FP_H

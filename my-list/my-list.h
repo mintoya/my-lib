@@ -27,7 +27,9 @@ typedef struct List {
 } List;
 
 List *List_new(size_t bytes);
-
+static inline size_t List_headArea(const List *l) {
+  return (l->width * l->length);
+}
 static inline void *List_getRef(const List *l, unsigned int i) {
   void *res;
   res = (i < l->length) ? (l->head + l->width * i) : (NULL);
@@ -53,6 +55,7 @@ static inline void List_append(List *l, const void *element) {
 }
 // helper function to pad with 0s
 void List_pad(List *l, unsigned int ammount);
+
 List *List_fromArr(const void *source, unsigned int size, unsigned int length);
 void List_appendFromArr(List *l, const void *source, unsigned int i);
 int List_search(List *l, const void *value);

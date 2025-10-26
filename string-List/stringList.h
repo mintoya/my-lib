@@ -22,6 +22,56 @@ um_fp stringList_get(stringList *l, unsigned int index);
 void stringList_insert(stringList *l, um_fp, unsigned int index);
 void stringList_set(stringList *l, um_fp, unsigned int index);
 void stringList_append(stringList *l, um_fp);
+
+#define advance(dst, src, length)                                              \
+  memcpy(dst, src, length);                                                    \
+  dst += length / sizeof(uint8_t);
+// memory layot:
+//  { size_t:keycount | metadata buffer | data buffer }
+static inline um_fp stringList_tobuf(stringList *l) {
+  size_t area = List_headArea(&(l->List_stringMetaData)) +
+                List_headArea(&(l->List_char)) + sizeof(size_t);
+  size_t metalength = l->List_stringMetaData.length;
+  um_fp res = {.ptr = (uint8_t *)malloc(area), .width = area};
+
+  uint8_t *use = res.ptr;
+  advance(use, &metalength, sizeof(size_t));
+  advance(use, l->List_stringMetaData.head,
+          List_headArea(&l->List_stringMetaData));
+  advance(use, l->List_char.head, List_headArea(&l->List_char));
+
+  return res;
+}
+#undef advance
+#define advance(dst, src, length)                                              \
+  memcpy(dst, src, length);                                                    \
+  src += length / sizeof(uint8_t);
+static inline stringList *stringList_fromBuf(um_fp um) {
+  uint8_t *ptr = um.ptr;
+  size_t metalength;
+  advance(&metalength, ptr, sizeof(size_t));
+
+  stringList *l = (stringList *)malloc(sizeof(stringList));
+
+  l->List_stringMetaData = (List){
+      .width = sizeof(stringMetaData),
+      .length = (unsigned int)metalength,
+      .size = (unsigned int)metalength,
+      .head = (uint8_t *)malloc(sizeof(stringMetaData) * metalength),
+  };
+  advance(l->List_stringMetaData.head, ptr,
+          List_headArea(&(l->List_stringMetaData)));
+  unsigned int charlength = (unsigned int)(um.ptr + um.width - ptr);
+  l->List_char = (List){.width = sizeof(char),
+                        .length = charlength,
+                        .size = charlength,
+                        .head = (uint8_t *)malloc(sizeof(char) * charlength)};
+  advance(l->List_char.head, ptr, charlength);
+
+  return l;
+}
+#undef advance
+
 // returns length if not found
 unsigned int stringList_search(stringList *l, um_fp key);
 stringList *stringList_remake(stringList *);
@@ -51,10 +101,10 @@ stringList *stringList_new() {
       .head = (uint8_t*)malloc(sizeof(char)),
     },
     .List_stringMetaData = {
-        .width = sizeof(stringMetaData),
-        .length = 0,
-        .size = 1,
-        .head = (uint8_t*)malloc(sizeof(stringMetaData)),
+      .width = sizeof(stringMetaData),
+      .length = 0,
+      .size = 1,
+      .head = (uint8_t*)malloc(sizeof(stringMetaData)),
     },
 
   };
