@@ -6,6 +6,12 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
+
+// you shouldnt call print functions besides put
+// get around this with
+// USENAMEDPRINTER(typenamestring,value) or
+// USETYPEPRINTER(type,value)
+
 typedef void (*outputFunction)(char *, unsigned int length);
 typedef void (*printerFunction)(outputFunction, void *);
 
@@ -21,6 +27,7 @@ __attribute__((destructor)) static void printerDeinit() {
   stringList_free(typeNamesList);
 }
 #define GETTYPEPRINTERFN(T) _##T##_printer
+
 #define REGISTER_PRINTER(T, ...)                                               \
   void _##T##_printer(outputFunction put, void *_v_in_ptr) {                   \
     T in = *(T *)_v_in_ptr;                                                    \
@@ -66,10 +73,16 @@ struct print_arg {
   um_fp name;
 };
 REGISTER_PRINTER(char, { put(&in, 1); });
-REGISTER_PRINTER(um_fp, { put((char *)in.ptr, in.width); });
+REGISTER_PRINTER(um_fp, {
+  if (in.ptr) {
+    put((char *)in.ptr, in.width);
+  } else {
+    put("__NULLUMF__", 11);
+  }
+});
 REGISTER_PRINTER(int, {
   if (in < 0) {
-    put("0", 1);
+    put("-", 1);
     in = -in;
   }
   int l = 1;
@@ -101,109 +114,49 @@ REGISTER_SPECIAL_PRINTER("um_fp<void>", um_fp, {
     uint8_t c = ((uint8_t *)in.ptr)[in.width - 1];
     unsigned char top = c >> 4;
     unsigned char bottom = c & 0x0f;
+    // clang-format off
     switch (top) {
-    case 0x0:
-      put("0", 1);
-      break;
-    case 0x1:
-      put("1", 1);
-      break;
-    case 0x2:
-      put("2", 1);
-      break;
-    case 0x3:
-      put("3", 1);
-      break;
-    case 0x4:
-      put("4", 1);
-      break;
-    case 0x5:
-      put("5", 1);
-      break;
-    case 0x6:
-      put("6", 1);
-      break;
-    case 0x7:
-      put("7", 1);
-      break;
-    case 0x8:
-      put("8", 1);
-      break;
-    case 0x9:
-      put("9", 1);
-      break;
-    case 0xa:
-      put("a", 1);
-      break;
-    case 0xb:
-      put("b", 1);
-      break;
-    case 0xc:
-      put("c", 1);
-      break;
-    case 0xd:
-      put("d", 1);
-      break;
-    case 0xe:
-      put("e", 1);
-      break;
-    case 0xf:
-      put("f", 1);
-      break;
+    case 0x0: put("0", 1); break;
+    case 0x1: put("1", 1); break;
+    case 0x2: put("2", 1); break;
+    case 0x3: put("3", 1); break;
+    case 0x4: put("4", 1); break;
+    case 0x5: put("5", 1); break;
+    case 0x6: put("6", 1); break;
+    case 0x7: put("7", 1); break;
+    case 0x8: put("8", 1); break;
+    case 0x9: put("9", 1); break;
+    case 0xa: put("a", 1); break;
+    case 0xb: put("b", 1); break;
+    case 0xc: put("c", 1); break;
+    case 0xd: put("d", 1); break;
+    case 0xe: put("e", 1); break;
+    case 0xf: put("f", 1); break;
     }
     switch (bottom) {
-    case 0x0:
-      put("0", 1);
-      break;
-    case 0x1:
-      put("1", 1);
-      break;
-    case 0x2:
-      put("2", 1);
-      break;
-    case 0x3:
-      put("3", 1);
-      break;
-    case 0x4:
-      put("4", 1);
-      break;
-    case 0x5:
-      put("5", 1);
-      break;
-    case 0x6:
-      put("6", 1);
-      break;
-    case 0x7:
-      put("7", 1);
-      break;
-    case 0x8:
-      put("8", 1);
-      break;
-    case 0x9:
-      put("9", 1);
-      break;
-    case 0xa:
-      put("a", 1);
-      break;
-    case 0xb:
-      put("b", 1);
-      break;
-    case 0xc:
-      put("c", 1);
-      break;
-    case 0xd:
-      put("d", 1);
-      break;
-    case 0xe:
-      put("e", 1);
-      break;
-    case 0xf:
-      put("f", 1);
+    case 0x0: put("0", 1); break;
+    case 0x1: put("1", 1); break;
+    case 0x2: put("2", 1); break;
+    case 0x3: put("3", 1); break;
+    case 0x4: put("4", 1); break;
+    case 0x5: put("5", 1); break;
+    case 0x6: put("6", 1); break;
+    case 0x7: put("7", 1); break;
+    case 0x8: put("8", 1); break;
+    case 0x9: put("9", 1); break;
+    case 0xa: put("a", 1); break;
+    case 0xb: put("b", 1); break;
+    case 0xc: put("c", 1); break;
+    case 0xd: put("d", 1); break;
+    case 0xe: put("e", 1); break;
+    case 0xf: put("f", 1);
       break;
     }
     in.width -= sizeof(uint8_t);
   }
   put("}", 2);
+
+  // clang-format on
 });
 
 static void print_f_helper(struct print_arg p, um_fp typeName,
@@ -243,6 +196,9 @@ static void print_f(outputFunction put, um_fp fmt, ...) {
         um_fp typeName = {.ptr = ((uint8_t *)fmt.ptr) + i + 1,
                           .width = j - i - 1};
         struct print_arg assumedName = va_arg(l, struct print_arg);
+        if (!assumedName.ref)
+          return put("__ NO ARGUMENT PROVIDED, ENDING PRINT __", 40);
+
         print_f_helper(assumedName, typeName, put);
         i = j;
         check = 0;
@@ -260,15 +216,13 @@ static void print_f(outputFunction put, um_fp fmt, ...) {
 
 #ifndef __cplusplus
 #define MAKE_PRINT_ARG(a)                                                      \
-  ((struct print_arg){                                                         \
-      .ref = ((typeof(a)[1]){a}),                                              \
-      .name = _Generic((a),                                                    \
-          int: ((um_fp){.ptr = (uint8_t *)"int", .width = 3}),                 \
-          char: ((um_fp){.ptr = (uint8_t *)"char", .width = 4}),               \
-          um_fp: ((um_fp){.ptr = (uint8_t *)"um_fp", .width = 5}),             \
-          size_t: ((um_fp){.ptr = (uint8_t *)"size_t", .width = 6}),           \
-          struct print_arg: a,                                                 \
-          default: ((um_fp){.ptr = NULL, .width = 0}))})
+  ((struct print_arg){.ref = ((typeof(a)[1]){a}),                              \
+                      .name = _Generic((a),                                    \
+                          int: um_from("int"),                                 \
+                          char: um_from("char"),                               \
+                          um_fp: um_from("um_fp"),                             \
+                          size_t: um_from("size_t"),                           \
+                          default: nullUmf)})
 #else
 template <typename T> print_arg make_print_arg(T &a) {
   return print_arg{.ref = &a, .name = nullUmf};
@@ -293,18 +247,15 @@ print_arg make_print_arg(um_fp &a) {
 
 #define print(fmt, ...)                                                        \
   print_f(defaultPrinter,                                                      \
-          um_from(fmt) __VA_OPT__(, APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)))
+          um_from(fmt) __VA_OPT__(, APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)),     \
+          EMPTY_PRINT_ARG)
 #define print_wf(fmt, printerfunction, ...)                                    \
   print_f(printerfunction, um_from(fmt),                                       \
-          __VA_OPT__(, APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)))
+          __VA_OPT__(, APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)), EMPTY_PRINT_ARG)
 
-#define println(fmt, ...)                                                      \
-  print_f(defaultPrinter, um_from(fmt "\n") __VA_OPT__(                        \
-                              , APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)))
-
+#define println(fmt, ...) print(fmt "\n", __VA_ARGS__)
 #define println_wf(fmt, printerfunction, ...)                                  \
-  print_f(printerfunction, um_from(fmt "\n") __VA_OPT__(                       \
-                               , APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)))
+  print_wf(fmt "\n", printerfunction, __VA_ARGS__)
 static void defaultPrinter(char *c, unsigned int length) {
   fwrite(c, sizeof(char), length, stdout);
 }

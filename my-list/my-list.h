@@ -83,6 +83,8 @@ List *List_combine(List *l, List *l2);
 #define mList_insert(list, type, value, index)                                 \
   List_insert(list, index, (type[1]){value})
 
+#define mList_set(list, type, value, index)                                    \
+  List_set(list, index, (type[1]){value})
 #define mList(type, ...)                                                       \
   List_fromArr((type[]){__VA_ARGS__}, sizeof(type),                            \
                sizeof((type[]){__VA_ARGS__}) / sizeof(type))

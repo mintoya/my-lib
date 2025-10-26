@@ -2,6 +2,7 @@
 #define STRING_LIST_H
 #include "../my-list/my-list.h"
 #include "um_fp.h"
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -17,6 +18,10 @@ typedef struct {
   List List_stringMetaData;
 } stringList;
 
+typedef struct {
+  um_fp raw;
+} stringListView;
+
 stringList *stringList_new();
 um_fp stringList_get(stringList *l, unsigned int index);
 void stringList_insert(stringList *l, um_fp, unsigned int index);
@@ -28,7 +33,7 @@ void stringList_append(stringList *l, um_fp);
   dst += length / sizeof(uint8_t);
 // memory layot:
 //  { size_t:keycount | metadata buffer | data buffer }
-static inline um_fp stringList_tobuf(stringList *l) {
+static inline stringListView stringList_tobuf(stringList *l) {
   size_t area = List_headArea(&(l->List_stringMetaData)) +
                 List_headArea(&(l->List_char)) + sizeof(size_t);
   size_t metalength = l->List_stringMetaData.length;
@@ -40,14 +45,16 @@ static inline um_fp stringList_tobuf(stringList *l) {
           List_headArea(&l->List_stringMetaData));
   advance(use, l->List_char.head, List_headArea(&l->List_char));
 
-  return res;
+  return ((stringListView){.raw = res});
 }
+
+void stringListView_free(stringListView slv);
 #undef advance
 #define advance(dst, src, length)                                              \
   memcpy(dst, src, length);                                                    \
   src += length / sizeof(uint8_t);
-static inline stringList *stringList_fromBuf(um_fp um) {
-  uint8_t *ptr = um.ptr;
+static inline stringList *stringList_fromBuf(stringListView um) {
+  uint8_t *ptr = um.raw.ptr;
   size_t metalength;
   advance(&metalength, ptr, sizeof(size_t));
 
@@ -61,7 +68,7 @@ static inline stringList *stringList_fromBuf(um_fp um) {
   };
   advance(l->List_stringMetaData.head, ptr,
           List_headArea(&(l->List_stringMetaData)));
-  unsigned int charlength = (unsigned int)(um.ptr + um.width - ptr);
+  unsigned int charlength = (unsigned int)(um.raw.ptr + um.raw.width - ptr);
   l->List_char = (List){.width = sizeof(char),
                         .length = charlength,
                         .size = charlength,
@@ -71,6 +78,10 @@ static inline stringList *stringList_fromBuf(um_fp um) {
   return l;
 }
 #undef advance
+
+List stringListView_MetaList(stringListView slv);
+List stringListView_CharList(stringListView slv);
+um_fp stringListView_get(stringListView slv, unsigned int index);
 
 // returns length if not found
 unsigned int stringList_search(stringList *l, um_fp key);
@@ -114,7 +125,7 @@ stringList *stringList_new() {
 #define max(a, b) ((a < b) ? (b) : (a))
 
 um_fp stringList_get(stringList *l, unsigned int index) {
-  if (index > l->List_stringMetaData.length)
+  if (index >= l->List_stringMetaData.length)
     return nullUmf;
   stringMetaData thisS =
       mList_get(&(l->List_stringMetaData), stringMetaData, index);
@@ -139,7 +150,10 @@ unsigned int stringList_search(stringList *l, um_fp what) {
 stringList *stringList_remake(stringList *origional) {
   stringList *res = stringList_new();
   for (unsigned int i = 0; i < stringList_length(origional); i++) {
-    stringList_append(res, stringList_get(origional, i));
+    um_fp item = stringList_get(origional, i);
+    if (item.ptr && item.width) {
+      stringList_append(res, item);
+    }
   }
   return res;
 }
@@ -183,6 +197,36 @@ void stringList_set(stringList *l, um_fp value, unsigned int index) {
   }
 }
 
+List stringListView_MetaList(stringListView slv) {
+  size_t length = *(size_t *)slv.raw.ptr;
+  List res = {
+      .width = sizeof(stringMetaData),
+      .length = (unsigned int)length,
+      .size = (unsigned int)length,
+      .head = slv.raw.ptr + sizeof(size_t),
+  };
+  return res;
+}
+List stringListView_CharList(stringListView slv) {
+  size_t flength = *(size_t *)slv.raw.ptr;
+  size_t length =
+      slv.raw.width - (sizeof(size_t) + flength * sizeof(stringMetaData));
+  List res = {
+      .width = sizeof(char),
+      .length = (unsigned int)length,
+      .size = (unsigned int)length,
+      .head = slv.raw.ptr + sizeof(size_t) + flength * sizeof(stringMetaData),
+  };
+  return res;
+}
+um_fp stringListView_get(stringListView slv, unsigned int index) {
+  stringList temp = (stringList){
+      .List_char = stringListView_CharList(slv),
+      .List_stringMetaData = stringListView_MetaList(slv),
+  };
+  return stringList_get(&temp, index);
+}
+void stringListView_free(stringListView slv) { free(slv.raw.ptr); }
 void stringList_free(stringList *l) {
   free(l->List_char.head);
   free(l->List_stringMetaData.head);

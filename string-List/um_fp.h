@@ -1,10 +1,8 @@
 #ifndef UM_FP_H
 #define UM_FP_H
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 typedef struct fat_pointer {
   uint8_t *ptr;
@@ -21,7 +19,7 @@ static inline int um_fp_cmp(um_fp a, um_fp b) {
   int res = 0;
   unsigned int i = 0;
   for (unsigned int i = 0; i < a.width && !res; i++) {
-    res = ((char *)a.ptr)[i] - ((char *)b.ptr)[i];
+    res = ((uint8_t *)a.ptr)[i] - ((uint8_t *)b.ptr)[i];
   }
   return res;
 }
@@ -37,38 +35,11 @@ inline bool operator!=(const um_fp &a, const um_fp &b) { return !um_eq(a, b); }
 
 #define nullUmf ((um_fp){.ptr = NULL, .width = 0})
 
-static inline void um_writeFile(char *filename, um_fp data) {
-  FILE *f = fopen(filename, "w");
-  if (!f) {
-    fprintf(stderr, "couldnt write to file! :%s\n", filename);
-    return;
-  }
-  fwrite(&data.width, sizeof(data.width), 1, f);
-  fwrite(data.ptr, sizeof(char), data.width, f);
-  fclose(f);
-}
-// on the stack
-static um_fp um_readFile(char *filename) {
-  um_fp res;
-  FILE *f = fopen(filename, "r");
-  if (!f) {
-    fprintf(stderr, "couldnt read from file! :%s\n", filename);
-    return nullUmf;
-  }
-  if (fread(&(res.width), sizeof(res.width), 1, f) != 1) {
-    fprintf(stderr, "file too small or corrupted %s\n", filename);
-    fclose(f);
-    return nullUmf;
-  }
-  res.ptr = (uint8_t *)malloc(res.width);
-  if (fread(res.ptr, sizeof(char), res.width, f) != res.width) {
-    fprintf(stderr, "file too small or corrupted %s\n", filename);
-    fclose(f);
-    return nullUmf;
-  }
-  fclose(f);
-  return res;
-}
+#define um_block(var)                                                          \
+  ((um_fp){.ptr = (uint8_t *)(typeof(var)[1]){var},                            \
+           .width = sizeof(typeof(var))})
+#define um_blockT(type, var)                                                   \
+  ((um_fp){.ptr = (uint8_t *)(type[1]){var}, .width = sizeof(type)})
 
 #ifndef __cplusplus
 #define um_fromT(type, val)                                                    \
