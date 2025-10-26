@@ -45,54 +45,55 @@ REGISTER_PRINTER(UMapView, {
   List metaList = UMapView_getMeta(in);
   UMap_innertype *meta = (UMap_innertype *)metaList.head;
 
-  put("[", 1);
+  put("{", 1);
   for (int i = 0; i < stringListView_MetaList(keys).length; i++) {
-    put("{", 1);
     um_fp key = stringListView_get(keys, i);
     um_fp val = stringListView_get(vals, i);
     UMap_innertype tn = meta[i];
     USETYPEPRINTER(um_fp, key);
-    put("->", 2);
+    put(":", 2);
     switch (tn) {
     case NORMAL:
       USETYPEPRINTER(um_fp, val);
       break;
     case LIST:
-      val = um_from("<LIST>");
-      USETYPEPRINTER(um_fp, val);
+      USETYPEPRINTER(stringListView, UMapView_getVals((UMapView){.raw = val}));
       break;
     case MAP:
       USETYPEPRINTER(UMapView, (UMapView){.raw = val});
       break;
     }
-    put("}", 1);
+    put(";", 1);
   }
-  put("]", 1);
+  put("}", 1);
 });
 REGISTER_PRINTER(UMap, {
-  put("[", 1);
+  put("{", 1);
   for (int i = 0; i < stringList_length(in.keys); i++) {
-    put("{", 1);
     um_fp key = stringList_get(in.keys, i);
     um_fp val = stringList_get(in.vals, i);
     UMap_innertype tn = UMap_getInnerType(&in, i);
     USETYPEPRINTER(um_fp, key);
-    put("->", 2);
+    stringListView slv;
+    List slvt;
+    UMapView mv;
+    put(":", 2);
     switch (tn) {
     case NORMAL:
       USETYPEPRINTER(um_fp, val);
       break;
     case LIST:
-      val = um_from("<LIST>");
-      USETYPEPRINTER(um_fp, val);
+      mv = (UMapView){.raw = val};
+      USENAMEDPRINTER("UMapView<int,obj>", mv);
       break;
     case MAP:
-      USETYPEPRINTER(UMapView, (UMapView){.raw = val});
+      mv = (UMapView){.raw = val};
+      USETYPEPRINTER(UMapView, mv);
       break;
     }
-    put("}", 1);
+    put(";", 1);
   }
-  put("]", 1);
+  put("}", 1);
 });
 REGISTER_SPECIAL_PRINTER("UMap*", UMap *, { USENAMEDPRINTER("UMap", *in); });
 
@@ -116,12 +117,39 @@ REGISTER_SPECIAL_PRINTER("List*", List *, {
   }
   put("]", 1);
 });
+
+REGISTER_SPECIAL_PRINTER("UMapView<int,obj>", UMapView, {
+  stringListView slv = UMapView_getVals(in);
+  List metaList = UMapView_getMeta(in);
+  UMap_innertype *meta = (UMap_innertype *)metaList.head;
+  put("[", 1);
+  for (int i = 0; i < metaList.length; i++) {
+    um_fp val = stringListView_get(slv, i);
+    switch (meta[i]) {
+    case NORMAL:
+      USETYPEPRINTER(um_fp, val);
+      break;
+    case LIST:
+      USENAMEDPRINTER("UMapView<int,obj>", (UMapView){.raw = val})
+      break;
+    case MAP:
+      USETYPEPRINTER(UMapView, (UMapView){.raw = val});
+      break;
+    }
+    if (i != metaList.length - 1) {
+      put(",", 1);
+    }
+  }
+
+  put("]", 1);
+});
 int main() {
   UMap *m = UMap_new();
   UMap_set(m, um_from("hello0"), um_from("world"));
   UMap_set(m, um_from("hello1"), um_from("world1"));
   UMap_setChild(m, um_from("a"), MAP, m);
   UMap_setChild(m, um_from("DEEPER"), MAP, m);
+  UMap_setChild(m, um_from("listTest"), LIST, m);
 
   UMapView v = {.raw = UMap_getValAtKey(m, um_from("a"))};
 
@@ -131,7 +159,7 @@ int main() {
   println("serchtest, emptykey: ${um_fp}", temp);
 
   println("${UMap*}", m);
-  println("${um_fp<void>}", um_blockT(uint8_t,4));
+  println("${um_fp<void>}", um_blockT(uint8_t, 4));
   println("${}", 1);
 
   UMap_free(m);

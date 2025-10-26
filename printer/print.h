@@ -29,7 +29,7 @@ __attribute__((destructor)) static void printerDeinit() {
 #define GETTYPEPRINTERFN(T) _##T##_printer
 
 #define REGISTER_PRINTER(T, ...)                                               \
-  void _##T##_printer(outputFunction put, void *_v_in_ptr) {                   \
+  void GETTYPEPRINTERFN(T)(outputFunction put, void *_v_in_ptr) {              \
     T in = *(T *)_v_in_ptr;                                                    \
     __VA_ARGS__                                                                \
   }                                                                            \
@@ -62,11 +62,12 @@ __attribute__((destructor)) static void printerDeinit() {
   REGISTER_SPECIAL_PRINTER_NEEDID(UNIQUE_PRINTER_FN, str, type, __VA_ARGS__)
 // for use inside of a registerprinter
 // helps use builtin printers
-#define USETYPEPRINTER(T, v) GETTYPEPRINTERFN(T)(put, &(v))
+#define USETYPEPRINTER(T, val) GETTYPEPRINTERFN(T)(put, ((T[1]){val}))
 
 #define USENAMEDPRINTER(strname, val)                                          \
-  print_f_helper((struct print_arg){.ref = &val, .name = nullUmf},             \
-                 um_from(strname), put);
+  print_f_helper(                                                              \
+      (struct print_arg){.ref = (typeof(val)[1]){val}, .name = nullUmf},       \
+      um_from(strname), put);
 #define um_charArr(um) ((char *)(um.ptr))
 struct print_arg {
   void *ref;
@@ -116,45 +117,28 @@ REGISTER_SPECIAL_PRINTER("um_fp<void>", um_fp, {
     unsigned char bottom = c & 0x0f;
     // clang-format off
     switch (top) {
-    case 0x0: put("0", 1); break;
-    case 0x1: put("1", 1); break;
-    case 0x2: put("2", 1); break;
-    case 0x3: put("3", 1); break;
-    case 0x4: put("4", 1); break;
-    case 0x5: put("5", 1); break;
-    case 0x6: put("6", 1); break;
-    case 0x7: put("7", 1); break;
-    case 0x8: put("8", 1); break;
-    case 0x9: put("9", 1); break;
-    case 0xa: put("a", 1); break;
-    case 0xb: put("b", 1); break;
-    case 0xc: put("c", 1); break;
-    case 0xd: put("d", 1); break;
-    case 0xe: put("e", 1); break;
-    case 0xf: put("f", 1); break;
+      case 0x0: put("0", 1); break; case 0x1: put("1", 1); break;
+      case 0x2: put("2", 1); break; case 0x3: put("3", 1); break;
+      case 0x4: put("4", 1); break; case 0x5: put("5", 1); break;
+      case 0x6: put("6", 1); break; case 0x7: put("7", 1); break;
+      case 0x8: put("8", 1); break; case 0x9: put("9", 1); break;
+      case 0xa: put("a", 1); break; case 0xb: put("b", 1); break;
+      case 0xc: put("c", 1); break; case 0xd: put("d", 1); break;
+      case 0xe: put("e", 1); break; case 0xf: put("f", 1); break;
     }
     switch (bottom) {
-    case 0x0: put("0", 1); break;
-    case 0x1: put("1", 1); break;
-    case 0x2: put("2", 1); break;
-    case 0x3: put("3", 1); break;
-    case 0x4: put("4", 1); break;
-    case 0x5: put("5", 1); break;
-    case 0x6: put("6", 1); break;
-    case 0x7: put("7", 1); break;
-    case 0x8: put("8", 1); break;
-    case 0x9: put("9", 1); break;
-    case 0xa: put("a", 1); break;
-    case 0xb: put("b", 1); break;
-    case 0xc: put("c", 1); break;
-    case 0xd: put("d", 1); break;
-    case 0xe: put("e", 1); break;
-    case 0xf: put("f", 1);
-      break;
+      case 0x0: put("0", 1); break; case 0x1: put("1", 1); break;
+      case 0x2: put("2", 1); break; case 0x3: put("3", 1); break;
+      case 0x4: put("4", 1); break; case 0x5: put("5", 1); break;
+      case 0x6: put("6", 1); break; case 0x7: put("7", 1); break;
+      case 0x8: put("8", 1); break; case 0x9: put("9", 1); break;
+      case 0xa: put("a", 1); break; case 0xb: put("b", 1); break;
+      case 0xc: put("c", 1); break; case 0xd: put("d", 1); break;
+      case 0xe: put("e", 1); break; case 0xf: put("f", 1); break;
     }
     in.width -= sizeof(uint8_t);
-  }
-  put("}", 2);
+    }
+    put("}", 2);
 
   // clang-format on
 });
@@ -225,20 +209,21 @@ static void print_f(outputFunction put, um_fp fmt, ...) {
                           default: nullUmf)})
 #else
 template <typename T> print_arg make_print_arg(T &a) {
-  return print_arg{.ref = &a, .name = nullUmf};
+  return print_arg{.ref = (T[1]){a}, .name = nullUmf};
 }
 template <> print_arg make_print_arg(int &a) {
-  return print_arg{.ref = &a, .name = um_from("int")};
+
+  return print_arg{.ref = (int[1]){a}, .name = um_from("int")};
 }
 print_arg make_print_arg(char &a) {
   return print_arg{.ref = &a, .name = um_from("char")};
 }
 print_arg make_print_arg(size_t &a) {
-  return print_arg{.ref = &a, .name = um_from("size_t")};
+  return print_arg{.ref = (size_t[1]){a}, .name = um_from("size_t")};
 }
 print_arg make_print_arg(um_fp &a) {
 
-  return print_arg{.ref = &a, .name = um_from("um_fp")};
+  return print_arg{.ref = (um_fp[1]){a}, .name = um_from("um_fp")};
 }
 #define MAKE_PRINT_ARG(a) make_print_arg(a)
 #endif
