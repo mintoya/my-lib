@@ -36,6 +36,7 @@ um_fp printer_arg_after(char delim, um_fp slice) {
   uint8_t *ptr = slice.ptr;
   while (i < slice.width && ptr[i] != delim)
     i++;
+  i = (i < slice.width) ? (i + 1) : (i);
   slice.ptr += i;
   slice.width -= i;
   return slice;
@@ -177,13 +178,21 @@ struct print_arg {
   });
   REGISTER_SPECIAL_PRINTER("um_fp<void>", um_fp, {
     char cut0s = 0;
+    char useLength = 0;
     PRINTERARGSEACH({
       if (um_eq(um_from("c0"), arg)) {
         cut0s = 1;
+      } else if (um_eq(um_from("length"), arg)) {
+        useLength = 1;
       }
     });
 
-    put("0x{", 3);
+
+    put("0x", 2);
+    if(useLength){
+      USETYPEPRINTER(size_t, in.width);
+    }
+    put("{", 1);
     int counter = 0;
     while (in.width) {
       uint8_t c = ((uint8_t *)in.ptr)[in.width - 1];

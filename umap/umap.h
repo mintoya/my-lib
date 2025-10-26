@@ -43,10 +43,14 @@ unsigned int UMapView_binarySearch(UMapView map, um_fp key);
 UMap *UMap_new();
 um_fp UMap_getValAtKey(UMap *map, um_fp key);
 unsigned int UMap_set(UMap *map, um_fp key, um_fp val);
+// DONT USE WITH AN ACTUAL UMAP
+unsigned int UMap_setIndex(UMap *map, int index, um_fp val);
+unsigned int UMap_setChildIndex(UMap *map, int i, UMap_innertype type,
+                                UMap *ref);
 // make a copy without unused keys & vals
 UMap *UMap_remake(UMap *map);
 void UMap_free(UMap *map);
-void UMap_setChild(UMap *map, um_fp key, UMap_innertype, UMap *ref);
+unsigned int UMap_setChild(UMap *map, um_fp key, UMap_innertype, UMap *ref);
 
 /*
  * not modifiable
