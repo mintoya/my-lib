@@ -148,7 +148,6 @@ int main() {
   UMap_set(m, um_from("hello0"), um_from("world"));
   UMap_set(m, um_from("hello1"), um_from("world1"));
   UMap_setChild(m, um_from("a"), MAP, m);
-  UMap_setChild(m, um_from("DEEPER"), MAP, m);
   UMap_setChild(m, um_from("listTest"), LIST, m);
 
   UMapView v = {.raw = UMap_getValAtKey(m, um_from("a"))};
@@ -159,8 +158,11 @@ int main() {
   println("serchtest, emptykey: ${um_fp}", temp);
 
   println("${UMap*}", m);
-  println("${um_fp<void>}", um_blockT(uint8_t, 4));
-  println("${}", 1);
+  UMapView uv = UMap_toBuf(m);
+  println("size: ${} ${um_fp<void>}", uv.raw.width, uv.raw);
+  println("size: ${} ${um_fp<void>: c0 }", uv.raw.width, uv.raw);
+  println("test");
+  UMapView_free(uv);
 
   UMap_free(m);
   return 0;

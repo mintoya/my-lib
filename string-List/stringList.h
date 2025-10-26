@@ -98,7 +98,7 @@ static inline unsigned int stringList_length(stringList *l) {
 #include <string.h>
 
 #ifndef STRING_LIST_minSize
-#define STRING_LIST_minSize 20
+#define STRING_LIST_minSize 5
 #endif
 
 stringList *stringList_new() {

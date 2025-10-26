@@ -1,7 +1,7 @@
-CC = clang
+CC = gcc
 DIR = build
 # CFLAGS = -w 
-CFLAGS = -w -g -fsanitize=address
+CFLAGS = -fsanitize=address -g -O0
 OBJECTS = main.c  umap/umap.c 
 make: $(DIR) $(OBJECTS)
 	$(CC) -o $(DIR)/a $(OBJECTS) $(CFLAGS)

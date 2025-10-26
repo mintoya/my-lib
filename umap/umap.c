@@ -190,3 +190,5 @@ UMap *UMap_remake(UMap *map) {
   }
   return res;
 }
+
+void UMapView_free(UMapView umv) { free(umv.raw.ptr); }

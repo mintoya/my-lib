@@ -65,6 +65,7 @@ List UMapView_getMeta(UMapView map);
 um_fp UMapView_getKeyAtIndex(UMapView map, unsigned int index);
 um_fp UMapView_getValAtIndex(UMapView map, unsigned int index);
 um_fp UMapView_getValAtKey(UMapView map, um_fp key);
+void UMapView_free(UMapView umv);
 
 #endif // UMAP_H
        //
