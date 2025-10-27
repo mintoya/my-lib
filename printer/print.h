@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PRINTER_H
+#define PRINTER_H
 #include "../my-list/my-list.h"
 #include "../string-List/stringList.h"
 #include "../string-List/um_fp.h"
@@ -7,56 +8,27 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <sys/cdefs.h>
 
 typedef void (*outputFunction)(char *, unsigned int length);
 typedef void (*printerFunction)(outputFunction, void *, um_fp args);
+// typedef struct {
+//   outputFunction o;
+//   um_fp env;
+// } outputClosure;
 
 static List *printerFunctions;
 static stringList *typeNamesList;
+// arg utils
+// clang-format off
 
-inline unsigned int printer_arg_indexOf(um_fp string, char c) {
-  int i;
-  char *ptr = (char *)string.ptr;
-  for (i = 0; i < string.width && ptr[i] != c; i++)
-    ;
-  return i;
-}
+  unsigned int printer_arg_indexOf(um_fp string, char c);
+  um_fp printer_arg_until(char delim, um_fp string) ;
+  um_fp printer_arg_after(char delim, um_fp slice) ;
+  um_fp printer_arg_trim(um_fp in) ;
 
-um_fp printer_arg_until(char delim, um_fp string) {
-  size_t i = 0;
-  uint8_t *ptr = (uint8_t *)string.ptr;
-  while (i < string.width && ptr[i] != delim)
-    i++;
-  string.width = i;
-  return string;
-}
+// clang-format on
 
-um_fp printer_arg_after(char delim, um_fp slice) {
-  size_t i = 0;
-  uint8_t *ptr = slice.ptr;
-  while (i < slice.width && ptr[i] != delim)
-    i++;
-  i = (i < slice.width) ? (i + 1) : (i);
-  slice.ptr += i;
-  slice.width -= i;
-  return slice;
-}
-um_fp printer_arg_trim(um_fp in) {
-  um_fp res = in;
-  int front = 0;
-  int back = in.width - 1;
-  while (front < in.width && ((uint8_t *)in.ptr)[front] == ' ') {
-    front++;
-  }
-  while (back > front && ((uint8_t *)in.ptr)[front] == ' ') {
-    back--;
-  }
-  res = (um_fp){
-      .ptr = in.ptr + front,
-      .width = (size_t)(back - front + 1),
-  };
-  return res;
-}
 __attribute__((constructor(200))) static void printerInit() {
   printerFunctions = List_new(sizeof(printerFunction));
   typeNamesList = stringList_new();
@@ -68,12 +40,13 @@ __attribute__((destructor)) static void printerDeinit() {
 #define GETTYPEPRINTERFN(T) _##T##_printer
 
 #define REGISTER_PRINTER(T, ...)                                               \
-  void GETTYPEPRINTERFN(T)(outputFunction put, void *_v_in_ptr, um_fp args) {  \
+  static void GETTYPEPRINTERFN(T)(outputFunction put, void *_v_in_ptr,         \
+                                  um_fp args) {                                \
     (void)args;                                                                \
     T in = *(T *)_v_in_ptr;                                                    \
     __VA_ARGS__                                                                \
   }                                                                            \
-  __attribute__((constructor(201))) void register_##T() {                      \
+  __attribute__((constructor(201))) static void register_##T() {               \
     stringList_append(typeNamesList,                                           \
                       (um_fp){.ptr = (uint8_t *)#T, .width = sizeof(#T) - 1}); \
     List_append(printerFunctions, (printerFunction[1]){GETTYPEPRINTERFN(T)});  \
@@ -88,11 +61,11 @@ __attribute__((destructor)) static void printerDeinit() {
 #define UNIQUE_PRINTER_FN2                                                     \
   LABEL_PRINTER_GEN(printerConstructor, UNIQUE_GEN_PRINTER)
 #define REGISTER_SPECIAL_PRINTER_NEEDID(id, str, type, ...)                    \
-  void id(outputFunction put, void *_v_in_ptr, um_fp args) {                   \
+  static void id(outputFunction put, void *_v_in_ptr, um_fp args) {            \
     type in = *(type *)_v_in_ptr;                                              \
     __VA_ARGS__                                                                \
   }                                                                            \
-  __attribute__((constructor(201))) void UNIQUE_PRINTER_FN2() {                \
+  __attribute__((constructor(201))) static void UNIQUE_PRINTER_FN2() {         \
     stringList_append(typeNamesList,                                           \
                       (um_fp){.ptr = (uint8_t *)str, .width = strlen(str)});   \
     List_append(printerFunctions, (printerFunction[1]){id});                   \
@@ -118,7 +91,6 @@ __attribute__((destructor)) static void printerDeinit() {
     tempargs = printer_arg_trim(tempargs);                                     \
   }
 
-#define um_charArr(um) ((char *)(um.ptr))
 struct print_arg {
   void *ref;
   um_fp name;
@@ -139,8 +111,6 @@ struct print_arg {
 // USETYPEPRINTER(type,value)
 // you can pass args by specifying a type with a colon in it
 // like "um_fp<void>"
-
-
 
   REGISTER_PRINTER(char, { put(&in, 1); });
   REGISTER_PRINTER(um_fp, {
@@ -188,9 +158,10 @@ struct print_arg {
     });
 
 
-    put("0x", 2);
+    put("um_fp:", 6);
     if(useLength){
       USETYPEPRINTER(size_t, in.width);
+    }else{
     }
     put("{", 1);
     int counter = 0;
@@ -243,10 +214,122 @@ struct print_arg {
       in.width -= sizeof(uint8_t);
     }
     put("}", 2);
-});
+  });
 
 // clang-format on
 #pragma clang diagnostic pop
+
+void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
+                    um_fp args);
+
+void print_f(outputFunction put, um_fp fmt, ...);
+
+#ifndef __cplusplus
+#define MAKE_PRINT_ARG(a)                                                      \
+  ((struct print_arg){.ref = ((typeof(a)[1]){a}),                              \
+                      .name = _Generic((a),                                    \
+                          int: um_from("int"),                                 \
+                          char: um_from("char"),                               \
+                          um_fp: um_from("um_fp"),                             \
+                          size_t: um_from("size_t"),                           \
+                          default: nullUmf)})
+#else
+// clang-format off
+  template <typename T> print_arg make_print_arg(T &a) {
+    return print_arg{.ref = (T[1]){a}, .name = nullUmf};
+  }
+  template <> print_arg make_print_arg(int &a) {
+
+    return print_arg{.ref = (int[1]){a}, .name = um_from("int")};
+  }
+  print_arg make_print_arg(char &a) {
+    return print_arg{.ref = &a, .name = um_from("char")};
+  }
+  print_arg make_print_arg(size_t &a) {
+    return print_arg{.ref = (size_t[1]){a}, .name = um_from("size_t")};
+  }
+  print_arg make_print_arg(um_fp &a) {
+
+    return print_arg{.ref = (um_fp[1]){a}, .name = um_from("um_fp")};
+  }
+// clang-format on
+#define MAKE_PRINT_ARG(a) make_print_arg(a)
+#endif
+
+#define EMPTY_PRINT_ARG ((struct print_arg){.ref = NULL, .name = nullUmf})
+
+#define print_wf(printerfunction, fmt, ...)                                    \
+  print_f(printerfunction,                                                     \
+          um_from(fmt) __VA_OPT__(, APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)),     \
+          EMPTY_PRINT_ARG)
+
+#define print(fmt, ...) print_wf(defaultPrinter, fmt, __VA_ARGS__)
+#define println(fmt, ...) print_wf(defaultPrinter, fmt "\n", __VA_ARGS__)
+#define println_wf(printerfunction, fmt, ...)                                  \
+  print_wf(printerfunction, fmt "\n", __VA_ARGS__)
+
+#ifdef PRINTER_LIST_TYPENAMES
+__attribute__((constructor(203))) static void post_init() {
+  _um_fp_printer(defaultPrinter, (um_fp[1]){um_from("list of type names:\n")});
+  for (int i = 0; i < stringList_length(typeNamesList); i++) {
+    _um_fp_printer(defaultPrinter, (um_fp[1]){um_from("  ")});
+    _um_fp_printer(defaultPrinter,
+                   (um_fp[1]){stringList_get(typeNamesList, i)});
+    _um_fp_printer(defaultPrinter, (um_fp[1]){um_from("\n")});
+  }
+}
+#endif
+#include <unistd.h>
+static void defaultPrinter(char *c, unsigned int length) {
+  fwrite(c, sizeof(char), length, stdout);
+}
+
+#endif
+
+#ifdef PRINTER_C
+inline unsigned int printer_arg_indexOf(um_fp string, char c) {
+  int i;
+  char *ptr = (char *)string.ptr;
+  for (i = 0; i < string.width && ptr[i] != c; i++)
+    ;
+  return i;
+}
+
+inline um_fp printer_arg_until(char delim, um_fp string) {
+  size_t i = 0;
+  uint8_t *ptr = (uint8_t *)string.ptr;
+  while (i < string.width && ptr[i] != delim)
+    i++;
+  string.width = i;
+  return string;
+}
+
+inline um_fp printer_arg_after(char delim, um_fp slice) {
+  size_t i = 0;
+  uint8_t *ptr = slice.ptr;
+  while (i < slice.width && ptr[i] != delim)
+    i++;
+  i = (i < slice.width) ? (i + 1) : (i);
+  slice.ptr += i;
+  slice.width -= i;
+  return slice;
+}
+inline um_fp printer_arg_trim(um_fp in) {
+  um_fp res = in;
+  int front = 0;
+  int back = in.width - 1;
+  while (front < in.width && ((uint8_t *)in.ptr)[front] == ' ') {
+    front++;
+  }
+  while (back > front && ((uint8_t *)in.ptr)[front] == ' ') {
+    back--;
+  }
+  res = (um_fp){
+      .ptr = in.ptr + front,
+      .width = (size_t)(back - front + 1),
+  };
+  return res;
+}
 
 void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
                     um_fp args) {
@@ -264,7 +347,7 @@ void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
                                                                  args);
   }
 }
-
+#define um_charArr(um) ((char *)(um.ptr))
 void print_f(outputFunction put, um_fp fmt, ...) {
   va_list l;
   va_start(l, fmt);
@@ -306,67 +389,5 @@ void print_f(outputFunction put, um_fp fmt, ...) {
   }
   va_end(l);
 }
-
-#ifndef __cplusplus
-#define MAKE_PRINT_ARG(a)                                                      \
-  ((struct print_arg){.ref = ((typeof(a)[1]){a}),                              \
-                      .name = _Generic((a),                                    \
-                          int: um_from("int"),                                 \
-                          char: um_from("char"),                               \
-                          um_fp: um_from("um_fp"),                             \
-                          size_t: um_from("size_t"),                           \
-                          default: nullUmf)})
-#else
-// clang-format off
-  template <typename T> print_arg make_print_arg(T &a) {
-    return print_arg{.ref = (T[1]){a}, .name = nullUmf};
-  }
-  template <> print_arg make_print_arg(int &a) {
-
-    return print_arg{.ref = (int[1]){a}, .name = um_from("int")};
-  }
-  print_arg make_print_arg(char &a) {
-    return print_arg{.ref = &a, .name = um_from("char")};
-  }
-  print_arg make_print_arg(size_t &a) {
-    return print_arg{.ref = (size_t[1]){a}, .name = um_from("size_t")};
-  }
-  print_arg make_print_arg(um_fp &a) {
-
-    return print_arg{.ref = (um_fp[1]){a}, .name = um_from("um_fp")};
-  }
-// clang-format on
-#define MAKE_PRINT_ARG(a) make_print_arg(a)
-#endif
-
-#define EMPTY_PRINT_ARG ((struct print_arg){.ref = NULL, .name = nullUmf})
-
-#define print(fmt, ...)                                                        \
-  print_f(defaultPrinter,                                                      \
-          um_from(fmt) __VA_OPT__(, APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)),     \
-          EMPTY_PRINT_ARG)
-#define print_wf(fmt, printerfunction, ...)                                    \
-  print_f(printerfunction, um_from(fmt),                                       \
-          __VA_OPT__(, APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)), EMPTY_PRINT_ARG)
-
-#define println(fmt, ...) print(fmt "\n", __VA_ARGS__)
-#define println_wf(fmt, printerfunction, ...)                                  \
-  print_wf(fmt "\n", printerfunction, __VA_ARGS__)
-
-#ifdef PRINTER_LIST_TYPENAMES
-__attribute__((constructor(203))) static void post_init() {
-  _um_fp_printer(defaultPrinter, (um_fp[1]){um_from("list of type names:\n")});
-  for (int i = 0; i < stringList_length(typeNamesList); i++) {
-    _um_fp_printer(defaultPrinter, (um_fp[1]){um_from("  ")});
-    _um_fp_printer(defaultPrinter,
-                   (um_fp[1]){stringList_get(typeNamesList, i)});
-    _um_fp_printer(defaultPrinter, (um_fp[1]){um_from("\n")});
-  }
-}
-#endif
-
-void defaultPrinter(char *c, unsigned int length) {
-  fwrite(c, sizeof(char), length, stdout);
-}
-
 #undef um_charArr
+#endif

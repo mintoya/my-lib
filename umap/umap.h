@@ -2,6 +2,7 @@
 #define UMAP_H
 
 #include "../my-list/my-list.h"
+#include "../printer/print.h"
 #include "../string-List/stringList.h"
 #include <stdlib.h>
 #include <string.h>
@@ -20,6 +21,9 @@ typedef enum {
   MAP,        // umap with misc indexes
 } UMap_innertype;
 
+REGISTER_SPECIAL_PRINTER("UMap*", UMap *, {
+  USETYPEPRINTER(um_fp, um_from("UMap_unimplemented"));
+});
 static inline um_fp UMap_getKeyAtIndex(UMap *map, unsigned int index) {
   return stringList_get(map->keys, index);
 };
