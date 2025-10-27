@@ -1,10 +1,28 @@
-CC = gcc
+CC = clang
 DIR = build
 CFLAGS = -w 
 # CFLAGS = -fsanitize=address -g -O0
-OBJECTS = main.c  umap/umap.c 
+OBJECTS = main.c  
+
+UNAME_S := $(shell uname -s 2>/dev/null)
+
+ifeq ($(UNAME_S),Darwin)      # macOS (for comparison)
+    EXECUTABLE = a
+else ifeq ($(UNAME_S),Linux)  # Linux (for comparison)
+    EXECUTABLE = a
+else ifneq ($(findstring MINGW,$(UNAME_S)),) # MINGW/Git Bash on Windows
+    EXECUTABLE = a.exe
+else ifneq ($(findstring CYGWIN,$(UNAME_S)),) # Cygwin on Windows
+    EXECUTABLE = a.exe
+else ifneq ($(findstring MSYS,$(UNAME_S)),)   # MSYS/MinGW on Windows
+    EXECUTABLE = a.exe
+else                                          # Default (safe bet for Unix)
+    EXECUTABLE = a
+endif
+
+
 make: $(DIR) $(OBJECTS)
-	$(CC) -o $(DIR)/a $(OBJECTS) $(CFLAGS)
+	$(CC) -o $(DIR)/$(EXECUTABLE) $(OBJECTS) $(CFLAGS)
 
 $(DIR):
 	mkdir -p $(DIR)
@@ -12,18 +30,18 @@ $(DIR):
 clean:
 	rm -rf $(DIR)
 run: make
-	./build/a
+	./$(DIR)/$(EXECUTABLE) 
 test: make
-	$(CC) -o $(DIR)/a $(OBJECTS) $(CFLAGS) -g
-	gdb ./$(DIR)/a
+	$(CC) -o $(DIR)/$(EXECUTABLE) $(OBJECTS) $(CFLAGS) -g
+	gdb ./$(DIR)/$(EXECUTABLE)
 profile: make
 	@echo "perf report to view"
 	@sleep 2
-	perf record ./$(DIR)/a
+	perf record ./$(DIR)/$(EXECUTABLE)
 a: $(OBJECTS)
-	$(CC) -o $(DIR)/a $(OBJECTS) $(CFLAGS)
+	$(CC) -o $(DIR)/$(EXECUTABLE) $(OBJECTS) $(CFLAGS)
 
 main.o: main.c
 	$(CC) -c main.c $(CFLAGS)
-umap.o: umap/umap.c
-	$(CC) -c umap/umap.c $(CFLAGS)
+# umap.o: umap/umap.c
+# 	$(CC) -c umap/umap.c $(CFLAGS)

@@ -23,6 +23,7 @@ typedef struct {
 } stringListView;
 
 stringList *stringList_new();
+// returns null if over limit
 um_fp stringList_get(stringList *l, unsigned int index);
 void stringList_insert(stringList *l, um_fp, unsigned int index);
 void stringList_set(stringList *l, um_fp, unsigned int index);

@@ -4,11 +4,9 @@
 #include "../string-List/stringList.h"
 #include "../string-List/um_fp.h"
 #include "variadic.h"
-#include <alloca.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <sys/cdefs.h>
 
 typedef void (*outputFunction)(char *, unsigned int length);
 typedef void (*printerFunction)(outputFunction, void *, um_fp args);
@@ -79,7 +77,7 @@ __attribute__((destructor)) static void printerDeinit() {
 
 #define USENAMEDPRINTER(strname, val)                                          \
   print_f_helper(                                                              \
-      (struct print_arg){.ref = (typeof(val)[1]){val}, .name = nullUmf},       \
+      (struct print_arg){.ref = ((typeof(val)[1]){val}), .name = nullUmf},       \
       printer_arg_trim(printer_arg_until(':', um_from(strname))), put,         \
       printer_arg_after(':', um_from(strname)));
 #define PRINTERARGSEACH(...)                                                   \
@@ -279,7 +277,6 @@ __attribute__((constructor(203))) static void post_init() {
   }
 }
 #endif
-#include <unistd.h>
 static void defaultPrinter(char *c, unsigned int length) {
   fwrite(c, sizeof(char), length, stdout);
 }
