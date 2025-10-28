@@ -27,8 +27,13 @@ typedef struct List {
 } List;
 
 List *List_new(size_t bytes);
+// valid bytes list owns
 static inline size_t List_headArea(const List *l) {
   return (l->width * l->length);
+}
+// all bytes list owns
+static inline size_t List_fullHeadArea(const List *l) {
+  return (l->width * l->size);
 }
 static inline void *List_getRef(const List *l, unsigned int i) {
   void *res;
@@ -62,21 +67,22 @@ int List_search(List *l, const void *value);
 void List_insert(List *l, unsigned int i, void *element);
 void List_remove(List *l, unsigned int i);
 static inline void List_zeroOut(List *l) {
-  memset(l->head, 0, l->size * l->width);
+  memset(l->head, 0, List_fullHeadArea(l));
 }
 void List_free(List *l);
 void *List_toBuffer(List *l);
 void *List_fromBuffer(void *ref);
 List *List_deepCopy(List *l);
 List *List_combine(List *l, List *l2);
-#define mList_forEach(list, type, item, scope)                                 \
-  {                                                                            \
-    type item;                                                                 \
+#ifndef __cplusplus
+#define mList_forEach(list, type, ...)                                         \
+  do {                                                                         \
+    type in;                                                                   \
     for (unsigned int _i = 0; _i < (list)->length; _i++) {                     \
-      item = *((type *)List_getRef((list), _i));                               \
-      scope                                                                    \
+      in = (*(type *)List_getRef((list), _i));                                 \
+      __VA_ARGS__                                                              \
     }                                                                          \
-  }
+  } while (0)
 
 #define mList_get(list, type, index) *(type *)List_getRef(list, index)
 #define mList_add(list, type, ...) List_append(list, (type[1]){__VA_ARGS__})
@@ -84,12 +90,40 @@ List *List_combine(List *l, List *l2);
   List_insert(list, index, (type[1]){value})
 
 #define mList_set(list, type, value, index)                                    \
-  List_set(list, index, (type[1]){value})
+  List_set(list, index, ((type[1]){value}))
 #define mList(type, ...)                                                       \
   List_fromArr((type[]){__VA_ARGS__}, sizeof(type),                            \
                sizeof((type[]){__VA_ARGS__}) / sizeof(type))
+#else
+#define mList_get(list, type, index) (*(type *)List_getRef(list, index))
+#define mList_add(list, type, value)                                           \
+  do {                                                                         \
+    type __val = value;                                                        \
+    List_append(list, (const void *)&__val);                                   \
+  } while (0)
 
-#endif
+#define mList_insert(list, type, value, index)                                 \
+  do {                                                                         \
+    type __val = value;                                                        \
+    List_insert(list, index, (void *)&__val);                                  \
+  } while (0)
+
+#define mList_set(list, type, value, index)                                    \
+  do {                                                                         \
+    type __val = value;                                                        \
+    List_set(list, index, (const void *)&__val);                               \
+  } while (0)
+#define mList_forEach(list, type, ...)                                         \
+  do {                                                                         \
+    type in;                                                                   \
+    for (unsigned int _i = 0; _i < (list)->length; _i++) {                     \
+      in = (*(type *)List_getRef((list), _i));                                 \
+      __VA_ARGS__                                                              \
+    }                                                                          \
+  } while (0)
+#endif // macros
+
+#endif // MY_LIST_H
 
 #ifdef MY_LIST_C
 
