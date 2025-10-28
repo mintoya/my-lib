@@ -23,6 +23,8 @@ int main() {
   UMap_set(m, um_from("hello0"), um_from("world"));
   UMap_set(m, um_from("hello1"), um_from("world1"));
   UMap_setChild(m, um_from("deepMap"), m);
+  UMap_setChild(m, um_from("deepMap"), m);
+
   UMap_setList(m, um_from("deepList"), l);
 
   println("${UMapList*}", l);
