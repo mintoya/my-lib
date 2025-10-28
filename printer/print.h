@@ -8,35 +8,26 @@
 #include <stdint.h>
 #include <stdio.h>
 
+// temporary variables for compound literals
 #ifdef __cplusplus
-#include <type_traits>
-#include <utility>
-
-template <typename T> class TempRef {
-private:
-  using BaseT = std::remove_reference_t<T>;
-  BaseT value; // store inline, no heap
-
-public:
-  template <typename ArgType>
-  explicit TempRef(ArgType &&arg) : value(std::forward<ArgType>(arg)) {}
-
-  // --- Conversions ---
-  operator BaseT &() { return value; }
-  operator const BaseT &() const { return value; }
-  operator void *() { return (void *)&value; }
-  operator const void *() const { return (const void *)&value; }
-
-  // --- Rule of 5 (no heap, so default is fine) ---
-  TempRef(const TempRef &) = default;
-  TempRef &operator=(const TempRef &) = default;
-  TempRef(TempRef &&) noexcept = default;
-  TempRef &operator=(TempRef &&) noexcept = default;
-  ~TempRef() = default;
-};
-
+// clang-format off
+  #include <type_traits>
+  #include <utility>
+  template <typename T> class StackPush {
+  private:
+    using RealT = std::remove_reference_t<T>;
+    RealT value; // store inline, no heap
+  public:
+    template <typename ArgType>
+    explicit StackPush(ArgType &&arg) : value(std::forward<ArgType>(arg)) {}
+    operator RealT &() { return value; }
+    operator const RealT &() const { return value; }
+    operator void *() { return (void *)&value; }
+    operator const void *() const { return (const void *)&value; }
+  };
+// clang-format on
 #define typeof(m) decltype(m)
-#define REF(type, value) (TempRef<type>(value))
+#define REF(type, value) (StackPush<type>(value))
 #else
 #define REF(type, value) ((type[1]){value})
 #endif
@@ -71,13 +62,14 @@ __attribute__((destructor)) static void printerDeinit() {
 #define GETTYPEPRINTERFN(T) _##T##_printer
 
 #define REGISTER_PRINTER(T, ...)                                               \
-  static void GETTYPEPRINTERFN(T)(outputFunction put, void *_v_in_ptr,         \
-                                  um_fp args) {                                \
+  __attribute__((weak)) void GETTYPEPRINTERFN(T)(                              \
+      outputFunction put, void *_v_in_ptr, um_fp args) {                       \
     (void)args;                                                                \
     T in = *(T *)_v_in_ptr;                                                    \
     __VA_ARGS__                                                                \
   }                                                                            \
-  __attribute__((constructor(201))) static void register_##T() {               \
+  __attribute__((constructor(201)))                                            \
+  __attribute__((weak)) void register_##T() {                                  \
     stringList_append(typeNamesList,                                           \
                       (um_fp){.ptr = (uint8_t *)#T, .width = sizeof(#T) - 1}); \
     List_append(printerFunctions, REF(printerFunction, GETTYPEPRINTERFN(T)));  \
@@ -92,7 +84,8 @@ __attribute__((destructor)) static void printerDeinit() {
 #define UNIQUE_PRINTER_FN2                                                     \
   LABEL_PRINTER_GEN(printerConstructor, UNIQUE_GEN_PRINTER)
 #define REGISTER_SPECIAL_PRINTER_NEEDID(id, str, type, ...)                    \
-  static void id(outputFunction put, void *_v_in_ptr, um_fp args) {            \
+  __attribute__((weak)) void id(outputFunction put, void *_v_in_ptr,           \
+                                um_fp args) {                                  \
     type in = *(type *)_v_in_ptr;                                              \
     __VA_ARGS__                                                                \
   }                                                                            \
@@ -104,10 +97,7 @@ __attribute__((destructor)) static void printerDeinit() {
 
 #define REGISTER_SPECIAL_PRINTER(str, type, ...)                               \
   REGISTER_SPECIAL_PRINTER_NEEDID(UNIQUE_PRINTER_FN, str, type, __VA_ARGS__)
-// for use inside of a registerprinter
-// helps use builtin printers
 #define USETYPEPRINTER(T, val) GETTYPEPRINTERFN(T)(put, REF(T, val), nullUmf)
-
 #define USENAMEDPRINTER(strname, val)                                          \
   print_f_helper(                                                              \
       (struct print_arg){.ref = REF(typeof(val), val), .name = nullUmf},       \
@@ -136,12 +126,20 @@ struct print_arg {
 #pragma clang diagnostic ignored "-Wundefined-inline"
 
 
-// you shouldnt call print functions besides put
-// get around this with
-// USENAMEDPRINTER(typenamestring,value) or
+// the behavior of "put" is modular
+// 
+// for building printers
+// USENAMEDPRINTER(printerid,value)
 // USETYPEPRINTER(type,value)
-// you can pass args by specifying a type with a colon in it
-// like "um_fp<void>"
+//
+// typeprinter skips the search
+// named printer skips the string parsing
+// use print_wf with put to keep output consistant
+// 
+// you can pass args with a printerid and a colon 
+// ex: "um_fp<void>: c0 length"
+// assumptions are not enabled with a c++ compiler,
+// so no ${}
 
   REGISTER_PRINTER(char, { put(&in, 1); });
   REGISTER_PRINTER(um_fp, {
@@ -284,10 +282,10 @@ void print_f(outputFunction put, um_fp fmt, ...);
           um_from(fmt) __VA_OPT__(, APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)),     \
           EMPTY_PRINT_ARG)
 
-#define print(fmt, ...) print_wf(defaultPrinter, fmt, __VA_ARGS__)
-#define println(fmt, ...) print_wf(defaultPrinter, fmt "\n", __VA_ARGS__)
 #define println_wf(printerfunction, fmt, ...)                                  \
   print_wf(printerfunction, fmt "\n", __VA_ARGS__)
+#define print(fmt, ...) print_wf(defaultPrinter, fmt, __VA_ARGS__)
+#define println(fmt, ...) print_wf(defaultPrinter, fmt "\n", __VA_ARGS__)
 
 #ifdef PRINTER_LIST_TYPENAMES
 __attribute__((constructor(203))) static void post_init() {
@@ -300,7 +298,7 @@ __attribute__((constructor(203))) static void post_init() {
   }
 }
 #endif
-static void defaultPrinter(char *c, unsigned int length) {
+__attribute__((hot)) static void defaultPrinter(char *c, unsigned int length) {
   fwrite(c, sizeof(char), length, stdout);
 }
 
@@ -359,9 +357,9 @@ void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
   }
   unsigned int index = stringList_search(typeNamesList, typeName);
   if (index >= printerFunctions->length) {
-    GETTYPEPRINTERFN(um_fp)(put, REF(um_fp, um_from("_NO_TYPE(")), nullUmf);
-    GETTYPEPRINTERFN(um_fp)(put, &typeName, nullUmf);
-    GETTYPEPRINTERFN(um_fp)(put, REF(um_fp, um_from(")")), nullUmf);
+    USETYPEPRINTER(um_fp, um_from("_NO_TYPE("));
+    USETYPEPRINTER(um_fp, typeName);
+    USETYPEPRINTER(um_fp, um_from(")"));
   } else {
     (*((printerFunction *)List_getRef(printerFunctions, index)))(put, ref,
                                                                  args);
