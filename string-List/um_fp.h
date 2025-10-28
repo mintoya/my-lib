@@ -53,9 +53,9 @@ inline bool operator!=(const um_fp &a, const um_fp &b) { return !um_eq(a, b); }
 template <typename T> inline um_fp um_from(T &val) {
   return {reinterpret_cast<uint8_t *>(&val), sizeof(T)};
 }
-inline um_fp um_from(std::string &s) {
-  return {reinterpret_cast<uint8_t *>(s.data()), s.size()};
-}
+// inline um_fp um_from(std::string &s) {
+//   return {reinterpret_cast<uint8_t *>(s.data()), s.size()};
+// }
 inline um_fp um_from(const std::string &s) {
   return {const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(s.data())),
           s.size()};

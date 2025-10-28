@@ -74,6 +74,16 @@ void *List_toBuffer(List *l);
 void *List_fromBuffer(void *ref);
 List *List_deepCopy(List *l);
 List *List_combine(List *l, List *l2);
+static inline void List_cleanup_handler(List **p_list) {
+  if (p_list && *p_list) {
+    List_free(*p_list);
+  }
+  *p_list = NULL;
+}
+// experimental idk
+#define List_AUTO(var_name, size)                                              \
+  List *var_name __attribute__((cleanup(List_cleanup_handler))) = List_new(size)
+
 #ifndef __cplusplus
 #define mList_forEach(list, type, ...)                                         \
   do {                                                                         \
@@ -83,7 +93,6 @@ List *List_combine(List *l, List *l2);
       __VA_ARGS__                                                              \
     }                                                                          \
   } while (0)
-
 #define mList_get(list, type, index) *(type *)List_getRef(list, index)
 #define mList_add(list, type, ...) List_append(list, (type[1]){__VA_ARGS__})
 #define mList_insert(list, type, value, index)                                 \

@@ -13,6 +13,7 @@
 
 int main() {
   UMap *m = UMap_new();
+
   UMapList *l = UMapList_new();
   UMapList_append(l, um_from("first"));
   UMapList_append(l, um_from("second"));
@@ -28,7 +29,7 @@ int main() {
   println("${UMap*}", m);
 
   UMapView umv = UMap_toBuf(m);
-  println("${um_fp<void>:c0}", umv.raw);
+  println("${um_fp<void>:c0 length}", umv.raw);
 
   UMapList_free(l);
   UMap_free(m);

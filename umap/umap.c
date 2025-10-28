@@ -45,8 +45,8 @@ UMap *UMap_new() {
 UMapList *UMapList_new() {
   UMapList *res = (UMapList *)malloc(sizeof(UMapList));
   *res = (UMapList){
-      .metadata = List_new(sizeof(UMap_innertype)),
       .vals = stringList_new(),
+      .metadata = List_new(sizeof(UMap_innertype)),
   };
   return res;
 }
@@ -90,26 +90,26 @@ unsigned int UMap_set(UMap *map, um_fp key, um_fp val) {
   if (index < length && !um_fp_cmp(UMap_getKeyAtIndex(map, index), key)) {
     stringList_set(map->keys, key, index);
     stringList_set(map->vals, val, index);
-    List_set(map->metadata, index, (UMap_innertype[1]){NORMAL});
+    mList_set(map->metadata, UMap_innertype, NORMAL, index);
   } else {
     stringList_insert(map->keys, key, index);
     stringList_insert(map->vals, val, index);
-    List_insert(map->metadata, index, (UMap_innertype[1]){NORMAL});
+    mList_insert(map->metadata, UMap_innertype, NORMAL, index);
   }
   return index;
 };
 unsigned int UMapList_set(UMapList *map, unsigned int index, um_fp val) {
   while (index >= map->metadata->length) {
     stringList_append(map->vals, nullUmf);
-    List_append(map->metadata, (UMap_innertype[1]){NORMAL});
+    mList_add(map->metadata, UMap_innertype, NORMAL);
   }
   stringList_set(map->vals, val, index);
-  List_set(map->metadata, index, (UMap_innertype[1]){NORMAL});
+  mList_set(map->metadata, UMap_innertype, NORMAL, index);
   return index;
 };
 unsigned int UMapList_append(UMapList *map, um_fp val) {
   stringList_append(map->vals, val);
-  List_append(map->metadata, (UMap_innertype[1]){NORMAL});
+  mList_add(map->metadata, UMap_innertype, NORMAL);
   return map->metadata->length - 1;
 };
 
@@ -221,14 +221,14 @@ um_fp UMapView_getValAtKey(UMapView map, um_fp key) {
 unsigned int UMap_setChild(UMap *map, um_fp key, UMap *ref) {
   um_fp um = UMap_toBuf(ref).raw;
   unsigned int index = UMap_set(map, key, um);
-  List_set(map->metadata, index, ((UMap_innertype[1]){MAP}));
+  mList_set(map->metadata, UMap_innertype, MAP, index);
   free(um.ptr);
   return index;
 }
 unsigned int UMap_setList(UMap *map, um_fp key, UMapList *ref) {
   um_fp um = UMapList_toBuf(ref).raw;
   unsigned int index = UMap_set(map, key, um);
-  List_set(map->metadata, index, ((UMap_innertype[1]){LIST}));
+  mList_set(map->metadata, UMap_innertype, LIST, index);
   free(um.ptr);
   return index;
 }

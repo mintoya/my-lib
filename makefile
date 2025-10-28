@@ -6,17 +6,17 @@ OBJECTS = main.c
 
 UNAME_S := $(shell uname -s 2>/dev/null)
 
-ifeq ($(UNAME_S),Darwin)      # macOS (for comparison)
+ifeq ($(UNAME_S),Darwin)    
     EXECUTABLE = a
-else ifeq ($(UNAME_S),Linux)  # Linux (for comparison)
+else ifeq ($(UNAME_S),Linux) 
     EXECUTABLE = a
-else ifneq ($(findstring MINGW,$(UNAME_S)),) # MINGW/Git Bash on Windows
+else ifneq ($(findstring MINGW,$(UNAME_S)),)
     EXECUTABLE = a.exe
-else ifneq ($(findstring CYGWIN,$(UNAME_S)),) # Cygwin on Windows
+else ifneq ($(findstring CYGWIN,$(UNAME_S)),)
     EXECUTABLE = a.exe
-else ifneq ($(findstring MSYS,$(UNAME_S)),)   # MSYS/MinGW on Windows
+else ifneq ($(findstring MSYS,$(UNAME_S)),) 
     EXECUTABLE = a.exe
-else                                          # Default (safe bet for Unix)
+else                                       
     EXECUTABLE = a
 endif
 

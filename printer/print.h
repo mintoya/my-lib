@@ -8,6 +8,39 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#ifdef __cplusplus
+#include <type_traits>
+#include <utility>
+
+template <typename T> class TempRef {
+private:
+  using BaseT = std::remove_reference_t<T>;
+  BaseT value; // store inline, no heap
+
+public:
+  template <typename ArgType>
+  explicit TempRef(ArgType &&arg) : value(std::forward<ArgType>(arg)) {}
+
+  // --- Conversions ---
+  operator BaseT &() { return value; }
+  operator const BaseT &() const { return value; }
+  operator void *() { return (void *)&value; }
+  operator const void *() const { return (const void *)&value; }
+
+  // --- Rule of 5 (no heap, so default is fine) ---
+  TempRef(const TempRef &) = default;
+  TempRef &operator=(const TempRef &) = default;
+  TempRef(TempRef &&) noexcept = default;
+  TempRef &operator=(TempRef &&) noexcept = default;
+  ~TempRef() = default;
+};
+
+#define typeof(m) decltype(m)
+#define REF(type, value) (TempRef<type>(value))
+#else
+#define REF(type, value) ((type[1]){value})
+#endif
+
 typedef void (*outputFunction)(char *, unsigned int length);
 typedef void (*printerFunction)(outputFunction, void *, um_fp args);
 // typedef struct {
@@ -47,7 +80,7 @@ __attribute__((destructor)) static void printerDeinit() {
   __attribute__((constructor(201))) static void register_##T() {               \
     stringList_append(typeNamesList,                                           \
                       (um_fp){.ptr = (uint8_t *)#T, .width = sizeof(#T) - 1}); \
-    List_append(printerFunctions, (printerFunction[1]){GETTYPEPRINTERFN(T)});  \
+    List_append(printerFunctions, REF(printerFunction, GETTYPEPRINTERFN(T)));  \
   }
 
 #define MERGE_PRINTER_M(a, b) a##b
@@ -66,18 +99,18 @@ __attribute__((destructor)) static void printerDeinit() {
   __attribute__((constructor(201))) static void UNIQUE_PRINTER_FN2() {         \
     stringList_append(typeNamesList,                                           \
                       (um_fp){.ptr = (uint8_t *)str, .width = strlen(str)});   \
-    List_append(printerFunctions, (printerFunction[1]){id});                   \
+    List_append(printerFunctions, REF(printerFunction, id));                   \
   }
 
 #define REGISTER_SPECIAL_PRINTER(str, type, ...)                               \
   REGISTER_SPECIAL_PRINTER_NEEDID(UNIQUE_PRINTER_FN, str, type, __VA_ARGS__)
 // for use inside of a registerprinter
 // helps use builtin printers
-#define USETYPEPRINTER(T, val) GETTYPEPRINTERFN(T)(put, ((T[1]){val}), nullUmf)
+#define USETYPEPRINTER(T, val) GETTYPEPRINTERFN(T)(put, REF(T, val), nullUmf)
 
 #define USENAMEDPRINTER(strname, val)                                          \
   print_f_helper(                                                              \
-      (struct print_arg){.ref = ((typeof(val)[1]){val}), .name = nullUmf},       \
+      (struct print_arg){.ref = REF(typeof(val), val), .name = nullUmf},       \
       printer_arg_trim(printer_arg_until(':', um_from(strname))), put,         \
       printer_arg_after(':', um_from(strname)));
 #define PRINTERARGSEACH(...)                                                   \
@@ -144,7 +177,9 @@ struct print_arg {
       l /= 10;
     }
   });
+
   REGISTER_SPECIAL_PRINTER("um_fp<void>", um_fp, {
+
     char cut0s = 0;
     char useLength = 0;
     PRINTERARGSEACH({
@@ -223,35 +258,23 @@ void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
 void print_f(outputFunction put, um_fp fmt, ...);
 
 #ifndef __cplusplus
+#define MAKE_PRINT_ARG_TYPE(type)                                              \
+  type:                                                                        \
+  um_from(#type)
 #define MAKE_PRINT_ARG(a)                                                      \
-  ((struct print_arg){.ref = ((typeof(a)[1]){a}),                              \
+  ((struct print_arg){.ref = REF(typeof(a), a),                                \
                       .name = _Generic((a),                                    \
-                          int: um_from("int"),                                 \
-                          char: um_from("char"),                               \
-                          um_fp: um_from("um_fp"),                             \
-                          size_t: um_from("size_t"),                           \
+                          MAKE_PRINT_ARG_TYPE(int),                            \
+                          MAKE_PRINT_ARG_TYPE(um_fp),                          \
+                          MAKE_PRINT_ARG_TYPE(char),                           \
+                          MAKE_PRINT_ARG_TYPE(size_t),                         \
                           default: nullUmf)})
 #else
-// clang-format off
-  template <typename T> print_arg make_print_arg(T &a) {
-    return print_arg{.ref = (T[1]){a}, .name = nullUmf};
-  }
-  template <> print_arg make_print_arg(int &a) {
-
-    return print_arg{.ref = (int[1]){a}, .name = um_from("int")};
-  }
-  print_arg make_print_arg(char &a) {
-    return print_arg{.ref = &a, .name = um_from("char")};
-  }
-  print_arg make_print_arg(size_t &a) {
-    return print_arg{.ref = (size_t[1]){a}, .name = um_from("size_t")};
-  }
-  print_arg make_print_arg(um_fp &a) {
-
-    return print_arg{.ref = (um_fp[1]){a}, .name = um_from("um_fp")};
-  }
-// clang-format on
-#define MAKE_PRINT_ARG(a) make_print_arg(a)
+#define MAKE_PRINT_ARG(a)                                                      \
+  ((struct print_arg){                                                         \
+      .ref = REF(typeof(a), a),                                                \
+      .name = nullUmf,                                                         \
+  })
 #endif
 
 #define EMPTY_PRINT_ARG ((struct print_arg){.ref = NULL, .name = nullUmf})
@@ -268,12 +291,12 @@ void print_f(outputFunction put, um_fp fmt, ...);
 
 #ifdef PRINTER_LIST_TYPENAMES
 __attribute__((constructor(203))) static void post_init() {
-  _um_fp_printer(defaultPrinter, (um_fp[1]){um_from("list of type names:\n")});
+  _um_fp_printer(defaultPrinter, REF(um_fp, um_from("list of type names:\n")));
   for (int i = 0; i < stringList_length(typeNamesList); i++) {
-    _um_fp_printer(defaultPrinter, (um_fp[1]){um_from("  ")});
+    _um_fp_printer(defaultPrinter, REF(um_fp, um_from(" ")));
     _um_fp_printer(defaultPrinter,
-                   (um_fp[1]){stringList_get(typeNamesList, i)});
-    _um_fp_printer(defaultPrinter, (um_fp[1]){um_from("\n")});
+                   REF(um_fp, stringList_get(typeNamesList, i)));
+    _um_fp_printer(defaultPrinter, REF(um_fp, um_from("\n")));
   }
 }
 #endif
@@ -336,9 +359,9 @@ void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
   }
   unsigned int index = stringList_search(typeNamesList, typeName);
   if (index >= printerFunctions->length) {
-    GETTYPEPRINTERFN(um_fp)(put, (um_fp[1]){(um_from("_NO_TYPE("))}, nullUmf);
-    GETTYPEPRINTERFN(um_fp)(put, (um_fp[1]){typeName}, nullUmf);
-    GETTYPEPRINTERFN(um_fp)(put, (um_fp[1]){(um_from(")"))}, nullUmf);
+    GETTYPEPRINTERFN(um_fp)(put, REF(um_fp, um_from("_NO_TYPE(")), nullUmf);
+    GETTYPEPRINTERFN(um_fp)(put, &typeName, nullUmf);
+    GETTYPEPRINTERFN(um_fp)(put, REF(um_fp, um_from(")")), nullUmf);
   } else {
     (*((printerFunction *)List_getRef(printerFunctions, index)))(put, ref,
                                                                  args);
