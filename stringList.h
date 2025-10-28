@@ -86,11 +86,20 @@ um_fp stringListView_get(stringListView slv, unsigned int index);
 
 // returns length if not found
 unsigned int stringList_search(stringList *l, um_fp key);
+// new sl with unused space removed
 stringList *stringList_remake(stringList *);
 void stringList_free(stringList *l);
 static inline unsigned int stringList_length(stringList *l) {
   return l->List_stringMetaData.length;
 }
+static inline void stringList_cleanup_handler(stringList **sl) {
+  if (sl && *sl)
+    stringList_free(*sl);
+  *sl = NULL;
+}
+
+#define stringList_scoped                                                      \
+  stringList __attribute__((cleanup(stringList_cleanup_handler)))
 
 #endif // STRING_LIST_H
 
@@ -152,9 +161,7 @@ stringList *stringList_remake(stringList *origional) {
   stringList *res = stringList_new();
   for (unsigned int i = 0; i < stringList_length(origional); i++) {
     um_fp item = stringList_get(origional, i);
-    if (item.ptr && item.width) {
-      stringList_append(res, item);
-    }
+    stringList_append(res, item);
   }
   return res;
 }

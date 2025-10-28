@@ -73,24 +73,23 @@ void *List_toBuffer(List *l);
 void *List_fromBuffer(void *ref);
 List *List_deepCopy(List *l);
 List *List_combine(List *l, List *l2);
-static inline void List_cleanup_handler(List **p_list) {
-  if (p_list && *p_list) {
-    List_free(*p_list);
-  }
-  *p_list = NULL;
+static inline void List_cleanup_handler(List **l) {
+  if (l && *l)
+    List_free(*l);
+  *l = NULL;
 }
 // experimental idk
 #define List_scoped List __attribute__((cleanup(List_cleanup_handler)))
 
-#ifndef __cplusplus
-#define mList_forEach(list, type, ...)                                         \
+#define mList_forEach(list, type, name, ...)                                   \
   do {                                                                         \
-    type in;                                                                   \
+    type name;                                                                 \
     for (unsigned int _i = 0; _i < (list)->length; _i++) {                     \
-      in = (*(type *)List_getRef((list), _i));                                 \
+      name = (*(type *)List_getRef((list), _i));                               \
       __VA_ARGS__                                                              \
     }                                                                          \
   } while (0)
+#ifndef __cplusplus
 #define mList_get(list, type, index) *(type *)List_getRef(list, index)
 #define mList_add(list, type, ...) List_append(list, (type[1]){__VA_ARGS__})
 #define mList_insert(list, type, value, index)                                 \
@@ -120,14 +119,6 @@ static inline void List_cleanup_handler(List **p_list) {
   do {                                                                         \
     type __val = value;                                                        \
     List_set(list, index, (const void *)&__val);                               \
-  } while (0)
-#define mList_forEach(list, type, ...)                                         \
-  do {                                                                         \
-    type in;                                                                   \
-    for (unsigned int _i = 0; _i < (list)->length; _i++) {                     \
-      in = (*(type *)List_getRef((list), _i));                                 \
-      __VA_ARGS__                                                              \
-    }                                                                          \
   } while (0)
 #endif // macros
 

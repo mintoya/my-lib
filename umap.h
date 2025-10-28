@@ -197,6 +197,20 @@ REGISTER_SPECIAL_PRINTER("UMapListView", UMapListView, {
 REGISTER_SPECIAL_PRINTER("UMap*", UMap *, { USENAMEDPRINTER("UMap", *in); });
 REGISTER_SPECIAL_PRINTER("UMapList*", UMapList *,
                          { USENAMEDPRINTER("UMapList", *in); });
+static inline void UMap_cleanup_handler(UMap **um) {
+  if (um && *um)
+    UMap_free(*um);
+  *um = NULL;
+}
+static inline void UMapList_cleanup_handler(UMapList **um) {
+  if (um && *um)
+    UMapList_free(*um);
+  *um = NULL;
+}
+
+#define UMap_scoped UMap __attribute__((cleanup(UMap_cleanup_handler)))
+#define UMapList_scoped                                                        \
+  UMapList __attribute__((cleanup(UMapList_cleanup_handler)))
 
 #endif // UMAP_H
 #ifdef UMAP_C
