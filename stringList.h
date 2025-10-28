@@ -1,6 +1,6 @@
 #ifndef STRING_LIST_H
 #define STRING_LIST_H
-#include "../my-list/my-list.h"
+#include "my-list.h"
 #include "um_fp.h"
 #include <stddef.h>
 #include <stdint.h>

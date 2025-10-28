@@ -1,9 +1,12 @@
 #ifndef PRINTER_H
 #define PRINTER_H
-#include "../my-list/my-list.h"
-#include "../string-List/stringList.h"
-#include "../string-List/um_fp.h"
-#include "variadic.h"
+#include "my-list.h"
+#include "stringList.h"
+
+#include "printer/macros.h"
+#include "printer/variadic.h"
+
+#include "um_fp.h"
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -34,10 +37,6 @@
 
 typedef void (*outputFunction)(char *, unsigned int length);
 typedef void (*printerFunction)(outputFunction, void *, um_fp args);
-// typedef struct {
-//   outputFunction o;
-//   um_fp env;
-// } outputClosure;
 
 static List *printerFunctions;
 static stringList *typeNamesList;
@@ -59,7 +58,6 @@ __attribute__((destructor)) static void printerDeinit() {
   List_free(printerFunctions);
   stringList_free(typeNamesList);
 }
-#define GETTYPEPRINTERFN(T) _##T##_printer
 
 #define REGISTER_PRINTER(T, ...)                                               \
   __attribute__((weak)) void GETTYPEPRINTERFN(T)(                              \
@@ -73,16 +71,9 @@ __attribute__((destructor)) static void printerDeinit() {
     stringList_append(typeNamesList,                                           \
                       (um_fp){.ptr = (uint8_t *)#T, .width = sizeof(#T) - 1}); \
     List_append(printerFunctions, REF(printerFunction, GETTYPEPRINTERFN(T)));  \
+    um_fp key = (um_fp){.ptr = (uint8_t *)#T, .width = sizeof(#T) - 1};        \
   }
 
-#define MERGE_PRINTER_M(a, b) a##b
-#define LABEL_PRINTER_GEN(l, a) MERGE_PRINTER_M(l, a)
-
-#define UNIQUE_GEN_PRINTER                                                     \
-  LABEL_PRINTER_GEN(LABEL_PRINTER_GEN(__LINE__, _), __COUNTER__)
-#define UNIQUE_PRINTER_FN LABEL_PRINTER_GEN(PRINTERFN, UNIQUE_GEN_PRINTER)
-#define UNIQUE_PRINTER_FN2                                                     \
-  LABEL_PRINTER_GEN(printerConstructor, UNIQUE_GEN_PRINTER)
 #define REGISTER_SPECIAL_PRINTER_NEEDID(id, str, type, ...)                    \
   __attribute__((weak)) void id(outputFunction put, void *_v_in_ptr,           \
                                 um_fp args) {                                  \
@@ -92,7 +83,9 @@ __attribute__((destructor)) static void printerDeinit() {
   __attribute__((constructor(201))) static void UNIQUE_PRINTER_FN2() {         \
     stringList_append(typeNamesList,                                           \
                       (um_fp){.ptr = (uint8_t *)str, .width = strlen(str)});   \
-    List_append(printerFunctions, REF(printerFunction, id));                   \
+    List_append(printerFunctions,                                              \
+                (uint8_t *)(void *)REF(printerFunction, id));                  \
+    um_fp key = (um_fp){.ptr = (uint8_t *)str, .width = strlen(str)};          \
   }
 
 #define REGISTER_SPECIAL_PRINTER(str, type, ...)                               \
@@ -254,28 +247,6 @@ void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
                     um_fp args);
 
 void print_f(outputFunction put, um_fp fmt, ...);
-
-#ifndef __cplusplus
-#define MAKE_PRINT_ARG_TYPE(type)                                              \
-  type:                                                                        \
-  um_from(#type)
-#define MAKE_PRINT_ARG(a)                                                      \
-  ((struct print_arg){.ref = REF(typeof(a), a),                                \
-                      .name = _Generic((a),                                    \
-                          MAKE_PRINT_ARG_TYPE(int),                            \
-                          MAKE_PRINT_ARG_TYPE(um_fp),                          \
-                          MAKE_PRINT_ARG_TYPE(char),                           \
-                          MAKE_PRINT_ARG_TYPE(size_t),                         \
-                          default: nullUmf)})
-#else
-#define MAKE_PRINT_ARG(a)                                                      \
-  ((struct print_arg){                                                         \
-      .ref = REF(typeof(a), a),                                                \
-      .name = nullUmf,                                                         \
-  })
-#endif
-
-#define EMPTY_PRINT_ARG ((struct print_arg){.ref = NULL, .name = nullUmf})
 
 #define print_wf(printerfunction, fmt, ...)                                    \
   print_f(printerfunction,                                                     \

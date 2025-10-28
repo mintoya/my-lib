@@ -1,4 +1,4 @@
-CC = g++
+CC = gcc
 DIR = build
 CFLAGS = -w 
 # CFLAGS = -fsanitize=address -g -O0
@@ -43,5 +43,3 @@ a: $(OBJECTS)
 
 main.o: main.c
 	$(CC) -c main.c $(CFLAGS)
-# umap.o: umap/umap.c
-# 	$(CC) -c umap/umap.c $(CFLAGS)

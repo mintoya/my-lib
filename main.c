@@ -1,19 +1,15 @@
-#include "string-List/stringList.h"
-#include "string-List/um_fp.h"
 // #define PRINTER_LIST_TYPENAMES
-#include "printer/print.h"
-#include "umap/umap.c"
-#include "umap/umap.h"
-#define PRINTER_C
-#include "printer/print.h"
-#define STRING_LIST_C
-#include "string-List/stringList.h"
-#define MY_LIST_C
-#include "my-list/my-list.h"
+
+#include "print.h"
+#include "stringList.h"
+#include "um_fp.h"
+#include "umap.h"
+// sets up headers
+#include "wheels.h"
 
 int main() {
+  List_scoped *list = mList(int);
   UMap *m = UMap_new();
-
   UMapList *l = UMapList_new();
   UMapList_append(l, um_from("first"));
   UMapList_append(l, um_from("second"));
@@ -27,8 +23,7 @@ int main() {
 
   UMap_setList(m, um_from("deepList"), l);
 
-  println("${UMapList*}", l);
-  println("${UMap*}", m);
+  println("${UMapList*}\n${UMap*}\n", l, m);
 
   UMapView umv = UMap_toBuf(m);
   println("${um_fp<void>:c0 length}", umv.raw);

@@ -1,8 +1,7 @@
 #ifndef MY_CSUM_H
 #define MY_CSUM_H
-#include "../my-list/my-list.h"
-#include "../string-List/um_fp.h"
-#include <cstdint>
+#include "my-list.h"
+#include "um_fp.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
