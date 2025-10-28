@@ -1,6 +1,6 @@
-CC = clang
+CC = clang++
 DIR = build
-CFLAGS = -w 
+# CFLAGS = -w 
 # CFLAGS = -fsanitize=address -g -O0
 OBJECTS = main.c  
 

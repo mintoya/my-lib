@@ -104,6 +104,7 @@ static inline void List_cleanup_handler(List **p_list) {
   List_fromArr((type[]){__VA_ARGS__}, sizeof(type),                            \
                sizeof((type[]){__VA_ARGS__}) / sizeof(type))
 #else
+#define mList(type) List_new(sizeof(type))
 #define mList_get(list, type, index) (*(type *)List_getRef(list, index))
 #define mList_add(list, type, value)                                           \
   do {                                                                         \
