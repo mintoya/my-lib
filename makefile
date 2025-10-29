@@ -1,8 +1,8 @@
 CC = clang
 DIR = build
-# CFLAGS = -w 
-CFLAGS = -fsanitize=address -g -O0
-OBJECTS = kmlParser.c  
+CFLAGS = -w 
+# CFLAGS = -fsanitize=address -g -O0
+OBJECTS = main.c
 
 UNAME_S := $(shell uname -s 2>/dev/null)
 
@@ -32,7 +32,7 @@ clean:
 run: make
 	./$(DIR)/$(EXECUTABLE) 
 debug: make
-	$(CC) -o $(DIR)/$(EXECUTABLE) $(OBJECTS) $(CFLAGS) -g
+	gcc -o $(DIR)/$(EXECUTABLE) $(OBJECTS) $(CFLAGS) -g
 	gdb --tui ./$(DIR)/$(EXECUTABLE)
 profile: make
 	@echo "perf report to view"

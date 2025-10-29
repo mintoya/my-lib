@@ -3,11 +3,8 @@
 #include "stringList.h"
 #include "um_fp.h"
 #include "umap.h"
-#include <cstdint>
-#include <cstring>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string>
 #define HMap_MAXHASH ((uint16_t)2048)
 typedef struct {
   UMap_innertype kind;
@@ -26,16 +23,25 @@ unsigned int HMap_hash(um_fp); // unbounded
 
 static inline HMap *HMap_new() {
   HMap *res = (HMap *)malloc(sizeof(HMap));
-  *res = {.KVs = stringList_new()};
+  *res = (HMap){.KVs = stringList_new()};
   for (int i = 0; i < HMap_MAXHASH; i++)
     res->metadata[i] = HMap_innerEmpty;
   return res;
 }
 uint16_t HMap_set(HMap *, um_fp key, um_fp val);
 um_fp HMap_get(HMap *, um_fp);
+static inline void HMap_free(HMap *hm) { stringList_free(hm->KVs); }
+
+static inline void HMap_cleanup_handler(HMap **hm) {
+  if (hm && *hm)
+    HMap_free(*hm);
+  *hm = NULL;
+}
+#define HMap_scoped HMap __attribute__((cleanup(HMap_cleanup_handler)))
 
 #endif // HMAP_H
 
+// #define HMAP_C
 #ifdef HMAP_C
 unsigned int HMap_hash(um_fp str) {
   unsigned long h = 5381;
@@ -47,7 +53,7 @@ uint16_t HMap_setForce(HMap *map, HMap_innertype *handle, um_fp key,
                        um_fp val) {
   if (handle->index != HMap_MAXHASH) {
     while (handle->next != HMap_MAXHASH &&
-           um_fp_cmp(key, stringList_get(map->KVs, handle->index)) != 0) {
+           um_fp_cmp(key, stringList_get(map->KVs, handle->index))) {
       handle = (HMap_innertype *)(stringList_get(map->KVs, handle->next).ptr);
     }
     if (handle->next == HMap_MAXHASH) {
@@ -63,5 +69,28 @@ uint16_t HMap_setForce(HMap *map, HMap_innertype *handle, um_fp key,
 uint16_t HMap_set(HMap *map, um_fp key, um_fp val) {
   HMap_innertype *ht = map->metadata + (HMap_hash(key) % HMap_MAXHASH);
   return HMap_setForce(map, ht, key, val);
+}
+um_fp HMap_get(HMap *map, um_fp key) {
+  HMap_innertype *handle = map->metadata + (HMap_hash(key) % HMap_MAXHASH);
+
+  if (handle->index != HMap_MAXHASH) {
+    while (handle->next != HMap_MAXHASH &&
+           um_fp_cmp(key, stringList_get(map->KVs, handle->index))) {
+      handle = (HMap_innertype *)(stringList_get(map->KVs, handle->next).ptr);
+    }
+    if (handle->next == HMap_MAXHASH) {
+      um_fp foundKey = stringList_get(map->KVs, handle->index);
+      return (um_fp_cmp(foundKey, key))
+                 ? (nullUmf)
+                 : (stringList_get(map->KVs, handle->index + 1));
+    } else {
+      return stringList_get(map->KVs, handle->index + 1);
+    }
+  } else {
+    um_fp foundKey = stringList_get(map->KVs, handle->index);
+    return (um_fp_cmp(foundKey, key))
+               ? (nullUmf)
+               : (stringList_get(map->KVs, handle->index + 1));
+  }
 }
 #endif // HMAP_C
