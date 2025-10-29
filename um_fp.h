@@ -38,12 +38,10 @@ inline bool operator!=(const um_fp &a, const um_fp &b) { return !um_eq(a, b); }
 #define um_block(var)                                                          \
   ((um_fp){.ptr = (uint8_t *)(typeof(var)[1]){var},                            \
            .width = sizeof(typeof(var))})
-#define um_blockT(type, var)                                                   \
-  ((um_fp){.ptr = (uint8_t *)(type[1]){var}, .width = sizeof(type)})
+#define um_blockT(type, ...)                                                   \
+  ((um_fp){.ptr = (uint8_t *)(type[1]){__VA_ARGS__}, .width = sizeof(type)})
 
 #ifndef __cplusplus
-#define um_fromT(type, val)                                                    \
-  ((um_fp){.ptr = (type[1]){val}, .width = sizeof(type)})
 #define um_fromP(ref, size) ((um_fp){.ptr = ref, .width = size})
 #define um_from(val) ((um_fp){.ptr = ((uint8_t *)val), .width = strlen(val)})
 #else

@@ -27,7 +27,7 @@ stringList *stringList_new();
 um_fp stringList_get(stringList *l, unsigned int index);
 void stringList_insert(stringList *l, um_fp, unsigned int index);
 void stringList_set(stringList *l, um_fp, unsigned int index);
-void stringList_append(stringList *l, um_fp);
+unsigned int stringList_append(stringList *l, um_fp);
 
 #define advance(dst, src, length)                                              \
   memcpy(dst, src, length);                                                    \
@@ -165,7 +165,7 @@ stringList *stringList_remake(stringList *origional) {
   }
   return res;
 }
-void stringList_append(stringList *l, um_fp value) {
+unsigned int stringList_append(stringList *l, um_fp value) {
   unsigned int trueSize = max(value.width, STRING_LIST_minSize);
   stringMetaData thisS = {
       .index = l->List_char.length,
@@ -175,6 +175,7 @@ void stringList_append(stringList *l, um_fp value) {
   mList_add(&(l->List_stringMetaData), stringMetaData, thisS);
   List_appendFromArr(&(l->List_char), value.ptr, value.width);
   List_pad(&(l->List_char), trueSize - value.width);
+  return l->List_stringMetaData.length - 1;
 }
 void stringList_insert(stringList *l, um_fp value, unsigned int index) {
   unsigned int trueSize = max(value.width, STRING_LIST_minSize);

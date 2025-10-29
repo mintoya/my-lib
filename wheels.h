@@ -10,6 +10,11 @@
 #include "kml.h"
 #endif
 
+#ifdef HMAP_H
+#define HMAP_C
+#include "hmap.h"
+#endif
+
 #ifdef UMAP_H
 #define UMAP_C
 #include "umap.h"
