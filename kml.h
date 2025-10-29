@@ -1,9 +1,9 @@
-#ifdef __cplusplus
-#include "um_fp.h"
-extern "C" {
-#endif
 #ifndef KML_PARSER_H
 #define KML_PARSER_H
+#include "um_fp.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include <assert.h>
 #include <malloc.h>
 // #include <alloca.h>

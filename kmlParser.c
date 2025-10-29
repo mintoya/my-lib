@@ -1,16 +1,11 @@
-#include "printer/print.h"
-#include <ctype.h>
+#include "kml.h"
+#include "my-list.h"
+#include "print.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "string-List/um_fp.h"
-#define KML_PARSER_C
-#include "kml/kml.h"
-#define STRING_LIST_C
-#include "string-List/stringList.h"
-#define MY_LIST_C
-#include "my-list/my-list.h"
+#include "wheels.h"
 
 um_fp read_stdin() {
   List fl = {
@@ -29,6 +24,7 @@ um_fp read_stdin() {
   return res;
 }
 
+#define isdigit(c) ((c <= '9') ? (c >= '0') : (0))
 int main(int narg, char *args[]) {
   um_fp res = read_stdin();
   um_fp result = res;

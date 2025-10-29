@@ -89,18 +89,6 @@ static inline void List_cleanup_handler(List **l) {
       __VA_ARGS__                                                              \
     }                                                                          \
   } while (0)
-#ifndef __cplusplus
-#define mList_get(list, type, index) *(type *)List_getRef(list, index)
-#define mList_add(list, type, ...) List_append(list, (type[1]){__VA_ARGS__})
-#define mList_insert(list, type, value, index)                                 \
-  List_insert(list, index, (type[1]){value})
-
-#define mList_set(list, type, value, index)                                    \
-  List_set(list, index, ((type[1]){value}))
-#define mList(type, ...)                                                       \
-  List_fromArr((type[]){__VA_ARGS__}, sizeof(type),                            \
-               sizeof((type[]){__VA_ARGS__}) / sizeof(type))
-#else
 #define mList(type) List_new(sizeof(type))
 #define mList_get(list, type, index) (*(type *)List_getRef(list, index))
 #define mList_add(list, type, value)                                           \
@@ -120,7 +108,6 @@ static inline void List_cleanup_handler(List **l) {
     type __val = value;                                                        \
     List_set(list, index, (const void *)&__val);                               \
   } while (0)
-#endif // macros
 
 #endif // MY_LIST_H
 
