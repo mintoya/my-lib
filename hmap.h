@@ -5,7 +5,7 @@
 #include "umap.h"
 #include <stdint.h>
 #include <stdlib.h>
-#define HMap_MAXHASH ((uint16_t)2048)
+#define HMap_MAXHASH ((uint16_t)-1)
 typedef struct {
   UMap_innertype kind;
   uint16_t index;
