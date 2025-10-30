@@ -17,6 +17,10 @@ typedef struct {
   List List_char;
   List List_stringMetaData;
 } stringList;
+static inline size_t stringList_footprint(stringList *sl) {
+  return List_headArea(&(sl->List_stringMetaData)) +
+         List_headArea(&(sl->List_char));
+}
 
 typedef struct {
   um_fp raw;

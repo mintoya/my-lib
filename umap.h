@@ -27,7 +27,10 @@ typedef enum {
   LIST,       // umap with integer indexes
   MAP,        // umap with misc indexes
 } UMap_innertype;
-
+static inline size_t UMap_footprint(UMap *um) {
+  return List_headArea(um->metadata) + stringList_footprint(um->keys) +
+         stringList_footprint(um->vals);
+}
 static inline um_fp UMap_getKeyAtIndex(UMap *map, unsigned int index) {
   return stringList_get(map->keys, index);
 };
@@ -52,6 +55,9 @@ UMap *UMap_new();
 UMapList *UMapList_new();
 
 um_fp UMap_getValAtKey(UMap *map, um_fp key);
+static inline um_fp UMap_get(UMap *map, um_fp key) {
+  return UMap_getValAtKey(map, key);
+}
 unsigned int UMap_set(UMap *map, um_fp key, um_fp val);
 // DONT USE WITH AN ACTUAL UMAP
 // make a copy without unused keys & vals

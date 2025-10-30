@@ -15,6 +15,9 @@ typedef struct {
   HMap_innertype metadata[HMap_MAXHASH];
   stringList *KVs;
 } HMap;
+static inline size_t HMap_footprint(HMap *hm) {
+  return stringList_footprint(hm->KVs) + HMap_MAXHASH * sizeof(HMap_innertype);
+}
 
 #define HMap_innerEmpty                                                        \
   ((HMap_innertype){                                                           \
