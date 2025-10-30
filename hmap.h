@@ -5,12 +5,14 @@
 #include "umap.h"
 #include <stdint.h>
 #include <stdlib.h>
-#define HMap_MAXHASH ((uint16_t)-1)
+#define HMap_MAXHASH ((uint16_t)2)
 #define HMap_MAXL (HMap_MAXHASH - 1)
 typedef struct {
   UMap_innertype kind;
   uint16_t index;
   uint16_t next;
+  unsigned char hasindex : 1;
+  unsigned char hasnext : 1;
 } HMap_innertype;
 typedef struct {
   HMap_innertype metadata[HMap_MAXL];
@@ -22,7 +24,7 @@ static inline size_t HMap_footprint(HMap *hm) {
 
 #define HMap_innerEmpty                                                        \
   ((HMap_innertype){                                                           \
-      .kind = NORMAL, .index = HMap_MAXHASH, .next = HMap_MAXHASH})
+      .kind = NORMAL, .index = 0, .next = 0, .hasindex = 0, .hasnext = 0})
 unsigned int HMap_hash(um_fp); // unbounded
 
 static inline HMap *HMap_new() {
@@ -61,37 +63,48 @@ unsigned int HMap_hash(um_fp str) {
 }
 unsigned int HMap_setForce(HMap *map, HMap_innertype *handle, um_fp key,
                            um_fp val) {
-  if (handle->index != HMap_MAXHASH) {
-    while (handle->next != HMap_MAXHASH &&
-           um_fp_cmp(key, stringList_get(map->KVs, handle->index))) {
-      handle = (HMap_innertype *)(stringList_get(map->KVs, handle->next).ptr);
+  while (handle->hasindex) {
+    if (!um_fp_cmp(key, stringList_get(map->KVs, handle->index))) {
+      // Found existing key: replace value
+      stringList_set(map->KVs, val, handle->index + 1);
+      return handle->index;
     }
-    if (handle->next == HMap_MAXHASH) {
-      um_fp newKey = um_blockT(HMap_innertype, HMap_innerEmpty);
-      handle->next = stringList_append(map->KVs, newKey);
-      handle = (HMap_innertype *)(stringList_get(map->KVs, handle->next).ptr);
-    }
+    if (!handle->hasnext)
+      break;
+    handle = (HMap_innertype *)stringList_get(map->KVs, handle->next).ptr;
   }
-  handle->index = stringList_append(map->KVs, key);
+
+  // Add new key/value
+  HMap_innertype newNode = HMap_innerEmpty;
+  newNode.index = stringList_append(map->KVs, key);
   stringList_append(map->KVs, val);
-  return handle->index;
+
+  if (handle->hasindex) {
+    handle->next =
+        stringList_append(map->KVs, um_blockT(HMap_innertype, newNode));
+    handle->hasnext = 1;
+  } else {
+    *handle = newNode;
+    handle->hasindex = 1;
+  }
+
+  return newNode.index;
 }
+
 unsigned int HMap_set(HMap *map, um_fp key, um_fp val) {
   unsigned int hash = HMap_hash(key);
-  printf("hash of %.*s is %i, or %i\n", key.width, key.ptr, hash,
-         hash % HMap_MAXL);
   HMap_innertype *ht = map->metadata + (hash % HMap_MAXL);
   return HMap_setForce(map, ht, key, val);
 }
 um_fp HMap_get(HMap *map, um_fp key) {
   HMap_innertype *handle = map->metadata + (HMap_hash(key) % HMap_MAXL);
 
-  if (handle->index != HMap_MAXHASH) {
-    while (handle->next != HMap_MAXHASH &&
+  if (handle->hasindex) {
+    while (handle->hasnext &&
            um_fp_cmp(key, stringList_get(map->KVs, handle->index))) {
       handle = (HMap_innertype *)(stringList_get(map->KVs, handle->next).ptr);
     }
-    if (handle->next == HMap_MAXHASH) {
+    if (!handle->hasnext) {
       um_fp foundKey = stringList_get(map->KVs, handle->index);
       return (um_fp_cmp(foundKey, key))
                  ? (nullUmf)
