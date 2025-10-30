@@ -49,6 +49,35 @@ static inline void HMap_remake(HMap *hm) {
   stringList_free(hm->KVs);
   hm->KVs = l;
 }
+unsigned int HMap_setForce(HMap *map, HMap_innertype *handle, um_fp key,
+                           um_fp val) {
+  if (!handle->hasindex) {
+    handle->index = stringList_append(map->KVs, key);
+    stringList_append(map->KVs, val);
+    handle->hasindex = 1;
+  } else if (!um_fp_cmp(key, stringList_get(map->KVs, handle->index))) {
+    stringList_set(map->KVs, val, handle->index + 1);
+  } else {
+    while (handle->hasnext) {
+      handle = (HMap_innertype *)(stringList_get(map->KVs, handle->next).ptr);
+      if (!um_fp_cmp(key, stringList_get(map->KVs, handle->index))) {
+        return HMap_setForce(map, handle, key, val);
+      }
+    }
+    HMap_innertype newHandle = (HMap_innertype){
+        .index = (uint16_t)stringList_append(map->KVs, key),
+        .next = 0,
+        .hasindex = 1,
+        .hasnext = 0,
+    };
+    stringList_append(map->KVs, val);
+    handle->next =
+        stringList_append(map->KVs, ((um_fp){.ptr = (uint8_t *)&(newHandle),
+                                             .width = sizeof(HMap_innertype)}));
+    handle->hasnext = 1;
+  }
+  return handle->index;
+}
 #define HMap_scoped HMap __attribute__((cleanup(HMap_cleanup_handler)))
 
 #endif // HMAP_H
@@ -61,36 +90,6 @@ unsigned int HMap_hash(um_fp str) {
     h = ((h << 5) + h) + (str.ptr)[str.width - 1];
   return h;
 }
-unsigned int HMap_setForce(HMap *map, HMap_innertype *handle, um_fp key,
-                           um_fp val) {
-  while (handle->hasindex) {
-    if (!um_fp_cmp(key, stringList_get(map->KVs, handle->index))) {
-      // Found existing key: replace value
-      stringList_set(map->KVs, val, handle->index + 1);
-      return handle->index;
-    }
-    if (!handle->hasnext)
-      break;
-    handle = (HMap_innertype *)stringList_get(map->KVs, handle->next).ptr;
-  }
-
-  // Add new key/value
-  HMap_innertype newNode = HMap_innerEmpty;
-  newNode.index = stringList_append(map->KVs, key);
-  stringList_append(map->KVs, val);
-
-  if (handle->hasindex) {
-    handle->next =
-        stringList_append(map->KVs, um_blockT(HMap_innertype, newNode));
-    handle->hasnext = 1;
-  } else {
-    *handle = newNode;
-    handle->hasindex = 1;
-  }
-
-  return newNode.index;
-}
-
 unsigned int HMap_set(HMap *map, um_fp key, um_fp val) {
   unsigned int hash = HMap_hash(key);
   HMap_innertype *ht = map->metadata + (hash % HMap_MAXL);
