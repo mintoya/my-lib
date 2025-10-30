@@ -66,8 +66,8 @@ __attribute__((destructor)) static void printerDeinit() {
     T in = *(T *)_v_in_ptr;                                                    \
     __VA_ARGS__                                                                \
   }                                                                            \
-  __attribute__((constructor(201)))                                            \
-  __attribute__((weak)) void register_##T() {                                  \
+  __attribute__((constructor(201))) __attribute__((weak)) void                 \
+  register_##T() {                                                             \
     stringList_append(typeNamesList,                                           \
                       (um_fp){.ptr = (uint8_t *)#T, .width = sizeof(#T) - 1}); \
     List_append(printerFunctions, REF(printerFunction, GETTYPEPRINTERFN(T)));  \
@@ -258,20 +258,24 @@ void print_f(outputFunction put, um_fp fmt, ...);
 #define print(fmt, ...) print_wf(defaultPrinter, fmt, __VA_ARGS__)
 #define println(fmt, ...) print_wf(defaultPrinter, fmt "\n", __VA_ARGS__)
 
-#ifdef PRINTER_LIST_TYPENAMES
-__attribute__((constructor(203))) static void post_init() {
-  _um_fp_printer(defaultPrinter, REF(um_fp, um_from("list of type names:\n")));
-  for (int i = 0; i < stringList_length(typeNamesList); i++) {
-    _um_fp_printer(defaultPrinter, REF(um_fp, um_from(" ")));
-    _um_fp_printer(defaultPrinter,
-                   REF(um_fp, stringList_get(typeNamesList, i)));
-    _um_fp_printer(defaultPrinter, REF(um_fp, um_from("\n")));
-  }
-}
-#endif
-__attribute__((hot)) static void defaultPrinter(char *c, unsigned int length) {
+__attribute__((weak)) void defaultPrinter(char *c, unsigned int length) {
   fwrite(c, sizeof(char), length, stdout);
 }
+
+#ifdef PRINTER_LIST_TYPENAMES
+__attribute__((constructor(203))) static void post_init() {
+
+  GETTYPEPRINTERFN(um_fp)(defaultPrinter,
+                          REF(um_fp, um_from("list of printer type names:\n")),
+                          nullUmf);
+  for (int i = 0; i < stringList_length(typeNamesList); i++) {
+    GETTYPEPRINTERFN(um_fp)(defaultPrinter, REF(um_fp, um_from(" ")), nullUmf);
+    GETTYPEPRINTERFN(um_fp)(
+        defaultPrinter, REF(um_fp, stringList_get(typeNamesList, i)), nullUmf);
+    GETTYPEPRINTERFN(um_fp)(defaultPrinter, REF(um_fp, um_from("\n")), nullUmf);
+  }
+}
+#endif // PRINTER_LIST_TYPENAMES
 
 #endif
 
