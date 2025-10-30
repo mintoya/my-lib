@@ -5,8 +5,8 @@
 #include "umap.h"
 #include <stdint.h>
 #include <stdlib.h>
-#define HMap_MAXL (1000)
 #define HMap_MAXHASH ((uint16_t)-1)
+#define HMap_MAXL (HMap_MAXHASH - 1)
 typedef struct {
   UMap_innertype kind;
   uint16_t index;
@@ -78,7 +78,8 @@ unsigned int HMap_setForce(HMap *map, HMap_innertype *handle, um_fp key,
 }
 unsigned int HMap_set(HMap *map, um_fp key, um_fp val) {
   unsigned int hash = HMap_hash(key);
-  printf("hash of %.*s is %i, or %i\n",key.width,key.ptr,hash,hash%HMap_MAXL);
+  printf("hash of %.*s is %i, or %i\n", key.width, key.ptr, hash,
+         hash % HMap_MAXL);
   HMap_innertype *ht = map->metadata + (hash % HMap_MAXL);
   return HMap_setForce(map, ht, key, val);
 }

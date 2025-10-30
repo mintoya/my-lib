@@ -66,8 +66,8 @@ __attribute__((destructor)) static void printerDeinit() {
     T in = *(T *)_v_in_ptr;                                                    \
     __VA_ARGS__                                                                \
   }                                                                            \
-  __attribute__((constructor(201))) __attribute__((weak)) void                 \
-  register_##T() {                                                             \
+  __attribute__((constructor(201)))                                            \
+  __attribute__((weak)) void register_##T() {                                  \
     stringList_append(typeNamesList,                                           \
                       (um_fp){.ptr = (uint8_t *)#T, .width = sizeof(#T) - 1}); \
     List_append(printerFunctions, REF(printerFunction, GETTYPEPRINTERFN(T)));  \
@@ -242,6 +242,38 @@ struct print_arg {
 
 // clang-format on
 #pragma clang diagnostic pop
+//type assumption
+#ifndef __cplusplus
+#define MAKE_PRINT_ARG_TYPE(type)                                              \
+  type:                                                                        \
+  um_from(#type)
+#define MAKE_PRINT_ARG(a)                                                      \
+  ((struct print_arg){.ref = REF(typeof(a), a),                                \
+                      .name = _Generic((a),                                    \
+                          MAKE_PRINT_ARG_TYPE(int),                            \
+                          MAKE_PRINT_ARG_TYPE(um_fp),                          \
+                          MAKE_PRINT_ARG_TYPE(char),                           \
+                          MAKE_PRINT_ARG_TYPE(size_t),                         \
+                          default: nullUmf)})
+#else
+template <typename T> constexpr const char *type_name_cstr() {
+  return "unknown";
+}
+
+#define MAKE_PRINT_ARG_TYPE(type)                                              \
+  template <> constexpr const char *type_name_cstr<type>() { return #type; }
+
+MAKE_PRINT_ARG_TYPE(int);
+MAKE_PRINT_ARG_TYPE(um_fp);
+MAKE_PRINT_ARG_TYPE(char);
+MAKE_PRINT_ARG_TYPE(size_t);
+
+#define MAKE_PRINT_ARG(a)                                                      \
+  ((struct print_arg){.ref = REF(typeof(a), a),                                \
+                      .name = um_from(type_name_cstr<decltype(a)>())})
+#endif
+
+#define EMPTY_PRINT_ARG ((struct print_arg){.ref = NULL, .name = nullUmf})
 
 void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
                     um_fp args);
