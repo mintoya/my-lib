@@ -27,6 +27,7 @@ typedef enum {
   LIST,       // umap with integer indexes
   MAP,        // umap with misc indexes
 } UMap_innertype;
+
 static inline size_t UMap_footprint(UMap *um) {
   return List_headArea(um->metadata) + stringList_footprint(um->keys) +
          stringList_footprint(um->vals);
@@ -62,12 +63,22 @@ unsigned int UMap_set(UMap *map, um_fp key, um_fp val);
 // DONT USE WITH AN ACTUAL UMAP
 // make a copy without unused keys & vals
 UMap *UMap_remake(UMap *map);
-void UMap_free(UMap *map);
 unsigned int UMap_setChild(UMap *map, um_fp key, UMap *ref);
 unsigned int UMap_setList(UMap *map, um_fp key, UMapList *ref);
 unsigned int UMapList_setChild(UMapList *map, unsigned int key, UMap *ref);
 unsigned int UMapList_setList(UMapList *map, unsigned int key, UMapList *ref);
-void UMapList_free(UMapList *map);
+
+static inline void UMap_free(UMap *map) {
+  stringList_free(map->keys);
+  stringList_free(map->vals);
+  List_free(map->metadata);
+  free(map);
+}
+static inline void UMapList_free(UMapList *map) {
+  stringList_free(map->vals);
+  List_free(map->metadata);
+  free(map);
+}
 /*
  * not modifiable
  * freeing keyReg itself deletes this
@@ -203,6 +214,8 @@ REGISTER_SPECIAL_PRINTER("UMapListView", UMapListView, {
 REGISTER_SPECIAL_PRINTER("UMap*", UMap *, { USENAMEDPRINTER("UMap", *in); });
 REGISTER_SPECIAL_PRINTER("UMapList*", UMapList *,
                          { USENAMEDPRINTER("UMapList", *in); });
+// made to mimic the setup the "kml" parser  supports 
+
 static inline void UMap_cleanup_handler(UMap **um) {
   if (um && *um)
     UMap_free(*um);
@@ -454,17 +467,6 @@ unsigned int UMap_setList(UMap *map, um_fp key, UMapList *ref) {
   return index;
 }
 
-void UMap_free(UMap *map) {
-  stringList_free(map->keys);
-  stringList_free(map->vals);
-  List_free(map->metadata);
-  free(map);
-}
-void UMapList_free(UMapList *map) {
-  stringList_free(map->vals);
-  List_free(map->metadata);
-  free(map);
-}
 UMap *UMap_remake(UMap *map) {
   UMap *res = UMap_new();
   for (unsigned int i = 0; i < stringList_length(map->keys); i++) {

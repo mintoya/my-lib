@@ -66,8 +66,8 @@ __attribute__((destructor)) static void printerDeinit() {
     T in = *(T *)_v_in_ptr;                                                    \
     __VA_ARGS__                                                                \
   }                                                                            \
-  __attribute__((constructor(201)))                                            \
-  __attribute__((weak)) void register_##T() {                                  \
+  __attribute__((constructor(201))) __attribute__((weak)) void                 \
+  register_##T() {                                                             \
     stringList_append(typeNamesList,                                           \
                       (um_fp){.ptr = (uint8_t *)#T, .width = sizeof(#T) - 1}); \
     List_append(printerFunctions, REF(printerFunction, GETTYPEPRINTERFN(T)));  \
@@ -80,10 +80,11 @@ __attribute__((destructor)) static void printerDeinit() {
     type in = *(type *)_v_in_ptr;                                              \
     __VA_ARGS__                                                                \
   }                                                                            \
-  __attribute__((constructor(201))) static void UNIQUE_PRINTER_FN2() {         \
-    stringList_append(typeNamesList,                                           \
-                      (um_fp){.ptr = (uint8_t *)str, .width = strlen(str)});   \
-    List_append(printerFunctions,                                              \
+  __attribute__((constructor(202))) static void UNIQUE_PRINTER_FN2() {         \
+    stringList_insert(typeNamesList,                                           \
+                      ((um_fp){.ptr = (uint8_t *)str, .width = strlen(str)}),  \
+                      0);                                                      \
+    List_insert(printerFunctions, 0,                                           \
                 (uint8_t *)(void *)REF(printerFunction, id));                  \
     um_fp key = (um_fp){.ptr = (uint8_t *)str, .width = strlen(str)};          \
   }
@@ -127,12 +128,17 @@ struct print_arg {
 //
 // typeprinter skips the search
 // named printer skips the string parsing
-// use print_wf with put to keep output consistant
+// use print_wf with put as the ouputFunction 
+// to keep output consistant, but that makes it recursive
 // 
 // you can pass args with a printerid and a colon 
 // ex: "um_fp<void>: c0 length"
 // assumptions are not enabled with a c++ compiler,
 // so no ${}
+//
+// MAKE_PRINT_ARG_TYPE will extend types that are assumed by 
+// ${}
+// in c++ only 
 
   REGISTER_PRINTER(char, { put(&in, 1); });
   REGISTER_PRINTER(um_fp, {
@@ -242,7 +248,7 @@ struct print_arg {
 
 // clang-format on
 #pragma clang diagnostic pop
-//type assumption
+// type assumption
 #ifndef __cplusplus
 #define MAKE_PRINT_ARG_TYPE(type)                                              \
   type:                                                                        \
