@@ -67,6 +67,12 @@ unsigned int UMap_setChild(UMap *map, um_fp key, UMap *ref);
 unsigned int UMap_setList(UMap *map, um_fp key, UMapList *ref);
 unsigned int UMapList_setChild(UMapList *map, unsigned int key, UMap *ref);
 unsigned int UMapList_setList(UMapList *map, unsigned int key, UMapList *ref);
+static inline unsigned int UMapList_appendChild(UMapList *map, UMap *ref) {
+  return UMapList_setChild(map, map->metadata->length, ref);
+}
+static inline unsigned int UMapList_appendList(UMapList *map, UMapList *ref) {
+  return UMapList_setList(map, map->metadata->length, ref);
+}
 
 static inline void UMap_free(UMap *map) {
   stringList_free(map->keys);
@@ -214,7 +220,7 @@ REGISTER_SPECIAL_PRINTER("UMapListView", UMapListView, {
 REGISTER_SPECIAL_PRINTER("UMap*", UMap *, { USENAMEDPRINTER("UMap", *in); });
 REGISTER_SPECIAL_PRINTER("UMapList*", UMapList *,
                          { USENAMEDPRINTER("UMapList", *in); });
-// made to mimic the setup the "kml" parser  supports 
+// made to mimic the setup the "kml" parser  supports
 
 static inline void UMap_cleanup_handler(UMap **um) {
   if (um && *um)
@@ -456,6 +462,21 @@ unsigned int UMap_setChild(UMap *map, um_fp key, UMap *ref) {
   um_fp um = UMap_toBuf(ref).raw;
   unsigned int index = UMap_set(map, key, um);
   mList_set(map->metadata, UMap_innertype, MAP, index);
+  free(um.ptr);
+  return index;
+}
+
+unsigned int UMapList_setChild(UMapList *map, unsigned int key, UMap *ref) {
+  um_fp um = UMap_toBuf(ref).raw;
+  unsigned int index = UMapList_set(map, key, um);
+  mList_set(map->metadata, UMap_innertype, MAP, index);
+  free(um.ptr);
+  return index;
+}
+unsigned int UMapList_setList(UMapList *map, unsigned int key, UMapList *ref) {
+  um_fp um = UMapList_toBuf(ref).raw;
+  unsigned int index = UMapList_set(map, key, um);
+  mList_set(map->metadata, UMap_innertype, LIST, index);
   free(um.ptr);
   return index;
 }

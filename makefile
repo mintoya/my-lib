@@ -1,4 +1,4 @@
-CC = clang++
+CC = clang
 DIR = build
 CFLAGS = -w 
 # CFLAGS = -fsanitize=address -g -O0
@@ -31,7 +31,7 @@ clean:
 	rm -rf $(DIR)
 run: make
 	./$(DIR)/$(EXECUTABLE) 
-debug: make
+debug: 
 	gcc -o $(DIR)/$(EXECUTABLE) $(OBJECTS) $(CFLAGS) -g
 	gdb --tui ./$(DIR)/$(EXECUTABLE)
 profile: make

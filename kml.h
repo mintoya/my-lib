@@ -1,9 +1,6 @@
 #ifndef KML_PARSER_H
 #define KML_PARSER_H
 #include "um_fp.h"
-#ifdef __cplusplus
-extern "C" {
-#endif
 #include <assert.h>
 #include <malloc.h>
 // #include <alloca.h>
@@ -16,9 +13,9 @@ extern "C" {
 
 unsigned int kml_indexOf(um_fp string, char c);
 um_fp kml_until(char delim, um_fp string);
+um_fp kml_behind(char delim, um_fp string);
 um_fp kml_inside(char limits[2], um_fp string);
 um_fp kml_around(char limits[2], um_fp string);
-um_fp kml_behind(char delim, um_fp string);
 um_fp kml_after(um_fp main, um_fp slice);
 um_fp kml_removeSpacesPadding(um_fp in);
 um_fp findIndex(um_fp str, unsigned int index);
@@ -123,13 +120,10 @@ um_fp kml_around(char limits[2], um_fp string) {
 
   for (int i = 0; i < string.width; i++) {
     char c = ((char *)string.ptr)[i];
-
-    // toggle quote state
     if (c == '"' && !in_single)
       in_double = !in_double;
     else if (c == '\'' && !in_double)
       in_single = !in_single;
-
     if (!in_single && !in_double && c == front) {
       unsigned int counter = 1;
       for (int ii = 1; ii + i < string.width; ii++) {
@@ -382,8 +376,4 @@ um_fp findAny(um_fp str, parseArg ki) {
 #endif
 }
 
-#endif
-
-#ifdef __cplusplus
-}
 #endif

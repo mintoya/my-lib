@@ -1,27 +1,26 @@
 // #define PRINTER_LIST_TYPENAMES
 
 #include "hmap.h"
+#include "kmlM.h"
 #include "my-list.h"
 #include "print.h"
 #include "um_fp.h"
+#include "umap.h"
 #include "wheels.h"
 
 int main() {
-  HMap_scoped *hm = HMap_new();
-  HMap_set(hm, um_from("hello"), um_from("world"));
-  HMap_set(hm, um_from("hello2"), um_from("world2"));
-  HMap_set(hm, um_from("hello3"), um_from("world1"));
-  println("${um_fp}", HMap_get(hm, um_from("hello")));
-  println("${um_fp}", HMap_get(hm, um_from("hello2")));
-  println("${um_fp}", HMap_get(hm, um_from("hello3")));
-  UMap_scoped *um = UMap_new();
-  UMap_set(um, um_from("hello"), um_from("world"));
-  UMap_set(um, um_from("hello2"), um_from("world2"));
-  UMap_set(um, um_from("hello3"), um_from("world1"));
-  println("${um_fp}", UMap_get(um, um_from("hello")));
-  println("${um_fp}", UMap_get(um, um_from("hello2")));
-  println("${um_fp}", UMap_get(um, um_from("hello3")));
-  println("umap footprint : ${}\n "
-          "hmap footprint : ${}\n ",
-          UMap_footprint(um), HMap_footprint(hm));
+  // UMap_scoped *test = UMap_new();
+  // UMap_set(test, um_from("a"), um_from("b"));
+  // UMap_set(test, um_from("b"), um_from("b"));
+  // UMap_set(test, um_from("c"), um_from("b"));
+  // UMapList_scoped *testList = UMapList_new();
+  // UMapList_setChild(testList, 0, test);
+  // UMapList_set(testList, 1, um_from("c"));
+  // UMap_setChild(test, um_from("innermap"), test);
+  // UMap_setList(test, um_from("innermap"), testList);
+  // print("${UMap*}", test);
+  UMap_scoped *output = parse(NULL, NULL, um_from("a:{b:\"d;\";};test:[{key:value}\"s\"\"\""));
+  println("${UMap*}", output);
+  // UMapView inner = (UMapView){UMap_get(output, um_from("a"))};
+  // println("${}", UMapView_getValAtKey(inner, um_from("b")));
 }
