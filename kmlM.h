@@ -53,7 +53,12 @@ UMapList *parseList(UMapList *lparent, um_fp kml) {
         .width = kml_indexOf(kml, '"'),
     };
     val = pval;
-    val.width++;
+    if (pval.width == kml.width) {
+      pval.width--;
+      val.width--;
+    } else {
+      val.width++;
+    }
     kml.ptr--;
     kml.width++;
     UMapList_append(lparent, pval);
