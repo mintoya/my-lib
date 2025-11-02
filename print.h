@@ -66,12 +66,12 @@ __attribute__((destructor)) static void printerDeinit() {
     T in = *(T *)_v_in_ptr;                                                    \
     __VA_ARGS__                                                                \
   }                                                                            \
-  __attribute__((constructor(201))) __attribute__((weak)) void                 \
-  register_##T() {                                                             \
-    stringList_append(typeNamesList,                                           \
-                      (um_fp){.ptr = (uint8_t *)#T, .width = sizeof(#T) - 1}); \
-    List_append(printerFunctions, REF(printerFunction, GETTYPEPRINTERFN(T)));  \
+  __attribute__((constructor(201))) static void register_##T() {               \
     um_fp key = (um_fp){.ptr = (uint8_t *)#T, .width = sizeof(#T) - 1};        \
+    uint8_t *refFn =                                                           \
+        (uint8_t *)(void *)REF(printerFunction, GETTYPEPRINTERFN(T));          \
+    stringList_append(typeNamesList, key);                                     \
+    List_append(printerFunctions, refFn);                                      \
   }
 
 #define REGISTER_SPECIAL_PRINTER_NEEDID(id, str, type, ...)                    \
@@ -81,12 +81,10 @@ __attribute__((destructor)) static void printerDeinit() {
     __VA_ARGS__                                                                \
   }                                                                            \
   __attribute__((constructor(202))) static void UNIQUE_PRINTER_FN2() {         \
-    stringList_insert(typeNamesList,                                           \
-                      ((um_fp){.ptr = (uint8_t *)str, .width = strlen(str)}),  \
-                      0);                                                      \
-    List_insert(printerFunctions, 0,                                           \
-                (uint8_t *)(void *)REF(printerFunction, id));                  \
     um_fp key = (um_fp){.ptr = (uint8_t *)str, .width = strlen(str)};          \
+    uint8_t *refFn = (uint8_t *)(void *)REF(printerFunction, id);              \
+    stringList_append(typeNamesList, key);                                     \
+    List_append(printerFunctions, refFn);                                      \
   }
 
 #define REGISTER_SPECIAL_PRINTER(str, type, ...)                               \
@@ -286,8 +284,8 @@ void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
 
 void print_f(outputFunction put, um_fp fmt, ...);
 
-#define print_wf(printerfunction, fmt, ...)                                    \
-  print_f(printerfunction,                                                     \
+#define print_wf(print, fmt, ...)                                              \
+  print_f(print,                                                               \
           um_from("" fmt) __VA_OPT__(, APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)),  \
           EMPTY_PRINT_ARG)
 #define println_wf(printerfunction, fmt, ...)                                  \

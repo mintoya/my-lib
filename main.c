@@ -1,4 +1,4 @@
-// #define PRINTER_LIST_TYPENAMES
+#define PRINTER_LIST_TYPENAMES
 
 #include "hmap.h"
 #include "kmlM.h"
@@ -8,20 +8,30 @@
 #include "umap.h"
 #include "wheels.h"
 
+List *buffer = NULL;
+__attribute__((destructor)) void freeList(void){
+  List_free(buffer); 
+}
+__attribute__((constructor)) void setupList(void){
+  buffer = mList(char);
+}
+void listPrinter(char *c, unsigned int length) {
+  List_appendFromArr(buffer, c, length);
+}
 int main() {
-  // UMap_scoped *test = UMap_new();
-  // UMap_set(test, um_from("a"), um_from("b"));
-  // UMap_set(test, um_from("b"), um_from("b"));
-  // UMap_set(test, um_from("c"), um_from("b"));
-  // UMapList_scoped *testList = UMapList_new();
-  // UMapList_setChild(testList, 0, test);
-  // UMapList_set(testList, 1, um_from("c"));
-  // UMap_setChild(test, um_from("innermap"), test);
-  // UMap_setList(test, um_from("innermap"), testList);
-  // print("${UMap*}", test);
-  // UMapView inner = (UMapView){UMap_get(output, um_from("a"))};
-  // println("${}", UMapView_getValAtKey(inner, um_from("b")));
-  UMap_scoped *output =
-      parse(NULL, NULL, um_from("a:{b:\"d;\";;;};test:[{key:value},5]"));
-  println("${UMap*}", output);
+  UMap_scoped *test = UMap_new();
+  UMap_set(test, um_from("a"), um_from("b"));
+  UMap_set(test, um_from("b"), um_from("b"));
+  UMap_set(test, um_from("c"), um_from("b"));
+  UMapList_scoped *testList = UMapList_new();
+  UMapList_setChild(testList, 0, test);
+  UMapList_set(testList, 1, um_from("c"));
+  UMap_setChild(test, um_from("innermap"), test);
+  UMap_setList(test, um_from("innermap"), testList);
+  print_wf(listPrinter,"${UMap*}", test);
+
+  um_fp listBuffer = ((um_fp){.ptr = buffer->head,.width = List_headArea(buffer)});
+  println("string output: ${}", listBuffer);
+  UMap_scoped *output = parse( NULL, NULL, listBuffer);
+  println("entire object: ${UMap*}", output);
 }

@@ -36,7 +36,7 @@ UMapList *parseList(UMapList *lparent, um_fp kml) {
   case '{': {
     val = kml_around("{}", kml);
     pval = kml_inside("{}", kml);
-    print("pval:${}\n val:${}\n", pval, val);
+    // print("pval:${}\n val:${}\n", pval, val);
     UMap *newmap = parse(NULL, NULL, pval);
     if (newmap) {
       if (lparent) {
@@ -73,6 +73,7 @@ UMapList *parseList(UMapList *lparent, um_fp kml) {
   return parseList(lparent, kml_after(kml, val));
 }
 UMap *parse(UMap *parent, UMapList *lparent, um_fp kml) {
+  kml = kml_removeSpacesPadding(kml);
   if (!kml.width) {
     if (!(parent || lparent)) {
       return UMap_new();
@@ -83,7 +84,17 @@ UMap *parse(UMap *parent, UMapList *lparent, um_fp kml) {
   if (!(parent || lparent)) {
     parent = UMap_new();
   }
-  kml = kml_removeSpacesPadding(kml);
+  if (fpChar(kml)[0] == '{') {
+    kml = kml_inside("{}", kml);
+    kml = kml_removeSpacesPadding(kml);
+  }
+  if (!kml.width) {
+    if (!(parent || lparent)) {
+      return UMap_new();
+    } else {
+      return parent ? parent : NULL;
+    }
+  }
 
   if (kml_indexOf(kml, ':') == kml.width) {
     return parent ? parent : NULL;
