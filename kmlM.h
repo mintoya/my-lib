@@ -34,8 +34,9 @@ UMapList *parseList(UMapList *lparent, um_fp kml) {
     }
   } break;
   case '{': {
-    val = kml_around("{}", val);
-    pval = kml_inside("{}", val);
+    val = kml_around("{}", kml);
+    pval = kml_inside("{}", kml);
+    print("pval:${}\n val:${}\n", pval, val);
     UMap *newmap = parse(NULL, NULL, pval);
     if (newmap) {
       if (lparent) {
@@ -96,7 +97,6 @@ UMap *parse(UMap *parent, UMapList *lparent, um_fp kml) {
   switch (fpChar(val)[0]) {
   case '[': {
     val = kml_around("[]", val);
-    // println("around yielded: ${}", val);
     pval = kml_inside("[]", val);
     UMapList *newmap = parseList(NULL, pval);
     if (newmap) {

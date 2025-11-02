@@ -19,8 +19,9 @@ int main() {
   // UMap_setChild(test, um_from("innermap"), test);
   // UMap_setList(test, um_from("innermap"), testList);
   // print("${UMap*}", test);
-  UMap_scoped *output = parse(NULL, NULL, um_from("a:{b:\"d;\";};test:[{key:value}\"s\"\"\""));
-  println("${UMap*}", output);
   // UMapView inner = (UMapView){UMap_get(output, um_from("a"))};
   // println("${}", UMapView_getValAtKey(inner, um_from("b")));
+  UMap_scoped *output =
+      parse(NULL, NULL, um_from("a:{b:\"d;\";;;};test:[{key:value},5]"));
+  println("${UMap*}", output);
 }

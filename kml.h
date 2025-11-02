@@ -65,6 +65,8 @@ unsigned int kml_indexOf(um_fp string, char c) {
   return i;
 }
 um_fp kml_inside(char limits[2], um_fp string) {
+  if (!string.width)
+    return nullUmf;
   char front = limits[0];
   char back = limits[1];
 
@@ -112,6 +114,8 @@ um_fp kml_inside(char limits[2], um_fp string) {
 }
 
 um_fp kml_around(char limits[2], um_fp string) {
+  if (!string.width)
+    return nullUmf;
   char front = limits[0];
   char back = limits[1];
 
@@ -175,13 +179,15 @@ um_fp kml_after(um_fp main, um_fp slice) {
   if (!(main.ptr && main.width))
     return nullUmf;
   if (!(slice.ptr && slice.width))
-    return main;
+    return nullUmf;
   char *mainStart = (char *)main.ptr;
   char *mainEnd = mainStart + main.width;
   char *sliceStart = (char *)slice.ptr;
   char *sliceEnd = sliceStart + slice.width;
 
-  assert(sliceStart >= mainStart && sliceEnd <= mainEnd);
+  // assert(sliceStart >= mainStart && sliceEnd <= mainEnd);
+  if (!(sliceStart >= mainStart && sliceEnd <= mainEnd))
+    return nullUmf;
 
   return (um_fp){.ptr = (uint8_t *)sliceEnd,
                  .width = (size_t)(mainEnd - sliceEnd)};

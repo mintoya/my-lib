@@ -288,9 +288,8 @@ void print_f(outputFunction put, um_fp fmt, ...);
 
 #define print_wf(printerfunction, fmt, ...)                                    \
   print_f(printerfunction,                                                     \
-          um_from(fmt) __VA_OPT__(, APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)),     \
+          um_from("" fmt) __VA_OPT__(, APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)),  \
           EMPTY_PRINT_ARG)
-
 #define println_wf(printerfunction, fmt, ...)                                  \
   print_wf(printerfunction, fmt "\n", __VA_ARGS__)
 #define print(fmt, ...) print_wf(defaultPrinter, fmt, __VA_ARGS__)

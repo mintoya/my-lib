@@ -1,7 +1,7 @@
-CC = clang
+CC = gcc
 DIR = build
-CFLAGS = -w 
-# CFLAGS = -fsanitize=address -g -O0
+# CFLAGS = -w 
+CFLAGS = -fsanitize=address -g -O0
 OBJECTS = main.c
 
 UNAME_S := $(shell uname -s 2>/dev/null)

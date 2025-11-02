@@ -60,8 +60,6 @@ static inline um_fp UMap_get(UMap *map, um_fp key) {
   return UMap_getValAtKey(map, key);
 }
 unsigned int UMap_set(UMap *map, um_fp key, um_fp val);
-// DONT USE WITH AN ACTUAL UMAP
-// make a copy without unused keys & vals
 UMap *UMap_remake(UMap *map);
 unsigned int UMap_setChild(UMap *map, um_fp key, UMap *ref);
 unsigned int UMap_setList(UMap *map, um_fp key, UMapList *ref);
@@ -324,6 +322,8 @@ unsigned int UMap_binarySearch(UMap *map, um_fp key) {
   return res;
 }
 unsigned int UMap_set(UMap *map, um_fp key, um_fp val) {
+  if (!key.width)
+    return -1;
   unsigned int index = UMap_binarySearch(map, key);
   unsigned int length = map->metadata->length;
 
@@ -459,6 +459,8 @@ um_fp UMapView_getValAtKey(UMapView map, um_fp key) {
 }
 
 unsigned int UMap_setChild(UMap *map, um_fp key, UMap *ref) {
+  if (!key.width)
+    return -1;
   um_fp um = UMap_toBuf(ref).raw;
   unsigned int index = UMap_set(map, key, um);
   mList_set(map->metadata, UMap_innertype, MAP, index);
@@ -481,6 +483,8 @@ unsigned int UMapList_setList(UMapList *map, unsigned int key, UMapList *ref) {
   return index;
 }
 unsigned int UMap_setList(UMap *map, um_fp key, UMapList *ref) {
+  if (!key.width)
+    return -1;
   um_fp um = UMapList_toBuf(ref).raw;
   unsigned int index = UMap_set(map, key, um);
   mList_set(map->metadata, UMap_innertype, LIST, index);
