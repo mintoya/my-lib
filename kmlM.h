@@ -79,6 +79,7 @@ UMapList *parseList(UMapList *lparent, um_fp kml) {
   return parseList(lparent, next);
 }
 UMap *parse(UMap *parent, UMapList *lparent, um_fp kml) {
+  println("recurse: ${}", kml);
   kml = kml_removeSpacesPadding(kml);
   if (!kml.width) {
     if (!(parent || lparent)) {
@@ -141,15 +142,9 @@ UMap *parse(UMap *parent, UMapList *lparent, um_fp kml) {
     }
   } break;
   case '"': {
-    val.ptr++;
-    val.width--;
-    pval = (um_fp){
-        .ptr = val.ptr,
-        .width = kml_indexOf(val, '"'),
-    };
-    val.ptr--;
-    val.width++;
-    UMap_set(parent, key, pval);
+    // print("val: (${})", val);
+    // print("until: (${})", kml_until(':', val));
+    // UMap_set(parent, key, pval);
   } break;
   default: {
     val = kml_behind(';', val);
