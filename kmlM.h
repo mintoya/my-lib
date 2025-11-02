@@ -45,32 +45,33 @@ UMapList *parseList(UMapList *lparent, um_fp kml) {
       UMap_free(newmap);
     }
   } break;
-  // case '"': {
-  //   kml.ptr++;
-  //   kml.width--;
-  //   pval = (um_fp){
-  //       .ptr = kml.ptr,
-  //       .width = kml_indexOf(kml, '"'),
-  //   };
-  //   val = pval;
-  //   // if (val.width != kml.width) {
-  //   //   val.width++;
-  //   //   um_fp temp = kml_removeSpacesPadding(kml_after(kml, val));
-  //   //   if (temp.width && fpChar(temp)[0] == ',') {
-  //   //     val = (um_fp){.ptr = temp.ptr, .width = 1};
-  //   //   }
-  //   // }
-  //   kml.ptr--;
-  //   kml.width++;
-  //   UMapList_append(lparent, pval);
-  // } break;
+  case '"': {
+    kml.ptr++;
+    kml.width--;
+    pval = (um_fp){
+        .ptr = kml.ptr,
+        .width = kml_indexOf(kml, '"'),
+    };
+    val = pval;
+    val.width++;
+    kml.ptr--;
+    kml.width++;
+    UMapList_append(lparent, pval);
+  } break;
   default: {
     val = kml_behind(',', kml);
     pval = kml_until(',', kml);
     UMapList_append(lparent, pval);
   }
   }
-  return parseList(lparent, kml_after(kml, val));
+  um_fp next = kml_after(kml, val);
+  next = kml_removeSpacesPadding(next);
+  if (next.width && fpChar(next)[0] == ',') {
+    next.width--;
+    next.ptr++;
+  }
+  next = kml_removeSpacesPadding(next);
+  return parseList(lparent, next);
 }
 UMap *parse(UMap *parent, UMapList *lparent, um_fp kml) {
   kml = kml_removeSpacesPadding(kml);
@@ -86,8 +87,8 @@ UMap *parse(UMap *parent, UMapList *lparent, um_fp kml) {
   }
   if (fpChar(kml)[0] == '{') {
     kml = kml_inside("{}", kml);
-    kml = kml_removeSpacesPadding(kml);
   }
+  kml = kml_removeSpacesPadding(kml);
   if (!kml.width) {
     if (!(parent || lparent)) {
       return UMap_new();

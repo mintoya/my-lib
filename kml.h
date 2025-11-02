@@ -104,9 +104,12 @@ um_fp kml_inside(char limits[2], um_fp string) {
         if (!counter)
           return (um_fp){.ptr = ((uint8_t *)string.ptr) + i + 1,
                          .width = (size_t)ii - 1};
+        // if (i + ii == string.width - 1)
+        //   return (um_fp){.ptr = ((uint8_t *)string.ptr) + i + 1,
+        //                  .width = (size_t)ii - 1};
         if (i + ii == string.width - 1)
           return (um_fp){.ptr = ((uint8_t *)string.ptr) + i + 1,
-                         .width = (size_t)ii - 1};
+                         .width = (size_t)ii};
       }
     }
   }
@@ -215,7 +218,6 @@ um_fp kml_after(um_fp main, um_fp slice) {
 char isSkip(char c) {
   switch (c) {
   case ' ':
-  // case '"':
   case '\n':
   case '\0':
   case '\t':

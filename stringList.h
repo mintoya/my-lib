@@ -112,7 +112,7 @@ static inline void stringList_cleanup_handler(stringList **sl) {
 #include <string.h>
 
 #ifndef STRING_LIST_minSize
-#define STRING_LIST_minSize 5
+#define STRING_LIST_minSize 10
 #endif
 
 stringList *stringList_new() {

@@ -1,3 +1,4 @@
+#include "kml.h"
 #define PRINTER_LIST_TYPENAMES
 
 #include "hmap.h"
@@ -9,15 +10,12 @@
 #include "wheels.h"
 
 List *buffer = NULL;
-__attribute__((destructor)) void freeList(void){
-  List_free(buffer); 
-}
-__attribute__((constructor)) void setupList(void){
-  buffer = mList(char);
-}
+__attribute__((destructor)) void freeList(void) { List_free(buffer); }
+__attribute__((constructor)) void setupList(void) { buffer = mList(char); }
 void listPrinter(char *c, unsigned int length) {
   List_appendFromArr(buffer, c, length);
 }
+
 int main() {
   UMap_scoped *test = UMap_new();
   UMap_set(test, um_from("a"), um_from("b"));
@@ -27,11 +25,13 @@ int main() {
   UMapList_setChild(testList, 0, test);
   UMapList_set(testList, 1, um_from("c"));
   UMap_setChild(test, um_from("innermap"), test);
-  UMap_setList(test, um_from("innermap"), testList);
-  print_wf(listPrinter,"${UMap*}", test);
+  UMap_setList(test, um_from("innerlist"), testList);
+  print_wf(listPrinter, "${UMap*}", test);
 
-  um_fp listBuffer = ((um_fp){.ptr = buffer->head,.width = List_headArea(buffer)});
+  um_fp listBuffer =
+      ((um_fp){.ptr = buffer->head, .width = List_headArea(buffer)});
   println("string output: ${}", listBuffer);
-  UMap_scoped *output = parse( NULL, NULL, listBuffer);
+  UMap_scoped *output = parse(NULL, NULL, listBuffer);
   println("entire object: ${UMap*}", output);
+  um_fp testum = listBuffer;
 }
