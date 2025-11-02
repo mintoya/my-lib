@@ -31,7 +31,7 @@ int main() {
   // um_fp listBuffer =
   //     ((um_fp){.ptr = buffer->head, .width = List_headArea(buffer)});
   um_fp listBuffer =
-      um_from("top:[a,b,\"c\",d,\"e\"\"f\"{key:\"val\"key2:\"val2\"}]");
+      um_from("top:[a,b,\"c\",d,\"e\"\"f\"{key:\"val\"key2:\"val2}]");
   println("string output: ${}", listBuffer);
   UMap_scoped *output = parse(NULL, NULL, listBuffer);
   println("entire object: ${UMap*}", output);
