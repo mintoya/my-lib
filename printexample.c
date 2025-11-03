@@ -25,9 +25,10 @@ int main() {
   MList_push(points, ((point){1, 0}));
   MList_push(points, ((point){1, 1}));
   MList_push(points, ((point){0, 1}));
-  println("${}", points.elements[0]);
-  println("${}", points.elements[1]);
-  println("${}", points.elements[2]);
-  println("${}", points.elements[3]);
+  println("${}", MList_pop(points));
+  println("${}", MList_pop(points));
+  println("${}", MList_pop(points));
+  println("${}", MList_pop(points));
+  points.elements = NULL;
   return 0;
 }

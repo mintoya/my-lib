@@ -26,23 +26,23 @@
       .capacity = name.size,                                                   \
       .elements = (typeof(list.elements))name.head,                            \
   };
+#define MList_heapList(list) MacroListRef__##list
 
 // automatically freed
 #define MList_init(list)                                                       \
-  List_scoped *_MacroListRef__##list = mList(typeof(list.elements[0]));        \
-  list = MList_deconvert((*_MacroListRef__##list), list);
+  List_scoped *MList_heapList(list) = mList(typeof(list.elements[0]));         \
+  list = MList_deconvert((*MList_heapList(list)), list);
 
 #define MList_push(list, ...)                                                  \
   do {                                                                         \
-    List tempList = MList_convert(list);                                       \
-    List *tempRef = &tempList;                                                 \
-    mList_add(tempRef, typeof(*(list.elements)), __VA_ARGS__);                 \
-    list = MList_deconvert(tempList, list);                                    \
+    mList_add(MList_heapList(list), typeof(*(list.elements)), __VA_ARGS__);    \
+    list = MList_deconvert((*MList_heapList(list)), list);                     \
   } while (0)
 
 #define MList_pop(list)                                                        \
   ({                                                                           \
-    list.length--;                                                             \
+    MList_heapList(list)->length--;                                            \
+    list = MList_deconvert((*MList_heapList(list)), list);                     \
     list.elements[list.length];                                                \
   })
 

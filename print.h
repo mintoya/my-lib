@@ -282,8 +282,9 @@ MAKE_PRINT_ARG_TYPE(char);
 MAKE_PRINT_ARG_TYPE(size_t);
 
 #define MAKE_PRINT_ARG(a)                                                      \
-  ((struct print_arg){.ref = REF(typeof(a), a),                                \
-                      .name = um_from(type_name_cstr<decltype(a)>())})
+  ((struct print_arg){                                                         \
+      .ref = REF(typeof(a), a),                                                \
+      .name = um_from(type_name_cstr<std::decay_t<decltype(a)>>())})
 #endif
 #define EMPTY_PRINT_ARG ((struct print_arg){.ref = NULL, .name = nullUmf})
 
