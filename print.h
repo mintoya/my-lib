@@ -19,7 +19,7 @@
   template <typename T> class StackPush {
   private:
     using RealT = std::remove_reference_t<T>;
-    RealT value; // store inline, no heap
+    RealT value; 
   public:
     template <typename ArgType>
     explicit StackPush(ArgType &&arg) : value(std::forward<ArgType>(arg)) {}
@@ -247,18 +247,25 @@ struct print_arg {
 // clang-format on
 #pragma clang diagnostic pop
 // type assumption
+
 #ifndef __cplusplus
-#define MAKE_PRINT_ARG_TYPE(type)                                              \
-  type:                                                                        \
-  um_from(#type)
+
+#include "printer/genericName.h"
+#define MAKE_PRINT_ARG_TYPE(type) MAKE_NEW_TYPE(type)
+
+MAKE_PRINT_ARG_TYPE(int);
+#include "printer/genericName.h"
+MAKE_PRINT_ARG_TYPE(um_fp);
+#include "printer/genericName.h"
+MAKE_PRINT_ARG_TYPE(char);
+#include "printer/genericName.h"
+MAKE_PRINT_ARG_TYPE(size_t);
+
+// clang-format off
 #define MAKE_PRINT_ARG(a)                                                      \
   ((struct print_arg){.ref = REF(typeof(a), a),                                \
-                      .name = _Generic((a),                                    \
-                          MAKE_PRINT_ARG_TYPE(int),                            \
-                          MAKE_PRINT_ARG_TYPE(um_fp),                          \
-                          MAKE_PRINT_ARG_TYPE(char),                           \
-                          MAKE_PRINT_ARG_TYPE(size_t),                         \
-                          default: nullUmf)})
+                      .name = um_from(GENERIC_NAME(a))})
+// clang-format on
 #else
 template <typename T> constexpr const char *type_name_cstr() {
   return "unknown";
@@ -276,7 +283,6 @@ MAKE_PRINT_ARG_TYPE(size_t);
   ((struct print_arg){.ref = REF(typeof(a), a),                                \
                       .name = um_from(type_name_cstr<decltype(a)>())})
 #endif
-
 #define EMPTY_PRINT_ARG ((struct print_arg){.ref = NULL, .name = nullUmf})
 
 void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
