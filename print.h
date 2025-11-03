@@ -131,12 +131,13 @@ struct print_arg {
 // 
 // you can pass args with a printerid and a colon 
 // ex: "um_fp<void>: c0 length"
-// assumptions are not enabled with a c++ compiler,
-// so no ${}
 //
-// MAKE_PRINT_ARG_TYPE will extend types that are assumed by 
-// ${}
-// in c++ only 
+// #include "printer/genericName.h"
+// MAKE_PRINT_ARG_TYPE(size_t);
+// extends types assumed with ${} in c 
+// 
+// MAKE_PRINT_ARG_TYPE(size_t);
+// does the same in cpp
 
   REGISTER_PRINTER(char, { put(&in, 1); });
   REGISTER_PRINTER(um_fp, {
