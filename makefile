@@ -1,8 +1,8 @@
 CC = gcc
 DIR = build
-CFLAGS = -w 
-# CFLAGS = -fsanitize=address -g -O0
-OBJECTS = main.c
+# CFLAGS = -w 
+CFLAGS = -fsanitize=address -g -O0
+OBJECTS = printexample.c
 
 UNAME_S := $(shell uname -s 2>/dev/null)
 

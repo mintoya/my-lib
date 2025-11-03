@@ -29,7 +29,8 @@
     operator const void *() const { return (const void *)&value; }
   };
 // clang-format on
-#define typeof(m) decltype(m)
+// #define typeof(m) decltype(m)
+#define typeof(x) std::decay_t<decltype(x)>
 #define REF(type, value) (StackPush<type>(value))
 #else
 #define REF(type, value) ((type[1]){value})

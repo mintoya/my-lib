@@ -34,9 +34,4 @@ int main() {
   println("string output: ${}", listBuffer);
   UMap_scoped *output = parse(NULL, NULL, listBuffer);
   println("entire object: ${UMap*}", output);
-  um_fp testum = listBuffer;
-  MList(int) li;
-  MList_init(li);
-  MList_append(li, 5);
-  println("${}", li.elements[0]);
 }
