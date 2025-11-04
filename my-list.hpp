@@ -7,7 +7,7 @@ template <typename T> struct listPlus {
 
   listPlus() {
     ptr = List_new(sizeof(T));
-    dofree = false;
+    dofree = true;
   }
 
   listPlus(List *p) { ptr = p; }
@@ -22,7 +22,7 @@ template <typename T> struct listPlus {
 
   inline void dontfree() { dofree = false; }
   inline void unmake() { List_free(ptr); }
-  ~listPlus() { unmake(); }
+  ~listPlus() { if(dofree)unmake(); }
 
   void pad(unsigned int ammount) { List_pad(ptr, ammount); }
   void resize(unsigned int newSize) { List_resize(ptr, newSize); }
