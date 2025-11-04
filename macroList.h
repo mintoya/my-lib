@@ -20,18 +20,19 @@
 
 // automatically freed
 #define MList_init(list)                                                       \
-  List_scoped *MList_heapList(list) = mList(typeof(list.elements[0]));         \
+  List *MList_heapList(list) = List_new(sizeof(typeof(list.elements[0])));     \
   list = MList_deconvert((*MList_heapList(list)), list);
 
 // not automatically freed
-#define MList_initDF(list)                                                       \
-  List *MList_heapList(list) = mList(typeof(list.elements[0]));                \
+#define MList_initDF(list)                                                     \
+  List *MList_heapList(list) = List_new(sizeof(typeof(list.elements[0])));     \
   list = MList_deconvert((*MList_heapList(list)), list);
 
 #define MList_push(list, ...)                                                  \
   do {                                                                         \
     MList_heapList(list)->length = list.length;                                \
-    mList_add(MList_heapList(list), typeof(*(list.elements)), __VA_ARGS__);    \
+    typeof(*(list.elements)) __val = __VA_ARGS__;                              \
+    List_append(MList_heapList(list), &__val);                                 \
     list = MList_deconvert((*MList_heapList(list)), list);                     \
   } while (0)
 

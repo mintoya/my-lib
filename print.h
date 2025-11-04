@@ -1,8 +1,9 @@
 #ifndef PRINTER_H
 #define PRINTER_H
+#include <errno.h>
 #include <stdarg.h>
 #include <stdint.h>
-#include <stdio.h>
+#include <stdlib.h>
 
 #include "printer/macros.h"
 #include "printer/variadic.h"
@@ -55,6 +56,10 @@ static void PrinterSingleton_init() {
   PrinterSingleton.namesBuffer = (uint8_t *)malloc(1024);
   PrinterSingleton.nbN = 0;
   PrinterSingleton.N = 0;
+  if (!(PrinterSingleton.printerFunctions && PrinterSingleton.namesBuffer &&
+        PrinterSingleton.namesMetadata)) {
+    exit(ENOMEM);
+  }
 }
 static void PrinterSingleton_deinit() {
   free(PrinterSingleton.printerFunctions);
@@ -65,20 +70,25 @@ static void PrinterSingleton_append(um_fp name, printerFunction function) {
   PrinterSingleton.namesMetadata = (namesMetadata *)realloc(
       PrinterSingleton.namesMetadata,
       (PrinterSingleton.N + 1) * sizeof(namesMetadata));
-  PrinterSingleton.namesMetadata[PrinterSingleton.N] = (namesMetadata){
-      .index = PrinterSingleton.nbN,
-      .width = name.width,
-  };
   PrinterSingleton.namesBuffer =
       (uint8_t *)realloc(PrinterSingleton.namesBuffer,
                          (PrinterSingleton.nbN + name.width) * sizeof(uint8_t));
-  memcpy(PrinterSingleton.namesBuffer +
-             (sizeof(uint8_t) * PrinterSingleton.nbN),
-         name.ptr, name.width);
 
   PrinterSingleton.printerFunctions = (printerFunction *)realloc(
       PrinterSingleton.printerFunctions,
       (PrinterSingleton.N + 1) * sizeof(printerFunction));
+  if (!(PrinterSingleton.printerFunctions && PrinterSingleton.namesBuffer &&
+        PrinterSingleton.namesMetadata)) {
+    exit(ENOMEM);
+  }
+
+  PrinterSingleton.namesMetadata[PrinterSingleton.N] = (namesMetadata){
+      .index = PrinterSingleton.nbN,
+      .width = name.width,
+  };
+  memcpy(PrinterSingleton.namesBuffer +
+             (sizeof(uint8_t) * PrinterSingleton.nbN),
+         name.ptr, name.width);
   PrinterSingleton.printerFunctions[PrinterSingleton.N] = function;
   PrinterSingleton.N++;
   PrinterSingleton.nbN += name.width;
@@ -320,7 +330,8 @@ MAKE_PRINT_ARG_TYPE(size_t);
 // clang-format off
 #define MAKE_PRINT_ARG(a)                                                      \
   ((struct print_arg){.ref = REF(typeof(a), a),                                \
-                      .name = um_from(GENERIC_NAME(a))})
+                      .name = ((um_fp){.ptr=(uint8_t*)GENERIC_NAME(a),.width=sizeof(GENERIC_NAME(a))-1} )})
+
 // clang-format on
 #else
 template <typename T> constexpr const char *type_name_cstr() {
@@ -345,6 +356,34 @@ MAKE_PRINT_ARG_TYPE(size_t);
 void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
                     um_fp args);
 
+static struct {
+  char buffer[1024];
+  uint16_t place;
+} print_f_singleton;
+static void print_f_singleton_start(outputFunction put) {
+  put(print_f_singleton.buffer, print_f_singleton.place);
+  print_f_singleton.place = 0;
+}
+static void print_f_singleton_end(outputFunction put) {
+  put(print_f_singleton.buffer, print_f_singleton.place);
+  print_f_singleton.place = 0;
+}
+
+static void print_f_singleton_write(outputFunction put, char *ptr,
+                                    unsigned int len) {
+#if PRINTER_UNBUFFERED
+  put(ptr, len);
+#else
+  if (print_f_singleton.place + len > sizeof(print_f_singleton.buffer)) {
+    put(print_f_singleton.buffer, print_f_singleton.place);
+    put(ptr, len);
+    print_f_singleton.place = 0;
+  } else {
+    memcpy(print_f_singleton.buffer + print_f_singleton.place, ptr, len);
+    print_f_singleton.place += len;
+  }
+#endif
+}
 void print_f(outputFunction put, um_fp fmt, ...);
 
 #define print_wf(print, fmt, ...)                                              \
@@ -356,6 +395,7 @@ void print_f(outputFunction put, um_fp fmt, ...);
 #define print(fmt, ...) print_wf(defaultPrinter, fmt, __VA_ARGS__)
 #define println(fmt, ...) print_wf(defaultPrinter, fmt "\n", __VA_ARGS__)
 
+#include <stdio.h>
 __attribute__((weak)) void defaultPrinter(char *c, unsigned int length) {
   fwrite(c, sizeof(char), length, stdout);
 }
@@ -419,6 +459,12 @@ inline um_fp printer_arg_trim(um_fp in) {
   return res;
 }
 
+static outputFunction putstore = NULL;
+void put_temp(char *buffer, unsigned int len) {
+  if (putstore) {
+    print_f_singleton_write(putstore, buffer, len);
+  }
+}
 void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
                     um_fp args) {
   void *ref = p.ref;
@@ -431,11 +477,15 @@ void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
     USETYPEPRINTER(um_fp, typeName);
     USETYPEPRINTER(um_fp, um_from(")"));
   } else {
-    fn(put, ref, args);
+    putstore = put;
+    fn(put_temp, ref, args);
+    putstore = NULL;
   }
 }
+
 #define um_charArr(um) ((char *)(um.ptr))
 void print_f(outputFunction put, um_fp fmt, ...) {
+  print_f_singleton_start(put);
   va_list l;
   va_start(l, fmt);
   char check = 0;
@@ -443,9 +493,9 @@ void print_f(outputFunction put, um_fp fmt, ...) {
     switch (um_charArr(fmt)[i]) {
     case '$':
       if (check)
-        put(um_charArr(fmt) + i - 1, 1);
+        print_f_singleton_write(put, um_charArr(fmt) + i - 1, 1);
       if (i + 1 == fmt.width)
-        put("$", 1);
+        print_f_singleton_write(put, "$", 1);
       check = 1;
       break;
     case '{':
@@ -456,8 +506,10 @@ void print_f(outputFunction put, um_fp fmt, ...) {
         um_fp typeName = {.ptr = ((uint8_t *)fmt.ptr) + i + 1,
                           .width = j - i - 1};
         struct print_arg assumedName = va_arg(l, struct print_arg);
-        if (!assumedName.ref)
+        if (!assumedName.ref) {
+          print_f_singleton_end(put);
           return put("__ NO ARGUMENT PROVIDED, ENDING PRINT __", 40);
+        }
 
         um_fp tname = printer_arg_until(':', typeName);
         um_fp parseargs = printer_arg_after(':', typeName);
@@ -469,12 +521,13 @@ void print_f(outputFunction put, um_fp fmt, ...) {
       break;
     default:
       if (check)
-        put(um_charArr(fmt) + i - 1, 1);
-      put(um_charArr(fmt) + i, 1);
+        print_f_singleton_write(put, um_charArr(fmt) + i - 1, 1);
+      print_f_singleton_write(put, um_charArr(fmt) + i, 1);
       check = 0;
     }
   }
   va_end(l);
+  print_f_singleton_end(put);
 }
 #undef um_charArr
 #endif
