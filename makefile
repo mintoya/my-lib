@@ -1,4 +1,4 @@
-CC = clang
+CC = gcc
 DIR = build
 CFLAGS = -w 
 # CFLAGS = -fsanitize=address -g -O0 -w

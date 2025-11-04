@@ -20,7 +20,7 @@
 
 // automatically freed
 #define MList_init(list)                                                       \
-  List *MList_heapList(list) = List_new(sizeof(typeof(list.elements[0])));     \
+  List_scoped *MList_heapList(list) = List_new(sizeof(typeof(list.elements[0])));     \
   list = MList_deconvert((*MList_heapList(list)), list);
 
 // not automatically freed

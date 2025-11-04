@@ -176,13 +176,6 @@ struct print_arg {
 // clang-format off
 
 // examples with builtin types
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wwrite-strings"
-#pragma clang diagnostic ignored "-Wheader-hygiene"
-#pragma clang diagnostic ignored "-Wundefined-inline"
-
-
 // the behavior of "put" is modular
 // 
 // for building printers
@@ -311,7 +304,6 @@ struct print_arg {
   });
 
 // clang-format on
-#pragma clang diagnostic pop
 // type assumption
 
 #ifndef __cplusplus
