@@ -8,31 +8,29 @@
 #define MList(type)                                                            \
   struct {                                                                     \
     unsigned int length;                                                       \
-    unsigned int capacity;                                                     \
     type *elements;                                                            \
   }
 
-#define MList_convert(list)                                                    \
-  (List){.width = sizeof(typeof(*(list.elements))),                            \
-         .length = list.length,                                                \
-         .size = list.capacity,                                                \
-         .head = (uint8_t *)list.elements};
 #define MList_deconvert(name, list)                                            \
   (typeof(list)){                                                              \
       .length = name.length,                                                   \
-      .capacity = name.size,                                                   \
       .elements = (typeof(list.elements))name.head,                            \
   };
-#define MList_heapList(list) MacroListRef__##list
+#define MList_heapList(list) __MacroListRef__##list
 
 // automatically freed
 #define MList_init(list)                                                       \
   List_scoped *MList_heapList(list) = mList(typeof(list.elements[0]));         \
   list = MList_deconvert((*MList_heapList(list)), list);
 
+// not automatically freed
+#define MList_initDF(list)                                                       \
+  List *MList_heapList(list) = mList(typeof(list.elements[0]));                \
+  list = MList_deconvert((*MList_heapList(list)), list);
+
 #define MList_push(list, ...)                                                  \
   do {                                                                         \
-    *MList_heapList(list) = MList_convert(list);                               \
+    MList_heapList(list)->length = list.length;                                \
     mList_add(MList_heapList(list), typeof(*(list.elements)), __VA_ARGS__);    \
     list = MList_deconvert((*MList_heapList(list)), list);                     \
   } while (0)
@@ -46,7 +44,7 @@
 
 #define MList_insert(list, index, ...)                                         \
   do {                                                                         \
-    *MList_heapList(list) = MList_convert(list);                               \
+    MList_heapList(list)->length = list.length;                                \
     typeof(*(list.elements)) __val = __VA_ARGS__;                              \
     List_insert(MList_heapList(list), index, (void *)&__val);                  \
     list = MList_deconvert((*MList_heapList(list)), list);                     \
@@ -59,6 +57,8 @@
       __VA_ARGS__                                                              \
     }                                                                          \
   } while (0)
+
+#define MList_capacity(list) MList_heapList(list)->size
 
 #endif // MACROLIST_H
 #endif // cpp

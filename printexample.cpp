@@ -20,7 +20,7 @@ MAKE_PRINT_ARG_TYPE(point);
 
 int main() {
   listPlus<point> points;
-
+  // points.dontfree(); 
   points.push((point){0, 0});
   points.push((point){1, 1});
   points.push((point){0, 1});

@@ -31,6 +31,6 @@ int main() {
   MList_foreach(points, i, { println("foreach : ${}", i); });
   println("length  : ${int}\n"
           "capacity: ${int}",
-          points.length, points.capacity);
+          points.length, MList_capacity(points));
   return 0;
 }
