@@ -16,15 +16,19 @@ template <typename T> struct listPlus {
   T *self() { return (T *)ptr->head; }
   const unsigned int length() { return ptr->length; }
 
-  // ~listPlus() {
-  //   List_delete(ptr);
-  // }
+  ~listPlus() { List_free(ptr); }
 
-  void pad(unsigned int ammount){List_pad(ptr, ammount);}
+  void pad(unsigned int ammount) { List_pad(ptr, ammount); }
   void resize(unsigned int newSize) { List_resize(ptr, newSize); }
   void unmake() { List_free(ptr); }
 
-  void append(const T &value) { List_append(ptr, (void *)&value); }
+  inline void append(const T &value) { List_append(ptr, (void *)&value); }
+  inline void push(const T &value) { List_append(ptr, (void *)&value); }
+  inline T get(unsigned int i) { return *((T *)List_getRef(ptr, i)); }
+  T pop() {
+    ptr->length--;
+    return *((T *)List_getRefForce(ptr, ptr->length));
+  }
 
   void appendArr(const T values[], unsigned int len) {
     List_appendFromArr(ptr, values, len);
@@ -33,7 +37,6 @@ template <typename T> struct listPlus {
   void insert(const T &value, int index) {
     List_insert(ptr, index, (void *)&value);
   }
-  T get(unsigned int i) const { return *((T *)List_getRef(ptr, i)); }
 
   void set(unsigned int i, const T &value) { List_set(ptr, i, &value); }
   int searchFor(const T &value) { return List_search(ptr, &value); }

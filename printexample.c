@@ -1,7 +1,6 @@
 #include "macroList.h"
 #include "print.h"
 #include "wheels.h"
-
 typedef struct {
   int x;
   int y;
@@ -21,14 +20,13 @@ MAKE_PRINT_ARG_TYPE(point);
 int main() {
   MList(point) points;
   MList_init(points);
-  MList_push(points, ((point){0, 0}));
-  MList_push(points, ((point){1, 0}));
-  MList_push(points, ((point){1, 1}));
-  MList_push(points, ((point){0, 1}));
+  MList_push(points,((point){0, 0}));
+  MList_push(points,((point){1, 0}));
+  MList_push(points,((point){1, 1}));
+  MList_push(points,((point){0, 1}));
   println("${}", MList_pop(points));
   println("${}", MList_pop(points));
   println("${}", MList_pop(points));
   println("${}", MList_pop(points));
-  points.elements = NULL;
   return 0;
 }

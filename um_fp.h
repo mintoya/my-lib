@@ -33,7 +33,7 @@ inline bool operator==(const um_fp &a, const um_fp &b) { return um_eq(a, b); }
 inline bool operator!=(const um_fp &a, const um_fp &b) { return !um_eq(a, b); }
 #endif
 
-#define nullUmf ((um_fp){.ptr = NULL, .width = 0})
+#define nullUmf ((um_fp){.ptr = (uint8_t*)NULL, .width = 0})
 
 #define um_block(var)                                                          \
   ((um_fp){.ptr = (uint8_t *)(typeof(var)[1]){var},                            \

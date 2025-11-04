@@ -34,6 +34,9 @@ static inline size_t List_headArea(const List *l) {
 static inline size_t List_fullHeadArea(const List *l) {
   return (l->width * l->size);
 }
+static inline void *List_getRefForce(const List *l, unsigned int i) {
+  return (l->head + l->width * i);
+}
 static inline void *List_getRef(const List *l, unsigned int i) {
   void *res;
   res = (i < l->length) ? (l->head + l->width * i) : (NULL);

@@ -1,3 +1,6 @@
+#ifdef __cplusplus
+#error not supported in cpp, just use the class
+#else
 #ifndef MACROLIST_H
 #define MACROLIST_H
 #include "my-list.h"
@@ -8,12 +11,6 @@
     unsigned int capacity;                                                     \
     type *elements;                                                            \
   }
-#ifdef __cplusplus
-#include <type_traits>
-#ifndef typeof
-#define typeof(x) std::decay_t<decltype(x)>
-#endif
-#endif
 
 #define MList_convert(list)                                                    \
   (List){.width = sizeof(typeof(*(list.elements))),                            \
@@ -35,10 +32,12 @@
 
 #define MList_push(list, ...)                                                  \
   do {                                                                         \
+    *MList_heapList(list) = MList_convert(list);                               \
     mList_add(MList_heapList(list), typeof(*(list.elements)), __VA_ARGS__);    \
     list = MList_deconvert((*MList_heapList(list)), list);                     \
   } while (0)
 
+// not in cpp
 #define MList_pop(list)                                                        \
   ({                                                                           \
     MList_heapList(list)->length--;                                            \
@@ -47,3 +46,4 @@
   })
 
 #endif // MACROLIST_H
+#endif // cpp
