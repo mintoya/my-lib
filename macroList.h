@@ -1,5 +1,5 @@
 #ifdef __cplusplus
-#error not supported in cpp, just use the class
+#error macrolist.h not supported in cpp, just use the class
 #else
 #ifndef MACROLIST_H
 #define MACROLIST_H
@@ -37,13 +37,20 @@
     list = MList_deconvert((*MList_heapList(list)), list);                     \
   } while (0)
 
-// not in cpp
 #define MList_pop(list)                                                        \
   ({                                                                           \
     MList_heapList(list)->length--;                                            \
     list = MList_deconvert((*MList_heapList(list)), list);                     \
     list.elements[list.length];                                                \
   })
+
+#define MList_insert(list, index, ...)                                         \
+  do {                                                                         \
+    *MList_heapList(list) = MList_convert(list);                               \
+    typeof(*(list.elements)) __val = __VA_ARGS__;                              \
+    List_insert(MList_heapList(list), index, (void *)&__val);                  \
+    list = MList_deconvert((*MList_heapList(list)), list);                     \
+  } while (0)
 
 #endif // MACROLIST_H
 #endif // cpp

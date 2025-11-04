@@ -1,3 +1,4 @@
+#define PRINTER_LIST_TYPENAMES
 #include "my-list.hpp"
 #include "print.h"
 #include "wheels.h"
@@ -21,9 +22,10 @@ int main() {
   listPlus<point> points;
 
   points.push((point){0, 0});
-  points.push((point){1, 0});
   points.push((point){1, 1});
   points.push((point){0, 1});
+  points.insert((point){1, 0}, 1);
+  println("${}", points.get(2));
   println("${}", points.pop());
   println("${}", points.pop());
   println("${}", points.pop());

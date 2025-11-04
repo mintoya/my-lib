@@ -1,3 +1,4 @@
+#define PRINTER_LIST_TYPENAMES
 #include "macroList.h"
 #include "print.h"
 #include "wheels.h"
@@ -20,10 +21,11 @@ MAKE_PRINT_ARG_TYPE(point);
 int main() {
   MList(point) points;
   MList_init(points);
-  MList_push(points,((point){0, 0}));
-  MList_push(points,((point){1, 0}));
-  MList_push(points,((point){1, 1}));
-  MList_push(points,((point){0, 1}));
+  MList_push(points, ((point){0, 0}));
+  MList_push(points, ((point){1, 1}));
+  MList_push(points, ((point){0, 1}));
+  MList_insert(points, 1, ((point){1, 0}));
+  println("${}", points.elements[2]);
   println("${}", MList_pop(points));
   println("${}", MList_pop(points));
   println("${}", MList_pop(points));
