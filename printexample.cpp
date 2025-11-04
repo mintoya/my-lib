@@ -2,10 +2,10 @@
 #include "my-list.hpp"
 #include "print.h"
 #include "wheels.h"
-typedef struct {
+struct point {
   int x;
   int y;
-} point;
+};
 REGISTER_PRINTER(point, {
   put("{x:", 3);
   USETYPEPRINTER(int, in.x);
@@ -15,7 +15,7 @@ REGISTER_PRINTER(point, {
   put("}", 1);
 })
 
-#include "printer/genericName.h"
+#include "printer/genericName.h" // unnececary in cpp
 MAKE_PRINT_ARG_TYPE(point);
 
 int main() {
@@ -28,11 +28,9 @@ int main() {
   println("${}", points.get(2));
   println("${}", points.pop());
   println("${}", points.pop());
-  println("${}", points.pop());
-  println("${}", points.pop());
+  points.foreach ([](point i) { println("foreach : ${}", i); });
   println("length  : ${int}\n"
           "capacity: ${int}",
-          (int)points.length(),
-          (int)points.capacity());
+          (int)points.length(), (int)points.capacity());
   return 0;
 }

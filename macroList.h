@@ -52,5 +52,13 @@
     list = MList_deconvert((*MList_heapList(list)), list);                     \
   } while (0)
 
+#define MList_foreach(list, element, ...)                                      \
+  do {                                                                         \
+    for (size_t _i = 0; _i < list.length; _i++) {                              \
+      typeof(list.elements[0]) element = list.elements[_i];                    \
+      __VA_ARGS__                                                              \
+    }                                                                          \
+  } while (0)
+
 #endif // MACROLIST_H
 #endif // cpp

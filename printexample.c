@@ -15,7 +15,7 @@ REGISTER_PRINTER(point, {
   put("}", 1);
 })
 
-#include "printer/genericName.h"
+#include "printer/genericName.h" // advances typenaems
 MAKE_PRINT_ARG_TYPE(point);
 
 int main() {
@@ -28,11 +28,9 @@ int main() {
   println("${}", points.elements[2]);
   println("${}", MList_pop(points));
   println("${}", MList_pop(points));
-  println("${}", MList_pop(points));
-  println("${}", MList_pop(points));
+  MList_foreach(points, i, { println("foreach : ${}", i); });
   println("length  : ${int}\n"
           "capacity: ${int}",
-          (int)points.length,
-          (int)points.capacity);
+          (int)points.length, (int)points.capacity);
   return 0;
 }

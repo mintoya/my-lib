@@ -3,24 +3,29 @@
 
 template <typename T> struct listPlus {
   List *ptr;
+  bool dofree : 1;
 
-  listPlus() { ptr = List_new(sizeof(T)); }
+  listPlus() {
+    ptr = List_new(sizeof(T));
+    dofree = false;
+  }
 
-  // listPlus(void *p) { ptr = (List *)p; }
   listPlus(List *p) { ptr = p; }
 
   listPlus(T *arr, unsigned int length) {
     ptr = List_new(sizeof(T));
     List_fromArr(ptr, arr, length);
   }
-  T *self() { return (T *)ptr->head; }
-  const unsigned int length() { return ptr->length; }
+  inline T *elements() { return (T *)ptr->head; }
+  inline T *self() { return (T *)ptr->head; }
+  inline const unsigned int length() { return ptr->length; }
 
-  ~listPlus() { List_free(ptr); }
+  inline void dontfree() { dofree = false; }
+  inline void unmake() { List_free(ptr); }
+  ~listPlus() { unmake(); }
 
   void pad(unsigned int ammount) { List_pad(ptr, ammount); }
   void resize(unsigned int newSize) { List_resize(ptr, newSize); }
-  void unmake() { List_free(ptr); }
 
   inline void append(const T &value) { List_append(ptr, (void *)&value); }
   inline void push(const T &value) { List_append(ptr, (void *)&value); }
@@ -43,4 +48,9 @@ template <typename T> struct listPlus {
   inline void clear() { ptr->length = 0; }
   inline unsigned int length() const { return ptr->length; }
   inline unsigned int capacity() const { return ptr->size; }
+  template <typename FN> void foreach (FN &&function) {
+    for (int i = 0; i < length(); i++) {
+      function(get(i));
+    }
+  }
 };
