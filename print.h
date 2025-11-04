@@ -1,15 +1,12 @@
 #ifndef PRINTER_H
 #define PRINTER_H
-#include "my-list.h"
-#include "stringList.h"
-
-#include "printer/macros.h"
-#include "printer/variadic.h"
-
-#include "um_fp.h"
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
+
+#include "printer/macros.h"
+#include "printer/variadic.h"
+#include "um_fp.h"
 
 // temporary variables for compound literals
 #ifdef __cplusplus
@@ -39,8 +36,72 @@
 typedef void (*outputFunction)(char *, unsigned int length);
 typedef void (*printerFunction)(outputFunction, void *, um_fp args);
 
-static List *printerFunctions;
-static stringList *typeNamesList;
+typedef struct {
+  size_t index;
+  size_t width;
+} namesMetadata;
+static struct {
+  printerFunction *printerFunctions;
+  namesMetadata *namesMetadata;
+  uint8_t *namesBuffer;
+  size_t nbN;
+  size_t N;
+} PrinterSingleton;
+static void PrinterSingleton_init() {
+  PrinterSingleton.printerFunctions =
+      (printerFunction *)malloc(10 * sizeof(printerFunction));
+  PrinterSingleton.namesMetadata =
+      (namesMetadata *)malloc(10 * sizeof(namesMetadata));
+  PrinterSingleton.namesBuffer = (uint8_t *)malloc(1024);
+  PrinterSingleton.nbN = 0;
+  PrinterSingleton.N = 0;
+}
+static void PrinterSingleton_deinit() {
+  free(PrinterSingleton.printerFunctions);
+  free(PrinterSingleton.namesMetadata);
+  free(PrinterSingleton.namesBuffer);
+}
+static void PrinterSingleton_append(um_fp name, printerFunction function) {
+  PrinterSingleton.namesMetadata = (namesMetadata *)realloc(
+      PrinterSingleton.namesMetadata,
+      (PrinterSingleton.N + 1) * sizeof(namesMetadata));
+  PrinterSingleton.namesMetadata[PrinterSingleton.N] = (namesMetadata){
+      .index = PrinterSingleton.nbN,
+      .width = name.width,
+  };
+  PrinterSingleton.namesBuffer =
+      (uint8_t *)realloc(PrinterSingleton.namesBuffer,
+                         (PrinterSingleton.nbN + name.width) * sizeof(uint8_t));
+  memcpy(PrinterSingleton.namesBuffer +
+             (sizeof(uint8_t) * PrinterSingleton.nbN),
+         name.ptr, name.width);
+
+  PrinterSingleton.printerFunctions = (printerFunction *)realloc(
+      PrinterSingleton.printerFunctions,
+      (PrinterSingleton.N + 1) * sizeof(printerFunction));
+  PrinterSingleton.printerFunctions[PrinterSingleton.N] = function;
+  PrinterSingleton.N++;
+  PrinterSingleton.nbN += name.width;
+}
+static printerFunction PrinterSingleton_get(um_fp name) {
+  for (int i = 0; i < PrinterSingleton.N; i++) {
+    um_fp element = (um_fp){
+        .ptr = &PrinterSingleton
+                    .namesBuffer[PrinterSingleton.namesMetadata[i].index],
+        .width = PrinterSingleton.namesMetadata[i].width,
+    };
+    if (!um_fp_cmp(element, name))
+      return PrinterSingleton.printerFunctions[i];
+  }
+  return NULL;
+}
+static um_fp PrinterSingleton_getN(int index) {
+  return (um_fp){
+      .ptr = &PrinterSingleton
+                  .namesBuffer[PrinterSingleton.namesMetadata[index].index],
+      .width = PrinterSingleton.namesMetadata[index].width,
+  };
+}
 // arg utils
 // clang-format off
 
@@ -52,12 +113,10 @@ static stringList *typeNamesList;
 // clang-format on
 
 __attribute__((constructor(200))) static void printerInit() {
-  printerFunctions = List_new(sizeof(printerFunction));
-  typeNamesList = stringList_new();
+  PrinterSingleton_init();
 }
 __attribute__((destructor)) static void printerDeinit() {
-  List_free(printerFunctions);
-  stringList_free(typeNamesList);
+  PrinterSingleton_deinit();
 }
 
 #define REGISTER_PRINTER(T, ...)                                               \
@@ -69,10 +128,7 @@ __attribute__((destructor)) static void printerDeinit() {
   }                                                                            \
   __attribute__((constructor(201))) static void register_##T() {               \
     um_fp key = (um_fp){.ptr = (uint8_t *)#T, .width = sizeof(#T) - 1};        \
-    uint8_t *refFn =                                                           \
-        (uint8_t *)(void *)REF(printerFunction, GETTYPEPRINTERFN(T));          \
-    stringList_append(typeNamesList, key);                                     \
-    List_append(printerFunctions, refFn);                                      \
+    PrinterSingleton_append(key, GETTYPEPRINTERFN(T));                         \
   }
 
 #define REGISTER_SPECIAL_PRINTER_NEEDID(id, str, type, ...)                    \
@@ -83,9 +139,7 @@ __attribute__((destructor)) static void printerDeinit() {
   }                                                                            \
   __attribute__((constructor(202))) static void UNIQUE_PRINTER_FN2() {         \
     um_fp key = (um_fp){.ptr = (uint8_t *)str, .width = strlen(str)};          \
-    uint8_t *refFn = (uint8_t *)(void *)REF(printerFunction, id);              \
-    stringList_append(typeNamesList, key);                                     \
-    List_append(printerFunctions, refFn);                                      \
+    PrinterSingleton_append(key, id);                                          \
   }
 
 #define REGISTER_SPECIAL_PRINTER(str, type, ...)                               \
@@ -308,15 +362,12 @@ __attribute__((weak)) void defaultPrinter(char *c, unsigned int length) {
 
 #ifdef PRINTER_LIST_TYPENAMES
 __attribute__((constructor(203))) static void post_init() {
-
-  GETTYPEPRINTERFN(um_fp)(defaultPrinter,
-                          REF(um_fp, um_from("list of printer type names:\n")),
-                          nullUmf);
-  for (int i = 0; i < stringList_length(typeNamesList); i++) {
-    GETTYPEPRINTERFN(um_fp)(defaultPrinter, REF(um_fp, um_from(" ")), nullUmf);
-    GETTYPEPRINTERFN(um_fp)(
-        defaultPrinter, REF(um_fp, stringList_get(typeNamesList, i)), nullUmf);
-    GETTYPEPRINTERFN(um_fp)(defaultPrinter, REF(um_fp, um_from("\n")), nullUmf);
+  outputFunction put = defaultPrinter;
+  USETYPEPRINTER(um_fp, um_from("list of printer type names:\n"));
+  for (int i = 0; i < PrinterSingleton.N; i++) {
+    USETYPEPRINTER(um_fp, um_from(" "));
+    USETYPEPRINTER(um_fp, PrinterSingleton_getN(i));
+    USETYPEPRINTER(um_fp, um_from("\n"));
   }
 }
 #endif // PRINTER_LIST_TYPENAMES
@@ -374,14 +425,13 @@ void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
   if (!typeName.width) {
     typeName = p.name;
   }
-  unsigned int index = stringList_search(typeNamesList, typeName);
-  if (index >= printerFunctions->length) {
+  printerFunction fn = PrinterSingleton_get(typeName);
+  if (!fn) {
     USETYPEPRINTER(um_fp, um_from("_NO_TYPE("));
     USETYPEPRINTER(um_fp, typeName);
     USETYPEPRINTER(um_fp, um_from(")"));
   } else {
-    (*((printerFunction *)List_getRef(printerFunctions, index)))(put, ref,
-                                                                 args);
+    fn(put, ref, args);
   }
 }
 #define um_charArr(um) ((char *)(um.ptr))

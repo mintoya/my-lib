@@ -248,8 +248,7 @@ default:"")
                         .width = sizeof(EXPAND_AND_STRINGIFY(newtype)) - 1};   \
     uint8_t *refFn =                                                           \
         (uint8_t *)(void *)REF(printerFunction, GETTYPEPRINTERFN(type));       \
-    stringList_append(typeNamesList, key);                                     \
-    List_append(printerFunctions, refFn);                                      \
+    PrinterSingleton_append(key, GETTYPEPRINTERFN(type));                         \
   }
 #define MAKE_NEW_TYPE(type)                                                    \
   MAKE_NEW_TYPE_HELPER(type, GEN_CAT(argtype, GENERIC_NAME_N))
