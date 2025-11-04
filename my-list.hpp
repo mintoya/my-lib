@@ -42,4 +42,5 @@ template <typename T> struct listPlus {
   int searchFor(const T &value) { return List_search(ptr, &value); }
   inline void clear() { ptr->length = 0; }
   inline unsigned int length() const { return ptr->length; }
+  inline unsigned int capacity() const { return ptr->size; }
 };

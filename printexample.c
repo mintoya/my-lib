@@ -30,5 +30,9 @@ int main() {
   println("${}", MList_pop(points));
   println("${}", MList_pop(points));
   println("${}", MList_pop(points));
+  println("length  : ${int}\n"
+          "capacity: ${int}",
+          (int)points.length,
+          (int)points.capacity);
   return 0;
 }

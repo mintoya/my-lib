@@ -30,5 +30,9 @@ int main() {
   println("${}", points.pop());
   println("${}", points.pop());
   println("${}", points.pop());
+  println("length  : ${int}\n"
+          "capacity: ${int}",
+          (int)points.length(),
+          (int)points.capacity());
   return 0;
 }
