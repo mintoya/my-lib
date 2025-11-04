@@ -43,7 +43,7 @@ int main(int narg, char *args[]) {
   }
   print("${}", result);
 
-  freAllocate(res.ptr);
+  free(res.ptr);
 
   return EXIT_SUCCESS;
 }

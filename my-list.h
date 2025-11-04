@@ -2,13 +2,13 @@
 #define MY_LIST_H
 #include <errno.h>
 #include <stdint.h>
-#include <stdlib.h>
 // clang-format off
 #ifndef LIST_ALLOCATOR
-  #define clearAllocate(length, size) calloc(length, size)
-  #define regularAllocate(size) malloc(size)
-  #define reAllocate(source, newsize) realloc(source, newsize)
-  #define freAllocate(ptr) free(ptr)
+  #include <stdlib.h>
+  #define zero_alloc(length, size) calloc(length, size)
+  #define alloc(size) malloc(size)
+  #define realloc(source, newsize) realloc(source, newsize)
+  #define free_alloc(ptr) free(ptr)
 #endif
 // clang-format on
 
@@ -120,22 +120,22 @@ static inline void List_cleanup_handler(List **l) {
 List *List_new(size_t bytes) {
   // printf("new list with %i size", bytes);
   // fflush(stdout);
-  List *l = (List *)clearAllocate(1, sizeof(List));
+  List *l = (List *)zero_alloc(1, sizeof(List));
   *l = (List){
       .width = bytes,
       .length = 0,
       .size = 1,
-      .head = (uint8_t *)regularAllocate(bytes),
+      .head = (uint8_t *)alloc(bytes),
   };
   return l;
 }
 void List_free(List *l) {
-  freAllocate(l->head);
-  freAllocate(l);
+  free_alloc(l->head);
+  free_alloc(l);
 }
 // same as list_resize but it enforces size
 void List_forceResize(List *l, unsigned int newSize) {
-  uint8_t *newPlace = (uint8_t *)reAllocate(l->head, newSize * l->width);
+  uint8_t *newPlace = (uint8_t *)realloc(l->head, newSize * l->width);
   if (!newPlace) {
     exit(ENOMEM); // maybe something else idk
   }
@@ -146,7 +146,7 @@ void List_forceResize(List *l, unsigned int newSize) {
 void List_resize(List *l, unsigned int newSize) {
   if (newSize <= l->size)
     return;
-  uint8_t *newPlace = (uint8_t *)reAllocate(l->head, newSize * l->width);
+  uint8_t *newPlace = (uint8_t *)realloc(l->head, newSize * l->width);
   if (!newPlace) {
     exit(ENOMEM); // maybe something else idk
   }
@@ -169,11 +169,11 @@ void List_pad(List *l, unsigned int ammount) {
 }
 List *List_fromArr(const void *source, unsigned int width,
                    unsigned int length) {
-  List *res = (List *)regularAllocate(sizeof(List));
+  List *res = (List *)alloc(sizeof(List));
   res->width = width;
   res->length = length;
   res->size = length;
-  res->head = (uint8_t *)regularAllocate(length * width);
+  res->head = (uint8_t *)alloc(length * width);
   memcpy(res->head, source, length * width);
   return res;
 }

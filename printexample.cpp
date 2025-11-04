@@ -31,6 +31,6 @@ int main() {
   points.foreach ([](point i) { println("foreach : ${}", i); });
   println("length  : ${int}\n"
           "capacity: ${int}",
-          (int)points.length(), (int)points.capacity());
+          points.length(), points.capacity());
   return 0;
 }
