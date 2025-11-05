@@ -34,8 +34,31 @@
 #define REF(type, value) ((type[1]){value})
 #endif
 
-typedef void (*outputFunction)(char *, unsigned int length);
+typedef void (*outputFunction)(char *, unsigned int length, char flush);
 typedef void (*printerFunction)(outputFunction, void *, um_fp args);
+
+#include <stdio.h>
+static void stdoutPrint(char *c, unsigned int length,char flush) {
+  static struct {
+    char buf[2048];
+    size_t place;
+  } buf = {
+    .place = 0,
+  };
+
+  if(buf.place + length >= 2048 || flush){
+    fwrite(buf.buf, sizeof(char), buf.place, stdout);
+    fwrite(c, sizeof(char), length, stdout);
+    buf.place = 0;
+  }else{
+    memcpy(buf.buf+buf.place,c,length);
+    buf.place+=length;
+  }
+}
+static outputFunction defaultPrinter = stdoutPrint;
+
+
+
 
 typedef struct {
   um_fp n;
@@ -151,6 +174,7 @@ __attribute__((destructor)) static void printerDeinit() {
   PrinterSingleton_deinit();
 }
 
+#define PUTS(characters,length) put(characters,length,0)
 #define REGISTER_PRINTER(T, ...)                                               \
   __attribute__((weak)) void GETTYPEPRINTERFN(T)(                              \
       outputFunction put, void *_v_in_ptr, um_fp args) {                       \
@@ -207,7 +231,7 @@ struct print_arg {
 // clang-format off
 
 // examples with builtin types
-// the behavior of "put" is modular
+// the behavior of PUTS is modular
 // 
 // for building printers
 // USENAMEDPRINTER(printerid,value)
@@ -215,7 +239,7 @@ struct print_arg {
 //
 // typeprinter skips the search
 // named printer skips the string parsing
-// use print_wf with put as the ouputFunction 
+// use print_wf with "put" as the ouputFunction 
 // to keep output consistant, but that makes it recursive
 // 
 // you can pass args with a printerid and a colon 
@@ -228,17 +252,17 @@ struct print_arg {
 // MAKE_PRINT_ARG_TYPE(size_t);
 // does the same in cpp
 
-  REGISTER_PRINTER(char, { put(&in, 1); });
+  REGISTER_PRINTER(char, { PUTS(&in, 1); });
   REGISTER_PRINTER(um_fp, {
     if (in.ptr) {
-      put((char *)in.ptr, in.width);
+      PUTS((char *)in.ptr, in.width);
     } else {
-      put("__NULLUMF__", 11);
+      PUTS("__NULLUMF__", 11);
     }
   });
   REGISTER_PRINTER(int, {
     if (in < 0) {
-      put("-", 1);
+      PUTS("-", 1);
       in = -in;
     }
     int l = 1;
@@ -246,7 +270,7 @@ struct print_arg {
       l *= 10;
     while (l) {
       char c = in / l + '0';
-      put(&c, 1);
+      PUTS(&c, 1);
       in %= l;
       l /= 10;
     }
@@ -257,7 +281,7 @@ struct print_arg {
       l *= 10;
     while (l) {
       char c = in / l + '0';
-      put(&c, 1);
+      PUTS(&c, 1);
       in %= l;
       l /= 10;
     }
@@ -276,12 +300,12 @@ struct print_arg {
     });
 
 
-    put("um_fp:", 6);
+    PUTS("um_fp:", 6);
     if(useLength){
       USETYPEPRINTER(size_t, in.width);
     }else{
     }
-    put("{", 1);
+    PUTS("{", 1);
     int counter = 0;
     while (in.width) {
       uint8_t c = ((uint8_t *)in.ptr)[in.width - 1];
@@ -296,13 +320,13 @@ struct print_arg {
         counter++;
 
         if (cut0s) {
-          put("(", 1);
+          PUTS("(", 1);
           USETYPEPRINTER(int, counter);
-          put(")", 1);
+          PUTS(")", 1);
         } else {
           while(counter){
             counter--;
-            put("0", 1);
+            PUTS("0", 1);
           }
         }
         counter = 0;
@@ -310,28 +334,28 @@ struct print_arg {
 
       // clang-format off
       switch (top) {
-       case 0x1: put("1", 1); break;
-        case 0x2: put("2", 1); break; case 0x3: put("3", 1); break;
-        case 0x4: put("4", 1); break; case 0x5: put("5", 1); break;
-        case 0x6: put("6", 1); break; case 0x7: put("7", 1); break;
-        case 0x8: put("8", 1); break; case 0x9: put("9", 1); break;
-        case 0xa: put("a", 1); break; case 0xb: put("b", 1); break;
-        case 0xc: put("c", 1); break; case 0xd: put("d", 1); break;
-        case 0xe: put("e", 1); break; case 0xf: put("f", 1); break;
+       case 0x1: PUTS("1", 1); break;
+        case 0x2: PUTS("2", 1); break; case 0x3: PUTS("3", 1); break;
+        case 0x4: PUTS("4", 1); break; case 0x5: PUTS("5", 1); break;
+        case 0x6: PUTS("6", 1); break; case 0x7: PUTS("7", 1); break;
+        case 0x8: PUTS("8", 1); break; case 0x9: PUTS("9", 1); break;
+        case 0xa: PUTS("a", 1); break; case 0xb: PUTS("b", 1); break;
+        case 0xc: PUTS("c", 1); break; case 0xd: PUTS("d", 1); break;
+        case 0xe: PUTS("e", 1); break; case 0xf: PUTS("f", 1); break;
       }
       switch (bottom) {
-        break; case 0x1: put("1", 1); break;
-        case 0x2: put("2", 1); break; case 0x3: put("3", 1); break;
-        case 0x4: put("4", 1); break; case 0x5: put("5", 1); break;
-        case 0x6: put("6", 1); break; case 0x7: put("7", 1); break;
-        case 0x8: put("8", 1); break; case 0x9: put("9", 1); break;
-        case 0xa: put("a", 1); break; case 0xb: put("b", 1); break;
-        case 0xc: put("c", 1); break; case 0xd: put("d", 1); break;
-        case 0xe: put("e", 1); break; case 0xf: put("f", 1); break;
+        break; case 0x1: PUTS("1", 1); break;
+        case 0x2: PUTS("2", 1); break; case 0x3: PUTS("3", 1); break;
+        case 0x4: PUTS("4", 1); break; case 0x5: PUTS("5", 1); break;
+        case 0x6: PUTS("6", 1); break; case 0x7: PUTS("7", 1); break;
+        case 0x8: PUTS("8", 1); break; case 0x9: PUTS("9", 1); break;
+        case 0xa: PUTS("a", 1); break; case 0xb: PUTS("b", 1); break;
+        case 0xc: PUTS("c", 1); break; case 0xd: PUTS("d", 1); break;
+        case 0xe: PUTS("e", 1); break; case 0xf: PUTS("f", 1); break;
       }
       in.width -= sizeof(uint8_t);
     }
-    put("}", 2);
+    PUTS("}", 2);
   });
 
 // clang-format on
@@ -358,7 +382,7 @@ MAKE_PRINT_ARG_TYPE(size_t);
 // clang-format on
 #else
 template <typename T> constexpr const char *type_name_cstr() {
-  return "unknown";
+  return "";
 }
 
 #define MAKE_PRINT_ARG_TYPE(type)                                              \
@@ -379,31 +403,6 @@ MAKE_PRINT_ARG_TYPE(size_t);
 void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
                     um_fp args);
 
-static struct {
-  char buffer[1024];
-  uint16_t place;
-} print_f_singleton;
-
-static void print_f_singleton_flush(outputFunction put) {
-  put(print_f_singleton.buffer, print_f_singleton.place);
-  print_f_singleton.place = 0;
-}
-
-static void print_f_singleton_write(outputFunction put, char *ptr,
-                                    unsigned int len) {
-#if PRINTER_UNBUFFERED
-  put(ptr, len);
-#else
-  if (print_f_singleton.place + len > sizeof(print_f_singleton.buffer)) {
-    put(print_f_singleton.buffer, print_f_singleton.place);
-    put(ptr, len);
-    print_f_singleton.place = 0;
-  } else {
-    memcpy(print_f_singleton.buffer + print_f_singleton.place, ptr, len);
-    print_f_singleton.place += len;
-  }
-#endif
-}
 void print_f(outputFunction put, um_fp fmt, ...);
 
 #define print_wf(print, fmt, ...)                                              \
@@ -415,10 +414,7 @@ void print_f(outputFunction put, um_fp fmt, ...);
 #define print(fmt, ...) print_wf(defaultPrinter, fmt, __VA_ARGS__)
 #define println(fmt, ...) print_wf(defaultPrinter, fmt "\n", __VA_ARGS__)
 
-#include <stdio.h>
-__attribute__((weak)) void defaultPrinter(char *c, unsigned int length) {
-  fwrite(c, sizeof(char), length, stdout);
-}
+
 
 #ifdef PRINTER_LIST_TYPENAMES
 __attribute__((constructor(205))) static void post_init() {
@@ -479,12 +475,6 @@ inline um_fp printer_arg_trim(um_fp in) {
   return res;
 }
 
-static outputFunction putstore = NULL;
-void put_temp(char *buffer, unsigned int len) {
-  if (putstore) {
-    print_f_singleton_write(putstore, buffer, len);
-  }
-}
 void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
                     um_fp args) {
   void *ref = p.ref;
@@ -493,20 +483,16 @@ void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
   }
   printerFunction fn = PrinterSingleton_get(typeName);
   if (!fn) {
-    print_f_singleton_flush(put);
-    USETYPEPRINTER(um_fp, um_from("_NO_TYPE("));
+    USETYPEPRINTER(um_fp, um_from("__ NO_TYPE("));
     USETYPEPRINTER(um_fp, typeName);
-    USETYPEPRINTER(um_fp, um_from(")"));
+    USETYPEPRINTER(um_fp, um_from(") __"));
   } else {
-    putstore = put;
-    fn(put_temp, ref, args);
-    putstore = NULL;
+    fn(put, ref, args);
   }
 }
 
 #define um_charArr(um) ((char *)(um.ptr))
 void print_f(outputFunction put, um_fp fmt, ...) {
-  print_f_singleton_flush(put);
   va_list l;
   va_start(l, fmt);
   char check = 0;
@@ -514,9 +500,9 @@ void print_f(outputFunction put, um_fp fmt, ...) {
     switch (um_charArr(fmt)[i]) {
     case '$':
       if (check)
-        print_f_singleton_write(put, um_charArr(fmt) + i - 1, 1);
+        put(um_charArr(fmt) + i - 1,1,0);
       if (i + 1 == fmt.width)
-        print_f_singleton_write(put, "$", 1);
+        put("$",1,0);
       check = 1;
       break;
     case '{':
@@ -528,8 +514,7 @@ void print_f(outputFunction put, um_fp fmt, ...) {
                           .width = j - i - 1};
         struct print_arg assumedName = va_arg(l, struct print_arg);
         if (!assumedName.ref) {
-          print_f_singleton_flush(put);
-          return put("__ NO ARGUMENT PROVIDED, ENDING PRINT __", 40);
+          return put("__ NO ARGUMENT PROVIDED, ENDING PRINT __", 40,1);
         }
 
         um_fp tname = printer_arg_until(':', typeName);
@@ -542,13 +527,13 @@ void print_f(outputFunction put, um_fp fmt, ...) {
       break;
     default:
       if (check)
-        print_f_singleton_write(put, um_charArr(fmt) + i - 1, 1);
-      print_f_singleton_write(put, um_charArr(fmt) + i, 1);
+        put( um_charArr(fmt) + i - 1,1,0);
+      put( um_charArr(fmt) + i,1,0);
       check = 0;
     }
   }
   va_end(l);
-  print_f_singleton_flush(put);
+  put(NULL,0,1);
 }
 #undef um_charArr
 #endif

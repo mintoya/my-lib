@@ -115,16 +115,16 @@ REGISTER_SPECIAL_PRINTER("UMap", UMap, {
   List *metaList = in.metadata;
   stringList *keys = in.keys;
   stringList *vals = in.vals;
-  put("{", 1);
+  PUTS("{", 1);
   for (int i = 0; i < metaList->length; i++) {
     UMap_innertype type = mList_get(metaList, UMap_innertype, i);
     USETYPEPRINTER(um_fp, stringList_get(keys, i));
-    put(":", 1);
+    PUTS(":", 1);
     um_fp val = stringList_get(vals, i);
     switch (type) {
     case NORMAL:
       USETYPEPRINTER(um_fp, val);
-      put(";", 1);
+      PUTS(";", 1);
 
       break;
     case LIST:
@@ -136,23 +136,23 @@ REGISTER_SPECIAL_PRINTER("UMap", UMap, {
     }
   }
 
-  put("}", 1);
+  PUTS("}", 1);
 });
 REGISTER_SPECIAL_PRINTER("UMapView", UMapView, {
   List metaList = UMapView_getMeta(in);
   stringListView keys = UMapView_getKeys(in);
   stringListView vals = UMapView_getVals(in);
   UMap_innertype *meta = (UMap_innertype *)metaList.head;
-  put("{", 1);
+  PUTS("{", 1);
   for (int i = 0; i < metaList.length; i++) {
     UMap_innertype type = meta[i];
     USETYPEPRINTER(um_fp, stringListView_get(keys, i));
-    put(":", 1);
+    PUTS(":", 1);
     um_fp val = stringListView_get(vals, i);
     switch (type) {
     case NORMAL:
       USETYPEPRINTER(um_fp, val);
-      put(";", 1);
+      PUTS(";", 1);
 
       break;
     case LIST:
@@ -164,7 +164,7 @@ REGISTER_SPECIAL_PRINTER("UMapView", UMapView, {
     }
   }
 
-  put("}", 1);
+  PUTS("}", 1);
 })
 REGISTER_SPECIAL_PRINTER("UMapList", UMapList, {
   stringList *slv = in.vals;

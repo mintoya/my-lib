@@ -1,3 +1,4 @@
+
 #include "kml.h"
 
 #include "hmap.h"
@@ -26,12 +27,11 @@ int main() {
   UMapList_append(testList, um_from("c"));
   UMap_setChild(test, um_from("innermap"), test);
   UMap_setList(test, um_from("innerlist"), testList);
-
   print_wf(listPrinter, "${UMap*}", test);
   um_fp listBuffer =
       ((um_fp){.ptr = buffer->head, .width = List_headArea(buffer)});
 
-  println("string output: ${}", listBuffer);
   UMap_scoped *output = parse(NULL, NULL, listBuffer);
+  println("object input : ${}", listBuffer);
   println("entire object: ${UMap*}", output);
 }

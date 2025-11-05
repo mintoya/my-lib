@@ -7,12 +7,12 @@ typedef struct {
   int y;
 } point;
 REGISTER_PRINTER(point, {
-  put("{x:", 3);
+  PUTS("{x:", 3);
   USETYPEPRINTER(int, in.x);
-  put(",", 1);
-  put("y:", 2);
+  PUTS(",", 1);
+  PUTS("y:", 2);
   USETYPEPRINTER(int, in.y);
-  put("}", 1);
+  PUTS("}", 1);
 })
 
 #include "printer/genericName.h" // advances typenaems
