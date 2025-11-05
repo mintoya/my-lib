@@ -1,18 +1,19 @@
 
 def main [ammount:int] {
+  let amt = ([$ammount,10] | math max)
   do {
     mut $filec = "\n"
     $filec = $filec + "#ifndef GENERICS_H\n"
     $filec = $filec + "#define GENERICS_H\n"
 
-    for i in 1..$ammount {
+    for i in 1..$amt {
       $filec = $filec + $" #define GENERIC_TYPE_($i)\n"
     }
     $filec = $filec + "#endif //GENERICS_H\n"
     $filec = $filec + "#define GENERIC_ELEMENT(type) type:#type,\n"
     $filec = $filec + "#define GENERIC_NAME(val) \\\n"
     $filec = $filec + "_Generic((val), \\\n"
-    for i in 1..$ammount {
+    for i in 1..$amt {
       $filec = $filec + $" GENERIC_TYPE_($i) \\\n"
     }
     $filec = $filec + "default:\"\")\n"
@@ -23,7 +24,7 @@ def main [ammount:int] {
     $filec = $filec + " #undef GENERIC_NAME_N\n"
     $filec = $filec + " #define GENERIC_NAME_N 1\n"
 
-    for i in 1..$ammount {
+    for i in 1..$amt {
       $filec = $filec + $" #elif GENERIC_NAME_N == ($i)\n"
       $filec = $filec + $" #undef GENERIC_NAME_N\n"
       $filec = $filec + $" #define GENERIC_NAME_N ($i + 1)\n"
@@ -32,7 +33,7 @@ def main [ammount:int] {
 
     $filec = $filec + "#if GENERIC_NAME_N == 1\n"
     $filec = $filec + "#define GENERIC_TYPE_1 GENERIC_ELEMENT(_1_tn)\n"
-    for i in 2..$ammount {
+    for i in 2..$amt {
       $filec = $filec + $"#elif GENERIC_NAME_N == ($i)\n"
       $filec = $filec + $"#define GENERIC_TYPE_($i) GENERIC_ELEMENT\(_($i)_tn\)\n"
     }
