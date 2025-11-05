@@ -9,17 +9,24 @@ typedef struct fat_pointer {
   size_t width;
 } um_fp;
 
-static inline int um_fp_cmp(um_fp a, um_fp b) {
-  if (a.width != b.width) {
-    return (a.width < b.width) ? -1 : 1;
+// #include <string.h>
+static inline intmax_t um_fp_cmp(um_fp a, um_fp b) {
+  int wd = a.width - b.width;
+  if (wd) {
+    return wd;
   }
-  if (a.width == 0) {
+  if (!a.width) {
     return 0;
   }
-  int res = 0;
-  unsigned int i = 0;
-  for (unsigned int i = 0; i < a.width && !res; i++) {
-    res = ((uint8_t *)a.ptr)[i] - ((uint8_t *)b.ptr)[i];
+  // return memcmp(a.ptr, b.ptr, a.width);
+  intmax_t res = 0;
+  size_t less = a.width % sizeof(intmax_t);
+  size_t more = a.width / sizeof(intmax_t);
+  for (size_t i = 0; i < more && !res; i++) {
+    res = ((intmax_t *)a.ptr)[i] - ((intmax_t *)b.ptr)[i];
+  }
+  for (size_t i = a.width - less; i < a.width && !res; i++) {
+    res = (a.ptr)[i] - (b.ptr)[i];
   }
   return res;
 }
@@ -33,7 +40,7 @@ inline bool operator==(const um_fp &a, const um_fp &b) { return um_eq(a, b); }
 inline bool operator!=(const um_fp &a, const um_fp &b) { return !um_eq(a, b); }
 #endif
 
-#define nullUmf ((um_fp){.ptr = (uint8_t*)NULL, .width = 0})
+#define nullUmf ((um_fp){.ptr = (uint8_t *)NULL, .width = 0})
 
 #define um_block(var)                                                          \
   ((um_fp){.ptr = (uint8_t *)(typeof(var)[1]){var},                            \

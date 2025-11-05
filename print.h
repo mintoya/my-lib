@@ -38,27 +38,24 @@ typedef void (*outputFunction)(char *, unsigned int length, char flush);
 typedef void (*printerFunction)(outputFunction, void *, um_fp args);
 
 #include <stdio.h>
-static void stdoutPrint(char *c, unsigned int length,char flush) {
+static void stdoutPrint(char *c, unsigned int length, char flush) {
   static struct {
     char buf[2048];
     size_t place;
   } buf = {
-    .place = 0,
+      .place = 0,
   };
 
-  if(buf.place + length >= 2048 || flush){
+  if (buf.place + length >= 2048 || flush) {
     fwrite(buf.buf, sizeof(char), buf.place, stdout);
     fwrite(c, sizeof(char), length, stdout);
     buf.place = 0;
-  }else{
-    memcpy(buf.buf+buf.place,c,length);
-    buf.place+=length;
+  } else {
+    memcpy(buf.buf + buf.place, c, length);
+    buf.place += length;
   }
 }
 static outputFunction defaultPrinter = stdoutPrint;
-
-
-
 
 typedef struct {
   um_fp n;
@@ -108,7 +105,17 @@ static void PrinterSingleton_append(um_fp name, printerFunction function) {
 //   return NULL;
 // }
 
+static printerFunction lastprinters[2] = {NULL, NULL};
+static um_fp lastnames[2] = {nullUmf, nullUmf};
+static char lasttick = 0;
 static printerFunction PrinterSingleton_get(um_fp name) {
+
+  if (!um_fp_cmp(name, lastnames[0])) {
+    return lastprinters[0];
+  } else if (!um_fp_cmp(name, lastnames[1])) {
+    return lastprinters[1];
+  }
+
   if (!PrinterSingleton.N)
     return NULL;
   size_t left = 0, right = PrinterSingleton.N - 1;
@@ -116,7 +123,10 @@ static printerFunction PrinterSingleton_get(um_fp name) {
     size_t mid = left + (right - left) / 2;
     um_fp element = PrinterSingleton.elements[mid].n;
     int cmp = um_fp_cmp(element, name);
-    if (cmp == 0) {
+    if (!cmp) {
+      lastprinters[lasttick] = PrinterSingleton.elements[mid].fn;
+      lastnames[lasttick] = PrinterSingleton.elements[mid].n;
+      lasttick = !lasttick;
       return PrinterSingleton.elements[mid].fn;
     } else if (cmp < 0) {
       left = mid + 1;
@@ -174,7 +184,7 @@ __attribute__((destructor)) static void printerDeinit() {
   PrinterSingleton_deinit();
 }
 
-#define PUTS(characters,length) put(characters,length,0)
+#define PUTS(characters, length) put(characters, length, 0)
 #define REGISTER_PRINTER(T, ...)                                               \
   __attribute__((weak)) void GETTYPEPRINTERFN(T)(                              \
       outputFunction put, void *_v_in_ptr, um_fp args) {                       \
@@ -381,9 +391,7 @@ MAKE_PRINT_ARG_TYPE(size_t);
 
 // clang-format on
 #else
-template <typename T> constexpr const char *type_name_cstr() {
-  return "";
-}
+template <typename T> constexpr const char *type_name_cstr() { return ""; }
 
 #define MAKE_PRINT_ARG_TYPE(type)                                              \
   template <> constexpr const char *type_name_cstr<type>() { return #type; }
@@ -413,8 +421,6 @@ void print_f(outputFunction put, um_fp fmt, ...);
   print_wf(printerfunction, fmt "\n", __VA_ARGS__)
 #define print(fmt, ...) print_wf(defaultPrinter, fmt, __VA_ARGS__)
 #define println(fmt, ...) print_wf(defaultPrinter, fmt "\n", __VA_ARGS__)
-
-
 
 #ifdef PRINTER_LIST_TYPENAMES
 __attribute__((constructor(205))) static void post_init() {
@@ -500,9 +506,9 @@ void print_f(outputFunction put, um_fp fmt, ...) {
     switch (um_charArr(fmt)[i]) {
     case '$':
       if (check)
-        put(um_charArr(fmt) + i - 1,1,0);
+        put(um_charArr(fmt) + i - 1, 1, 0);
       if (i + 1 == fmt.width)
-        put("$",1,0);
+        put("$", 1, 0);
       check = 1;
       break;
     case '{':
@@ -514,7 +520,7 @@ void print_f(outputFunction put, um_fp fmt, ...) {
                           .width = j - i - 1};
         struct print_arg assumedName = va_arg(l, struct print_arg);
         if (!assumedName.ref) {
-          return put("__ NO ARGUMENT PROVIDED, ENDING PRINT __", 40,1);
+          return put("__ NO ARGUMENT PROVIDED, ENDING PRINT __", 40, 1);
         }
 
         um_fp tname = printer_arg_until(':', typeName);
@@ -527,13 +533,13 @@ void print_f(outputFunction put, um_fp fmt, ...) {
       break;
     default:
       if (check)
-        put( um_charArr(fmt) + i - 1,1,0);
-      put( um_charArr(fmt) + i,1,0);
+        put(um_charArr(fmt) + i - 1, 1, 0);
+      put(um_charArr(fmt) + i, 1, 0);
       check = 0;
     }
   }
   va_end(l);
-  put(NULL,0,1);
+  put(NULL, 0, 1);
 }
 #undef um_charArr
 #endif
