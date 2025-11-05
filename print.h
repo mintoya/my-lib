@@ -84,16 +84,24 @@ static void PrinterSingleton_append(um_fp name, printerFunction function) {
 //   }
 //   return NULL;
 // }
-static printerFunction PrinterSingleton_get(um_fp name) {
-  unsigned int left = 0, right = PrinterSingleton.N - 1;
-  while (left <= right) {
-    int mid = left + (right - left) / 2;
-    um_fp element = PrinterSingleton.elements[mid].n;
 
+static printerFunction PrinterSingleton_get(um_fp name) {
+  if (!PrinterSingleton.N)
+    return NULL;
+  size_t left = 0, right = PrinterSingleton.N - 1;
+  while (left <= right) {
+    size_t mid = left + (right - left) / 2;
+    um_fp element = PrinterSingleton.elements[mid].n;
     int cmp = um_fp_cmp(element, name);
-    if (!cmp) return PrinterSingleton.elements[mid].fn;
-    else if (cmp < 0) left = mid + 1;
-    else right = mid - 1;
+    if (cmp == 0) {
+      return PrinterSingleton.elements[mid].fn;
+    } else if (cmp < 0) {
+      left = mid + 1;
+    } else {
+      if (mid == 0)
+        break;
+      right = mid - 1;
+    }
   }
   return NULL;
 }
@@ -375,11 +383,8 @@ static struct {
   char buffer[1024];
   uint16_t place;
 } print_f_singleton;
-static void print_f_singleton_start(outputFunction put) {
-  put(print_f_singleton.buffer, print_f_singleton.place);
-  print_f_singleton.place = 0;
-}
-static void print_f_singleton_end(outputFunction put) {
+
+static void print_f_singleton_flush(outputFunction put) {
   put(print_f_singleton.buffer, print_f_singleton.place);
   print_f_singleton.place = 0;
 }
@@ -488,6 +493,7 @@ void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
   }
   printerFunction fn = PrinterSingleton_get(typeName);
   if (!fn) {
+    print_f_singleton_flush(put);
     USETYPEPRINTER(um_fp, um_from("_NO_TYPE("));
     USETYPEPRINTER(um_fp, typeName);
     USETYPEPRINTER(um_fp, um_from(")"));
@@ -500,7 +506,7 @@ void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
 
 #define um_charArr(um) ((char *)(um.ptr))
 void print_f(outputFunction put, um_fp fmt, ...) {
-  print_f_singleton_start(put);
+  print_f_singleton_flush(put);
   va_list l;
   va_start(l, fmt);
   char check = 0;
@@ -522,7 +528,7 @@ void print_f(outputFunction put, um_fp fmt, ...) {
                           .width = j - i - 1};
         struct print_arg assumedName = va_arg(l, struct print_arg);
         if (!assumedName.ref) {
-          print_f_singleton_end(put);
+          print_f_singleton_flush(put);
           return put("__ NO ARGUMENT PROVIDED, ENDING PRINT __", 40);
         }
 
@@ -542,7 +548,7 @@ void print_f(outputFunction put, um_fp fmt, ...) {
     }
   }
   va_end(l);
-  print_f_singleton_end(put);
+  print_f_singleton_flush(put);
 }
 #undef um_charArr
 #endif

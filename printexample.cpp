@@ -32,5 +32,8 @@ int main() {
   println("length  : ${int}\n"
           "capacity: ${int}",
           points.length(), points.capacity());
+  unsigned int i;
+  println("no type test: ${}", i);
+  println("missing parameter test: ${}");
   return 0;
 }

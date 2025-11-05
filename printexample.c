@@ -34,5 +34,6 @@ int main() {
           points.length, MList_capacity(points));
   unsigned int i;
   println("no type test: ${}", i);
+  println("missing parameter test: ${}");
   return 0;
 }
