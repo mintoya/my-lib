@@ -32,5 +32,7 @@ int main() {
   println("length  : ${int}\n"
           "capacity: ${int}",
           points.length, MList_capacity(points));
+  unsigned int i;
+  println("no type test: ${}", i);
   return 0;
 }

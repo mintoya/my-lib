@@ -85,21 +85,15 @@ static void PrinterSingleton_append(um_fp name, printerFunction function) {
 //   return NULL;
 // }
 static printerFunction PrinterSingleton_get(um_fp name) {
-  static int comparisons = 0;
   unsigned int left = 0, right = PrinterSingleton.N - 1;
   while (left <= right) {
     int mid = left + (right - left) / 2;
     um_fp element = PrinterSingleton.elements[mid].n;
 
-    int cmp = um_fp_cmp(element, name); // returns 0 if equal
-    comparisons++;
-
-    if (cmp == 0)
-      return PrinterSingleton.elements[mid].fn;
-    else if (cmp < 0)
-      left = mid + 1;
-    else
-      right = mid - 1;
+    int cmp = um_fp_cmp(element, name);
+    if (!cmp) return PrinterSingleton.elements[mid].fn;
+    else if (cmp < 0) left = mid + 1;
+    else right = mid - 1;
   }
   return NULL;
 }
@@ -108,7 +102,7 @@ static um_fp PrinterSingleton_getN(int index) {
   return PrinterSingleton.elements[index].n;
 }
 
-static int comp(const void *a, const void *b) {
+static int PrinterSingleton_Cmp(const void *a, const void *b) {
   PrinterTuple pa = *(PrinterTuple *)a;
   PrinterTuple pb = *(PrinterTuple *)b;
   return um_fp_cmp(pa.n, pb.n);
@@ -121,7 +115,7 @@ __attribute__((constructor(204))) static void PrinterSingleton_Sort() {
     PrinterSingleton.elements[i].n = element;
   }
   qsort(PrinterSingleton.elements, PrinterSingleton.N, sizeof(PrinterSingleton),
-        comp);
+        PrinterSingleton_Cmp);
 }
 static void PrinterSingleton_init() {
   PrinterSingleton.elements = (PrinterTuple *)malloc(10 * sizeof(PrinterTuple));
