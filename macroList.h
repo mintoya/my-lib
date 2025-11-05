@@ -1,6 +1,6 @@
-#ifdef __cplusplus
-#error macrolist.h not supported in cpp, just use the class
-#else
+// #ifdef __cplusplus
+// #error macrolist.h not supported in cpp, just use the class
+// #else
 #ifndef MACROLIST_H
 #define MACROLIST_H
 #include "my-list.h"
@@ -10,6 +10,8 @@
     unsigned int length;                                                       \
     type *elements;                                                            \
   }
+#define MList_t(type) MList_typedef_##type
+#define MList_typeDef(type) typedef MList(type) MList_t(type);
 
 #define MList_deconvert(name, list)                                            \
   (typeof(list)){                                                              \
@@ -17,16 +19,17 @@
       .elements = (typeof(list.elements))name.head,                            \
   };
 #define MList_heapList(list) __MacroListRef__##list
+#define MList_dnfList(list) __MacroListTempRef##list
+
+#define MList_castT(type, list)                                                \
+  ((MList_t(type)){.length = list.length, .elements = list.elements})
 
 // automatically freed
 #define MList_init(list)                                                       \
-  List_scoped *MList_heapList(list) = List_new(sizeof(typeof(list.elements[0])));     \
+  List_scoped *MList_heapList(list) =                                          \
+      List_new(sizeof(typeof(list.elements[0])));                              \
   list = MList_deconvert((*MList_heapList(list)), list);
 
-// not automatically freed
-#define MList_initDF(list)                                                     \
-  List *MList_heapList(list) = List_new(sizeof(typeof(list.elements[0])));     \
-  list = MList_deconvert((*MList_heapList(list)), list);
 
 #define MList_push(list, ...)                                                  \
   do {                                                                         \
@@ -51,15 +54,36 @@
     list = MList_deconvert((*MList_heapList(list)), list);                     \
   } while (0)
 
-#define MList_foreach(list, element, ...)                                      \
+#define MList_foreach(list, index, element, ...)                               \
   do {                                                                         \
-    for (size_t _i = 0; _i < list.length; _i++) {                              \
-      typeof(list.elements[0]) element = list.elements[_i];                    \
+    for (size_t index = 0; index < list.length; index++) {                     \
+      typeof(list.elements[0]) element = list.elements[index];                 \
       __VA_ARGS__                                                              \
     }                                                                          \
+  } while (0)
+#define MList_addArr(list, ptr, length)                                        \
+  do {                                                                         \
+    MList_heapList(list)->length = list.length;                                \
+    List_appendFromArr(MList_heapList(list), ptr, length);                     \
+    list = MList_deconvert((*MList_heapList(list)), list);                     \
   } while (0)
 
 #define MList_capacity(list) MList_heapList(list)->size
 
+// if you want to control the scope you have to provide a list pointer
+#define MList_DFInit(list, Listptr)                                            \
+  Listptr = List_new(sizeof(typeof(list.elements[0])));                        \
+  List *MList_heapList(list) = Listptr;                                        \
+  list = MList_deconvert((*MList_heapList(list)), list);
+#define MList_DF(list, Listptr)                                                \
+  List *MList_heapList(list) = Listptr;                                        \
+  list = MList_deconvert((*MList_heapList(list)), list);
+
+
+
+#define MList_fp(list)                                                         \
+  ((um_fp){.ptr = (uint8_t *)list.elements,                                    \
+           .width = list.length * sizeof(typeof(list.elements[0]))})
+
 #endif // MACROLIST_H
-#endif // cpp
+// #endif // cpp

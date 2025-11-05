@@ -11,10 +11,14 @@
 #include "wheels.h"
 
 List *buffer = NULL;
+MList(char) buf;
+
 __attribute__((destructor)) void freeList(void) { List_free(buffer); }
-__attribute__((constructor)) void setupList(void) { buffer = mList(char); }
-void listPrinter(char *c, unsigned int length) {
-  List_appendFromArr(buffer, c, length);
+__attribute__((constructor)) void setupList(void) { MList_DFInit(buf, buffer); }
+
+void listPrinter(char *c, unsigned int length, char flush) {
+  MList_DF(buf, buffer);
+  MList_addArr(buf, c, length);
 }
 
 int main() {
@@ -28,10 +32,7 @@ int main() {
   UMap_setChild(test, um_from("innermap"), test);
   UMap_setList(test, um_from("innerlist"), testList);
   print_wf(listPrinter, "${UMap*}", test);
-  um_fp listBuffer =
-      ((um_fp){.ptr = buffer->head, .width = List_headArea(buffer)});
-
-  UMap_scoped *output = parse(NULL, NULL, listBuffer);
-  println("object input : ${}", listBuffer);
+  UMap_scoped *output = parse(NULL, NULL, MList_fp(buf));
+  println("object input : ${}", MList_fp(buf));
   println("entire object: ${UMap*}", output);
 }
