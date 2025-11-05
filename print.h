@@ -38,79 +38,99 @@ typedef void (*outputFunction)(char *, unsigned int length);
 typedef void (*printerFunction)(outputFunction, void *, um_fp args);
 
 typedef struct {
+  um_fp n;
   size_t index;
-  size_t width;
-} namesMetadata;
+  printerFunction fn;
+} PrinterTuple;
 static struct {
-  printerFunction *printerFunctions;
-  namesMetadata *namesMetadata;
+  PrinterTuple *elements;
   uint8_t *namesBuffer;
   size_t nbN;
   size_t N;
 } PrinterSingleton;
-static void PrinterSingleton_init() {
-  PrinterSingleton.printerFunctions =
-      (printerFunction *)malloc(10 * sizeof(printerFunction));
-  PrinterSingleton.namesMetadata =
-      (namesMetadata *)malloc(10 * sizeof(namesMetadata));
-  PrinterSingleton.namesBuffer = (uint8_t *)malloc(1024);
-  PrinterSingleton.nbN = 0;
-  PrinterSingleton.N = 0;
-  if (!(PrinterSingleton.printerFunctions && PrinterSingleton.namesBuffer &&
-        PrinterSingleton.namesMetadata)) {
-    exit(ENOMEM);
-  }
-}
 static void PrinterSingleton_deinit() {
-  free(PrinterSingleton.printerFunctions);
-  free(PrinterSingleton.namesMetadata);
   free(PrinterSingleton.namesBuffer);
+  free(PrinterSingleton.elements);
 }
 static void PrinterSingleton_append(um_fp name, printerFunction function) {
-  PrinterSingleton.namesMetadata = (namesMetadata *)realloc(
-      PrinterSingleton.namesMetadata,
-      (PrinterSingleton.N + 1) * sizeof(namesMetadata));
+  PrinterSingleton.elements =
+      (PrinterTuple *)realloc(PrinterSingleton.elements,
+                              (PrinterSingleton.N + 1) * sizeof(PrinterTuple));
   PrinterSingleton.namesBuffer =
       (uint8_t *)realloc(PrinterSingleton.namesBuffer,
                          (PrinterSingleton.nbN + name.width) * sizeof(uint8_t));
 
-  PrinterSingleton.printerFunctions = (printerFunction *)realloc(
-      PrinterSingleton.printerFunctions,
-      (PrinterSingleton.N + 1) * sizeof(printerFunction));
-  if (!(PrinterSingleton.printerFunctions && PrinterSingleton.namesBuffer &&
-        PrinterSingleton.namesMetadata)) {
+  if (!PrinterSingleton.elements) {
     exit(ENOMEM);
   }
-
-  PrinterSingleton.namesMetadata[PrinterSingleton.N] = (namesMetadata){
+  PrinterTuple el = (PrinterTuple){
+      .n = (um_fp){.ptr = NULL, .width = name.width},
       .index = PrinterSingleton.nbN,
-      .width = name.width,
+      .fn = function,
   };
+  PrinterSingleton.elements[PrinterSingleton.N] = el;
   memcpy(PrinterSingleton.namesBuffer +
              (sizeof(uint8_t) * PrinterSingleton.nbN),
          name.ptr, name.width);
-  PrinterSingleton.printerFunctions[PrinterSingleton.N] = function;
+
   PrinterSingleton.N++;
   PrinterSingleton.nbN += name.width;
 }
+// static printerFunction PrinterSingleton_getLinear(um_fp name) {
+//   for (int i = 0; i < PrinterSingleton.N; i++) {
+//     um_fp element = PrinterSingleton.elements[i].n;
+//     if (!um_fp_cmp(element, name))
+//       return PrinterSingleton.elements[i].fn;
+//   }
+//   return NULL;
+// }
 static printerFunction PrinterSingleton_get(um_fp name) {
-  for (int i = 0; i < PrinterSingleton.N; i++) {
-    um_fp element = (um_fp){
-        .ptr = &PrinterSingleton
-                    .namesBuffer[PrinterSingleton.namesMetadata[i].index],
-        .width = PrinterSingleton.namesMetadata[i].width,
-    };
-    if (!um_fp_cmp(element, name))
-      return PrinterSingleton.printerFunctions[i];
+  static int comparisons = 0;
+  unsigned int left = 0, right = PrinterSingleton.N - 1;
+  while (left <= right) {
+    int mid = left + (right - left) / 2;
+    um_fp element = PrinterSingleton.elements[mid].n;
+
+    int cmp = um_fp_cmp(element, name); // returns 0 if equal
+    comparisons++;
+
+    if (cmp == 0)
+      return PrinterSingleton.elements[mid].fn;
+    else if (cmp < 0)
+      left = mid + 1;
+    else
+      right = mid - 1;
   }
   return NULL;
 }
+
 static um_fp PrinterSingleton_getN(int index) {
-  return (um_fp){
-      .ptr = &PrinterSingleton
-                  .namesBuffer[PrinterSingleton.namesMetadata[index].index],
-      .width = PrinterSingleton.namesMetadata[index].width,
-  };
+  return PrinterSingleton.elements[index].n;
+}
+
+static int comp(const void *a, const void *b) {
+  PrinterTuple pa = *(PrinterTuple *)a;
+  PrinterTuple pb = *(PrinterTuple *)b;
+  return um_fp_cmp(pa.n, pb.n);
+}
+__attribute__((constructor(204))) static void PrinterSingleton_Sort() {
+  for (int i = 0; i < PrinterSingleton.N; i++) {
+    um_fp element = PrinterSingleton.elements[i].n;
+    element.ptr =
+        PrinterSingleton.namesBuffer + PrinterSingleton.elements[i].index;
+    PrinterSingleton.elements[i].n = element;
+  }
+  qsort(PrinterSingleton.elements, PrinterSingleton.N, sizeof(PrinterSingleton),
+        comp);
+}
+static void PrinterSingleton_init() {
+  PrinterSingleton.elements = (PrinterTuple *)malloc(10 * sizeof(PrinterTuple));
+  PrinterSingleton.namesBuffer = (uint8_t *)malloc(1024);
+  PrinterSingleton.nbN = 0;
+  PrinterSingleton.N = 0;
+  if (!PrinterSingleton.elements) {
+    exit(ENOMEM);
+  }
 }
 // arg utils
 // clang-format off
@@ -167,6 +187,15 @@ __attribute__((destructor)) static void printerDeinit() {
     __VA_ARGS__                                                                \
     tempargs = printer_arg_after(' ', tempargs);                               \
     tempargs = printer_arg_trim(tempargs);                                     \
+  }
+
+#define REGISTER_ALIASED_PRINTER(realtype, alias)                              \
+  __attribute__((constructor(201))) static void register__##alias() {          \
+    um_fp key = (um_fp){.ptr = (uint8_t *)EXPAND_AND_STRINGIFY(alias),         \
+                        .width = sizeof(EXPAND_AND_STRINGIFY(alias)) - 1};     \
+    uint8_t *refFn =                                                           \
+        (uint8_t *)(void *)REF(printerFunction, GETTYPEPRINTERFN(realtype));   \
+    PrinterSingleton_append(key, GETTYPEPRINTERFN(realtype));                  \
   }
 
 struct print_arg {
@@ -393,7 +422,7 @@ __attribute__((weak)) void defaultPrinter(char *c, unsigned int length) {
 }
 
 #ifdef PRINTER_LIST_TYPENAMES
-__attribute__((constructor(203))) static void post_init() {
+__attribute__((constructor(205))) static void post_init() {
   outputFunction put = defaultPrinter;
   USETYPEPRINTER(um_fp, um_from("list of printer type names:\n"));
   for (int i = 0; i < PrinterSingleton.N; i++) {

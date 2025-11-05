@@ -42,18 +42,12 @@ def main [ammount:int] {
     $filec = $filec + "#define GEN_CAT(a, b) GEN_CAT_(a, b)\n"
     $filec = $filec + "#define STRINGIFY(x) #x\n"
     $filec = $filec + "#define EXPAND_AND_STRINGIFY(x) STRINGIFY(x)\n"
-    $filec = $filec + "#define MAKE_NEW_TYPE_HELPER(type, newtype)                                    \\\n"
-    $filec = $filec + "  typedef type newtype;                                                        \\\n"
-    $filec = $filec + "  __attribute__((constructor(201))) static void GEN_CAT(register_,newtype)() { \\\n"
-    $filec = $filec + "    um_fp key = (um_fp){.ptr = (uint8_t *)EXPAND_AND_STRINGIFY(newtype),       \\\n"
-    $filec = $filec + "                        .width = sizeof(EXPAND_AND_STRINGIFY(newtype)) - 1};   \\\n"
-    $filec = $filec + "    uint8_t *refFn =                                                           \\\n"
-    $filec = $filec + "        (uint8_t *)(void *)REF(printerFunction, GETTYPEPRINTERFN(type));       \\\n"
-    $filec = $filec + "    stringList_append(typeNamesList, key);                                     \\\n"
-    $filec = $filec + "    List_append(printerFunctions, refFn);                                      \\\n"
-    $filec = $filec + "  }\n"
-    $filec = $filec + "#define MAKE_NEW_TYPE(type)                                                    \\\n"
-    $filec = $filec + "  MAKE_NEW_TYPE_HELPER(type, GEN_CAT(argtype, GENERIC_NAME_N))"
+
+    $filec = $filec + "#define MAKE_NEW_TYPE_HELPER(type, newtype)\\\n"
+    $filec = $filec + "typedef type newtype;\\\n"
+    $filec = $filec + "REGISTER_ALIASED_PRINTER(type, newtype);\n"
+    $filec = $filec + "#define MAKE_NEW_TYPE(type)\\\n"
+    $filec = $filec + "MAKE_NEW_TYPE_HELPER(type, GEN_CAT(argtype, GENERIC_NAME_N))\n"
 
     return $filec
   }|save -f genericName.h

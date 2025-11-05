@@ -241,14 +241,8 @@ default:"")
 #define GEN_CAT(a, b) GEN_CAT_(a, b)
 #define STRINGIFY(x) #x
 #define EXPAND_AND_STRINGIFY(x) STRINGIFY(x)
-#define MAKE_NEW_TYPE_HELPER(type, newtype)                                    \
-  typedef type newtype;                                                        \
-  __attribute__((constructor(201))) static void GEN_CAT(register_,newtype)() { \
-    um_fp key = (um_fp){.ptr = (uint8_t *)EXPAND_AND_STRINGIFY(newtype),       \
-                        .width = sizeof(EXPAND_AND_STRINGIFY(newtype)) - 1};   \
-    uint8_t *refFn =                                                           \
-        (uint8_t *)(void *)REF(printerFunction, GETTYPEPRINTERFN(type));       \
-    PrinterSingleton_append(key, GETTYPEPRINTERFN(type));                         \
-  }
-#define MAKE_NEW_TYPE(type)                                                    \
-  MAKE_NEW_TYPE_HELPER(type, GEN_CAT(argtype, GENERIC_NAME_N))
+#define MAKE_NEW_TYPE_HELPER(type, newtype)\
+typedef type newtype;\
+REGISTER_ALIASED_PRINTER(type, newtype);
+#define MAKE_NEW_TYPE(type)\
+MAKE_NEW_TYPE_HELPER(type, GEN_CAT(argtype, GENERIC_NAME_N))
