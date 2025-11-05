@@ -18,7 +18,7 @@ __attribute__((constructor)) void setupList(void) { MList_DFInit(buf, buffer); }
 
 void listPrinter(char *c, unsigned int length, char flush) {
   MList_DF(buf, buffer);
-  MList_addArr(buf, c, length);
+  MList_addArr(buf, length, c);
 }
 
 int main() {

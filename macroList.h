@@ -30,7 +30,6 @@
       List_new(sizeof(typeof(list.elements[0])));                              \
   list = MList_deconvert((*MList_heapList(list)), list);
 
-
 #define MList_push(list, ...)                                                  \
   do {                                                                         \
     MList_heapList(list)->length = list.length;                                \
@@ -61,10 +60,12 @@
       __VA_ARGS__                                                              \
     }                                                                          \
   } while (0)
-#define MList_addArr(list, ptr, length)                                        \
+#define MList_addArr(list, size, ...)                                          \
   do {                                                                         \
     MList_heapList(list)->length = list.length;                                \
-    List_appendFromArr(MList_heapList(list), ptr, length);                     \
+    typeof(list.elements) __temp = (typeof(list.elements)) __VA_ARGS__;     \
+    void *__ref = (void *)__temp;                                              \
+    List_appendFromArr(MList_heapList(list), __ref, size);                     \
     list = MList_deconvert((*MList_heapList(list)), list);                     \
   } while (0)
 
@@ -78,8 +79,6 @@
 #define MList_DF(list, Listptr)                                                \
   List *MList_heapList(list) = Listptr;                                        \
   list = MList_deconvert((*MList_heapList(list)), list);
-
-
 
 #define MList_fp(list)                                                         \
   ((um_fp){.ptr = (uint8_t *)list.elements,                                    \

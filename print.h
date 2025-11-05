@@ -96,15 +96,6 @@ static void PrinterSingleton_append(um_fp name, printerFunction function) {
   PrinterSingleton.N++;
   PrinterSingleton.nbN += name.width;
 }
-// static printerFunction PrinterSingleton_getLinear(um_fp name) {
-//   for (int i = 0; i < PrinterSingleton.N; i++) {
-//     um_fp element = PrinterSingleton.elements[i].n;
-//     if (!um_fp_cmp(element, name))
-//       return PrinterSingleton.elements[i].fn;
-//   }
-//   return NULL;
-// }
-
 static printerFunction lastprinters[2] = {NULL, NULL};
 static um_fp lastnames[2] = {nullUmf, nullUmf};
 static char lasttick = 0;
@@ -137,10 +128,6 @@ static printerFunction PrinterSingleton_get(um_fp name) {
     }
   }
   return NULL;
-}
-
-static um_fp PrinterSingleton_getN(int index) {
-  return PrinterSingleton.elements[index].n;
 }
 
 static int PrinterSingleton_Cmp(const void *a, const void *b) {
@@ -428,7 +415,7 @@ __attribute__((constructor(205))) static void post_init() {
   USETYPEPRINTER(um_fp, um_from("list of printer type names:\n"));
   for (int i = 0; i < PrinterSingleton.N; i++) {
     USETYPEPRINTER(um_fp, um_from(" "));
-    USETYPEPRINTER(um_fp, PrinterSingleton_getN(i));
+    USETYPEPRINTER(um_fp, PrinterSingleton.elements[i].n);
     USETYPEPRINTER(um_fp, um_from("\n"));
   }
 }
@@ -529,6 +516,8 @@ void print_f(outputFunction put, um_fp fmt, ...) {
         print_f_helper(assumedName, tname, put, parseargs);
         i = j;
         check = 0;
+      } else {
+        put("{", 1, 0);
       }
       break;
     default:

@@ -3,7 +3,7 @@ DIR = build
 CFLAGS = -w 
 # CFLAGS = -fsanitize=address -g -O0 -w
 
-OBJECTS = kmltest.c
+OBJECTS = printexample.c
 
 UNAME_S := $(shell uname -s 2>/dev/null)
 
