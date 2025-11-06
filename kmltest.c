@@ -1,12 +1,9 @@
 
-#include "kml.h"
 
-#include "hmap.h"
 #include "kmlM.h"
 #include "macroList.h"
 #include "my-list.h"
 #include "print.h"
-#include "um_fp.h"
 #include "umap.h"
 #include "wheels.h"
 

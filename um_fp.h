@@ -9,8 +9,8 @@ typedef struct fat_pointer {
   size_t width;
 } um_fp;
 
-// #include <string.h>
-static inline intmax_t um_fp_cmp(um_fp a, um_fp b) {
+#include <string.h>
+static inline int um_fp_cmp(um_fp a, um_fp b) {
   int wd = a.width - b.width;
   if (wd) {
     return wd;
@@ -18,17 +18,7 @@ static inline intmax_t um_fp_cmp(um_fp a, um_fp b) {
   if (!a.width) {
     return 0;
   }
-  // return memcmp(a.ptr, b.ptr, a.width);
-  intmax_t res = 0;
-  size_t less = a.width % sizeof(intmax_t);
-  size_t more = a.width / sizeof(intmax_t);
-  for (size_t i = 0; i < more && !res; i++) {
-    res = ((intmax_t *)a.ptr)[i] - ((intmax_t *)b.ptr)[i];
-  }
-  for (size_t i = a.width - less; i < a.width && !res; i++) {
-    res = (a.ptr)[i] - (b.ptr)[i];
-  }
-  return res;
+  return memcmp(a.ptr, b.ptr, a.width);
 }
 
 static char um_eq(um_fp a, um_fp b) {

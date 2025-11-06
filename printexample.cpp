@@ -20,20 +20,20 @@ MAKE_PRINT_ARG_TYPE(point);
 
 int main() {
   listPlus<point> points;
-  // points.dontfree(); 
+  // points.dontfree();
   points.push((point){0, 0});
   points.push((point){1, 1});
   points.push((point){0, 1});
   points.insert((point){1, 0}, 1);
   println("${}", points.get(2));
   println("${}", points.pop());
-  println("${}", points.pop());
-  points.foreach ([](point i) { println("foreach : ${}", i); });
+  points.foreach ([](int _i, point i) { println("foreach : ${}", i); });
   println("length  : ${int}\n"
           "capacity: ${int}",
           points.length(), points.capacity());
   unsigned int i;
-  println("no type test: ${}", i);
+  println("no type test : ${}", i);
+  println("no type test2: ${thingy}", i);
   println("missing parameter test: ${}");
   return 0;
 }

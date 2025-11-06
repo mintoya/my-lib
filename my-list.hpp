@@ -31,8 +31,9 @@ template <typename T> struct listPlus {
   inline void push(const T &value) { List_append(ptr, (void *)&value); }
   inline T get(unsigned int i) { return *((T *)List_getRef(ptr, i)); }
   T pop() {
+    T res = get(length()-1);
     ptr->length--;
-    return *((T *)List_getRefForce(ptr, ptr->length));
+    return res;
   }
 
   void appendArr(const T values[], unsigned int len) {
@@ -50,7 +51,7 @@ template <typename T> struct listPlus {
   inline unsigned int capacity() const { return ptr->size; }
   template <typename FN> void foreach (FN &&function) {
     for (int i = 0; i < length(); i++) {
-      function(get(i));
+      function(i,get(i));
     }
   }
 };

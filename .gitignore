@@ -3,3 +3,4 @@ my-list/a*
 string-List/a*
 cSum/a*
 perf.*
+.gdb*

@@ -249,7 +249,6 @@ struct print_arg {
 // MAKE_PRINT_ARG_TYPE(size_t);
 // does the same in cpp
 
-  REGISTER_PRINTER(char, { PUTS(&in, 1); });
   REGISTER_PRINTER(um_fp, {
     if (in.ptr) {
       PUTS((char *)in.ptr, in.width);
@@ -366,8 +365,6 @@ struct print_arg {
 MAKE_PRINT_ARG_TYPE(int);
 #include "printer/genericName.h"
 MAKE_PRINT_ARG_TYPE(um_fp);
-#include "printer/genericName.h"
-MAKE_PRINT_ARG_TYPE(char);
 #include "printer/genericName.h"
 MAKE_PRINT_ARG_TYPE(size_t);
 
@@ -507,6 +504,7 @@ void print_f(outputFunction put, um_fp fmt, ...) {
                           .width = j - i - 1};
         struct print_arg assumedName = va_arg(l, struct print_arg);
         if (!assumedName.ref) {
+          va_end(l);
           return put("__ NO ARGUMENT PROVIDED, ENDING PRINT __", 40, 1);
         }
 

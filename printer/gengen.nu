@@ -32,10 +32,10 @@ def main [ammount:int] {
     $filec = $filec + "#endif\n"
 
     $filec = $filec + "#if GENERIC_NAME_N == 1\n"
-    $filec = $filec + "#define GENERIC_TYPE_1 GENERIC_ELEMENT(_1_tn)\n"
+    $filec = $filec + "#define GENERIC_TYPE_1 GENERIC_ELEMENT(_1____tn)\n"
     for i in 2..$amt {
       $filec = $filec + $"#elif GENERIC_NAME_N == ($i)\n"
-      $filec = $filec + $"#define GENERIC_TYPE_($i) GENERIC_ELEMENT\(_($i)_tn\)\n"
+      $filec = $filec + $"#define GENERIC_TYPE_($i) GENERIC_ELEMENT\(_($i)____tn\)\n"
     }
     $filec = $filec + "#endif\n"
 
@@ -49,7 +49,7 @@ def main [ammount:int] {
     $filec = $filec + "typedef type newtype;\\\n"
     $filec = $filec + "REGISTER_ALIASED_PRINTER(type, newtype);\n"
     $filec = $filec + "#define MAKE_NEW_TYPE(type)\\\n"
-    $filec = $filec + "MAKE_NEW_TYPE_HELPER(type, GEN_CAT_3(_,GENERIC_NAME_N,_tn))\n"
+    $filec = $filec + "MAKE_NEW_TYPE_HELPER(type, GEN_CAT_3(_,GENERIC_NAME_N,____tn))\n"
 
     return $filec
   }|save -f genericName.h
