@@ -9,6 +9,7 @@ typedef struct fat_pointer {
   size_t width;
 } um_fp;
 
+
 #include <string.h>
 static inline int um_fp_cmp(um_fp a, um_fp b) {
   int wd = a.width - b.width;
@@ -22,7 +23,7 @@ static inline int um_fp_cmp(um_fp a, um_fp b) {
 }
 
 static char um_eq(um_fp a, um_fp b) {
-  return a.width == b.width && !um_fp_cmp(a, b);
+  return !um_fp_cmp(a, b);
 }
 
 #ifdef __cplusplus
