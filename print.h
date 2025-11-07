@@ -62,7 +62,13 @@ typedef struct {
   size_t index;
   printerFunction fn;
 } PrinterTuple;
-static struct {
+static
+#ifdef __cplusplus
+    thread_local
+#else
+    _Thread_local
+#endif
+    struct {
   PrinterTuple *elements;
   uint8_t *namesBuffer;
   size_t nbN;

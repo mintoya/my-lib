@@ -148,16 +148,14 @@ um_fp stringList_get(stringList *l, unsigned int index) {
 }
 unsigned int stringList_search(stringList *l, um_fp what) {
   stringMetaData *meta = (stringMetaData *)l->List_stringMetaData.head;
-  unsigned int res;
+  unsigned int res = 0;
   unsigned int length = stringList_length(l);
 
-  for (res = 0; res < length; res++) {
-    if (meta[res].width == what.width &&
-        !strncmp((char *)what.ptr,
-                 (char *)List_getRef(&(l->List_char), meta[res].index),
-                 what.width)) {
+  for (res; res < length; res++) {
+    um_fp this = ((um_fp){.ptr = List_getRef(&(l->List_char), meta[res].index),
+                          .width = meta[res].width});
+    if (um_eq(this, what))
       return res;
-    }
   }
   return res;
 }

@@ -20,6 +20,11 @@
 #include "umap.h"
 #endif
 
+#ifdef STATE_MACHINE_H
+#define STATE_MACHINE_C
+#include "stateMachine.h"
+#endif
+
 #ifdef STRING_LIST_H
 #define STRING_LIST_C
 #include "stringList.h"

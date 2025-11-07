@@ -9,7 +9,6 @@ typedef struct fat_pointer {
   size_t width;
 } um_fp;
 
-
 #include <string.h>
 static inline int um_fp_cmp(um_fp a, um_fp b) {
   int wd = a.width - b.width;
@@ -22,9 +21,18 @@ static inline int um_fp_cmp(um_fp a, um_fp b) {
   return memcmp(a.ptr, b.ptr, a.width);
 }
 
-static char um_eq(um_fp a, um_fp b) {
-  return !um_fp_cmp(a, b);
-}
+static char um_eq(um_fp a, um_fp b) { return !um_fp_cmp(a, b); }
+
+#define UM_DEFAULT(...) {__VA_ARGS__}
+#define UM_CASE(fp, ...)                                                       \
+  if (um_eq(um_from(fp), __temp)) {                                            \
+    __VA_ARGS__                                                                \
+  } else
+#define UM_SWITCH(fp, ...)                                                     \
+  do {                                                                         \
+    um_fp __temp = fp;                                                         \
+    __VA_ARGS__                                                                \
+  } while (0)
 
 #ifdef __cplusplus
 inline bool operator==(const um_fp &a, const um_fp &b) { return um_eq(a, b); }
@@ -41,7 +49,10 @@ inline bool operator!=(const um_fp &a, const um_fp &b) { return !um_eq(a, b); }
 
 #ifndef __cplusplus
 #define um_fromP(ref, size) ((um_fp){.ptr = ref, .width = size})
-#define um_from(val) ((um_fp){.ptr = ((uint8_t *)val), .width = strlen(val)})
+#define um_from(val)                                                           \
+  _Generic((val),                                                              \
+      um_fp: val,                                                              \
+      default: ((um_fp){.ptr = ((uint8_t *)val), .width = strlen(val)}))
 #else
 #include <cstdint>
 #include <cstring>
@@ -52,6 +63,7 @@ template <typename T> inline um_fp um_from(T &val) {
 // inline um_fp um_from(std::string &s) {
 //   return {reinterpret_cast<uint8_t *>(s.data()), s.size()};
 // }
+inline um_fp um_from(um_fp u) { return u; }
 inline um_fp um_from(const std::string &s) {
   return {const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(s.data())),
           s.size()};
