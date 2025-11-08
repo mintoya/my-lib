@@ -22,6 +22,9 @@ else
 endif
 
 
+# TODO
+# gcc -fdump-tree-original printexample.c
+# add later
 make: $(DIR) $(OBJECTS)
 	$(CC) -o $(DIR)/$(EXECUTABLE) $(OBJECTS) $(CFLAGS)
 

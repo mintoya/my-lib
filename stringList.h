@@ -7,6 +7,11 @@
 #include <stdio.h>
 #include <string.h>
 
+typedef struct {
+  um_fp n;
+  size_t nl;
+} um_fp_extended;
+#define nullUmfExt ((um_fp_extended){.n = nullUmf,.nl = 0})
 typedef struct stringMetaData {
   unsigned int index;
   size_t width;
@@ -29,6 +34,7 @@ typedef struct {
 stringList *stringList_new();
 // returns null if over limit
 um_fp stringList_get(stringList *l, unsigned int index);
+um_fp_extended stringList_getExt(stringList *l, unsigned int index);
 void stringList_insert(stringList *l, um_fp, unsigned int index);
 void stringList_set(stringList *l, um_fp, unsigned int index);
 unsigned int stringList_append(stringList *l, um_fp);
@@ -146,15 +152,26 @@ um_fp stringList_get(stringList *l, unsigned int index) {
   return ((um_fp){.ptr = (uint8_t *)(List_getRef(&(l->List_char), thisS.index)),
                   .width = thisS.width});
 }
+um_fp_extended stringList_getExt(stringList *l, unsigned int index) {
+  if (index >= l->List_stringMetaData.length)
+    return nullUmfExt;
+  stringMetaData thisS =
+      mList_get(&(l->List_stringMetaData), stringMetaData, index);
+  um_fp res =
+      ((um_fp){.ptr = (uint8_t *)(List_getRef(&(l->List_char), thisS.index)),
+               .width = thisS.width});
+  return ((um_fp_extended){.n = res, .nl = thisS._size});
+}
 unsigned int stringList_search(stringList *l, um_fp what) {
   stringMetaData *meta = (stringMetaData *)l->List_stringMetaData.head;
   unsigned int res = 0;
   unsigned int length = stringList_length(l);
 
   for (res; res < length; res++) {
-    um_fp this = ((um_fp){.ptr = List_getRef(&(l->List_char), meta[res].index),
-                          .width = meta[res].width});
-    if (um_eq(this, what))
+    um_fp thisS = ((um_fp){
+        .ptr = (uint8_t *)List_getRef(&(l->List_char), meta[res].index),
+        .width = meta[res].width});
+    if (um_eq(thisS, what))
       return res;
   }
   return res;

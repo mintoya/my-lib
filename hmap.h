@@ -2,36 +2,65 @@
 #define HMAP_H
 #include "stringList.h"
 #include "um_fp.h"
-#include "umap.h"
 #include <stdint.h>
 #include <stdlib.h>
-#define HMap_MAXL ((uint16_t)20000 - 1)
 typedef struct {
-  UMap_innertype kind;
   uint16_t index;
   uint16_t next;
   unsigned char hasindex : 1;
   unsigned char hasnext : 1;
 } HMap_innertype;
 typedef struct {
-  HMap_innertype metadata[HMap_MAXL];
+  size_t metaSize;
+  HMap_innertype *metadata;
   List *links;
   stringList *KVs;
 } HMap;
 static inline size_t HMap_footprint(HMap *hm) {
-  return stringList_footprint(hm->KVs) + HMap_MAXL * sizeof(HMap_innertype) +
+  return stringList_footprint(hm->KVs) + hm->metaSize * sizeof(HMap_innertype) +
          List_headArea(hm->links);
 }
 
 #define HMap_innerEmpty                                                        \
-  ((HMap_innertype){                                                           \
-      .kind = NORMAL, .index = 0, .next = 0, .hasindex = 0, .hasnext = 0})
-unsigned int HMap_hash(um_fp); // unbounded
+  ((HMap_innertype){.index = 0, .next = 0, .hasindex = 0, .hasnext = 0})
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
 
-static inline HMap *HMap_new() {
+// #TODO maybe add this submodule
+// faster i think
+// #include "komihash/komihash.h"
+// __attribute__((pure)) static inline unsigned int HMap_hash(um_fp str) {
+//   return komihash(str.ptr, str.width, 6969);
+// }
+__attribute__((pure)) static inline unsigned int HMap_hash(um_fp str) {
+  unsigned long h = 5381;
+  size_t chunk_size = sizeof(uintptr_t);
+  size_t full_chunks = str.width / chunk_size;
+  size_t leftover = str.width % chunk_size;
+  for (size_t i = 0; i < full_chunks; i++) {
+    uintptr_t val;
+    memcpy(&val, str.ptr + i * chunk_size, chunk_size);
+    h = ((h << 5) + h) + (unsigned int)val;
+  }
+  for (size_t i = str.width - leftover; i < str.width; i++)
+    h = ((h << 5) + h) + str.ptr[i];
+
+  return (unsigned int)h;
+}
+
+static inline HMap *HMap_new(size_t metaSize) {
+
   HMap *res = (HMap *)malloc(sizeof(HMap));
-  *res = (HMap){.links = mList(HMap_innertype), .KVs = stringList_new()};
-  memset(res->metadata, 0, sizeof(res->metadata));
+  // clang-format off
+  *res = (HMap){
+    .metaSize = metaSize,
+    .metadata = (HMap_innertype*)malloc(metaSize*sizeof(HMap_innertype)),
+    .links = mList(HMap_innertype), 
+    .KVs = stringList_new(),
+  };
+  // clang-format on
+  memset(res->metadata, 0, sizeof(HMap_innertype) * metaSize);
   return res;
 }
 unsigned int HMap_set(HMap *, um_fp key, um_fp val);
@@ -39,6 +68,8 @@ um_fp HMap_get(HMap *, um_fp);
 static inline void HMap_free(HMap *hm) {
   List_free(hm->links);
   stringList_free(hm->KVs);
+  free(hm->metadata);
+  free(hm);
 }
 
 static inline void HMap_cleanup_handler(HMap **hm) {
@@ -47,26 +78,42 @@ static inline void HMap_cleanup_handler(HMap **hm) {
   *hm = NULL;
 }
 static inline void HMap_remake(HMap *hm) {
-  stringList *l;
-  l = stringList_remake(hm->KVs);
+  stringList *l = stringList_remake(hm->KVs);
   stringList_free(hm->KVs);
   hm->KVs = l;
 }
+static inline stringList *HMap_getkeys(HMap *map) {
+  stringList *keys = stringList_new();
 
-// maybe switch to using a tagged union-like index
-UMap_innertype HMap_getInnerType(HMap *map, um_fp key);
+  for (size_t i = 0; i < map->metaSize; i++) {
+    HMap_innertype *h = &map->metadata[i];
+
+    while (h->hasindex) {
+      stringList_append(keys, stringList_get(map->KVs, h->index));
+
+      if (!h->hasnext)
+        break;
+
+      h = (HMap_innertype *)List_getRef(map->links, h->next);
+      if (!h)
+        break;
+    }
+  }
+
+  return keys;
+}
+
+struct HMap_both {
+  um_fp key;
+  um_fp val;
+};
+struct HMap_both HMap_getBoth(HMap *map, um_fp key);
 #define HMap_scoped HMap __attribute__((cleanup(HMap_cleanup_handler)))
 
 #endif // HMAP_H
 
 // #define HMAP_C
 #ifdef HMAP_C
-unsigned int HMap_hash(um_fp str) {
-  unsigned long h = 5381;
-  for (; str.width > 0; str.width--)
-    h = ((h << 5) + h) + (str.ptr)[str.width - 1];
-  return h;
-}
 unsigned int HMap_setForce(HMap *map, HMap_innertype *handle, um_fp key,
                            um_fp val) {
   if (!handle->hasindex) {
@@ -88,32 +135,35 @@ unsigned int HMap_setForce(HMap *map, HMap_innertype *handle, um_fp key,
         map, (HMap_innertype *)List_getRef(map->links, handle->next), key, val);
   }
 }
-UMap_innertype HMap_getInnerType(HMap *map, um_fp key) {
-  unsigned int hash = HMap_hash(key);
-  HMap_innertype *ht = map->metadata + (hash % HMap_MAXL);
-  while (1) {
-    if (!um_fp_cmp(key, stringList_get(map->KVs, ht->index))) {
-      return ht->kind;
-    }
-    if (!ht->hasnext)
-      return (UMap_innertype){};
-    ht = (HMap_innertype *)List_getRef(map->links, ht->next);
-  }
-}
 unsigned int HMap_set(HMap *map, um_fp key, um_fp val) {
   unsigned int hash = HMap_hash(key);
-  HMap_innertype *ht = map->metadata + (hash % HMap_MAXL);
+  HMap_innertype *ht = map->metadata + (hash % map->metaSize);
   return HMap_setForce(map, ht, key, val);
 }
 um_fp HMap_get(HMap *map, um_fp key) {
   unsigned int hash = HMap_hash(key);
-  HMap_innertype *ht = map->metadata + (hash % HMap_MAXL);
+  HMap_innertype *ht = map->metadata + (hash % map->metaSize);
   while (1) {
     if (!um_fp_cmp(key, stringList_get(map->KVs, ht->index))) {
       return stringList_get(map->KVs, ht->index + 1);
     }
     if (!ht->hasnext)
       return nullUmf;
+    ht = (HMap_innertype *)List_getRef(map->links, ht->next);
+  }
+}
+struct HMap_both HMap_getBoth(HMap *map, um_fp key) {
+  unsigned int hash = HMap_hash(key);
+  HMap_innertype *ht = map->metadata + (hash % map->metaSize);
+  while (1) {
+    if (!um_fp_cmp(key, stringList_get(map->KVs, ht->index))) {
+      return (struct HMap_both){
+          .key = stringList_get(map->KVs, ht->index),
+          .val = stringList_get(map->KVs, ht->index + 1),
+      };
+    }
+    if (!ht->hasnext)
+      return (struct HMap_both){nullUmf, nullUmf};
     ht = (HMap_innertype *)List_getRef(map->links, ht->next);
   }
 }

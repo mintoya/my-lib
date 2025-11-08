@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "hmap.h"
 #include "printer/macros.h"
 #include "printer/variadic.h"
 #include "um_fp.h"
@@ -57,11 +58,6 @@ static void stdoutPrint(char *c, unsigned int length, char flush) {
 }
 static outputFunction defaultPrinter = stdoutPrint;
 
-typedef struct {
-  um_fp n;
-  size_t index;
-  printerFunction fn;
-} PrinterTuple;
 static
 #ifdef __cplusplus
     thread_local
@@ -69,97 +65,35 @@ static
     _Thread_local
 #endif
     struct {
-  PrinterTuple *elements;
-  uint8_t *namesBuffer;
-  size_t nbN;
-  size_t N;
+  HMap *data;
 } PrinterSingleton;
-static void PrinterSingleton_deinit() {
-  free(PrinterSingleton.namesBuffer);
-  free(PrinterSingleton.elements);
-}
+static void PrinterSingleton_deinit() { HMap_free(PrinterSingleton.data); }
 static void PrinterSingleton_append(um_fp name, printerFunction function) {
-  PrinterSingleton.elements =
-      (PrinterTuple *)realloc(PrinterSingleton.elements,
-                              (PrinterSingleton.N + 1) * sizeof(PrinterTuple));
-  PrinterSingleton.namesBuffer =
-      (uint8_t *)realloc(PrinterSingleton.namesBuffer,
-                         (PrinterSingleton.nbN + name.width) * sizeof(uint8_t));
-
-  if (!PrinterSingleton.elements) {
-    exit(ENOMEM);
-  }
-  PrinterTuple el = (PrinterTuple){
-      .n = (um_fp){.ptr = NULL, .width = name.width},
-      .index = PrinterSingleton.nbN,
-      .fn = function,
-  };
-  PrinterSingleton.elements[PrinterSingleton.N] = el;
-  memcpy(PrinterSingleton.namesBuffer +
-             (sizeof(uint8_t) * PrinterSingleton.nbN),
-         name.ptr, name.width);
-
-  PrinterSingleton.N++;
-  PrinterSingleton.nbN += name.width;
+  HMap_set(PrinterSingleton.data, name,
+           (um_fp){.ptr = (uint8_t *)(void *)REF(printerFunction, function),
+                   .width = sizeof(printerFunction)});
 }
 static printerFunction lastprinters[2] = {NULL, NULL};
 static um_fp lastnames[2] = {nullUmf, nullUmf};
 static char lasttick = 0;
 static printerFunction PrinterSingleton_get(um_fp name) {
-
-  if (!um_fp_cmp(name, lastnames[0])) {
-    return lastprinters[0];
-  } else if (!um_fp_cmp(name, lastnames[1])) {
-    return lastprinters[1];
+  if (!um_fp_cmp(name, lastnames[lasttick])) {
+    return lastprinters[lasttick];
+  } else if (!um_fp_cmp(name, lastnames[!lasttick])) {
+    return lastprinters[!lasttick];
   }
-
-  if (!PrinterSingleton.N)
-    return NULL;
-  size_t left = 0, right = PrinterSingleton.N - 1;
-  while (left <= right) {
-    size_t mid = left + (right - left) / 2;
-    um_fp element = PrinterSingleton.elements[mid].n;
-    int cmp = um_fp_cmp(element, name);
-    if (!cmp) {
-      lastprinters[lasttick] = PrinterSingleton.elements[mid].fn;
-      lastnames[lasttick] = PrinterSingleton.elements[mid].n;
-      lasttick = !lasttick;
-      return PrinterSingleton.elements[mid].fn;
-    } else if (cmp < 0) {
-      left = mid + 1;
-    } else {
-      if (mid == 0)
-        break;
-      right = mid - 1;
-    }
+  struct HMap_both both = HMap_getBoth(PrinterSingleton.data, name);
+  printerFunction p = NULL;
+  if (both.val.width) {
+    p = *(printerFunction *)(both.val.ptr);
+    lasttick = !lasttick;
+    lastprinters[lasttick] = p;
+    lastnames[lasttick] = both.key;
   }
-  return NULL;
+  return p;
 }
 
-static int PrinterSingleton_Cmp(const void *a, const void *b) {
-  PrinterTuple pa = *(PrinterTuple *)a;
-  PrinterTuple pb = *(PrinterTuple *)b;
-  return um_fp_cmp(pa.n, pb.n);
-}
-__attribute__((constructor(204))) static void PrinterSingleton_Sort() {
-  for (int i = 0; i < PrinterSingleton.N; i++) {
-    um_fp element = PrinterSingleton.elements[i].n;
-    element.ptr =
-        PrinterSingleton.namesBuffer + PrinterSingleton.elements[i].index;
-    PrinterSingleton.elements[i].n = element;
-  }
-  qsort(PrinterSingleton.elements, PrinterSingleton.N, sizeof(PrinterSingleton),
-        PrinterSingleton_Cmp);
-}
-static void PrinterSingleton_init() {
-  PrinterSingleton.elements = (PrinterTuple *)malloc(10 * sizeof(PrinterTuple));
-  PrinterSingleton.namesBuffer = (uint8_t *)malloc(1024);
-  PrinterSingleton.nbN = 0;
-  PrinterSingleton.N = 0;
-  if (!PrinterSingleton.elements) {
-    exit(ENOMEM);
-  }
-}
+static void PrinterSingleton_init() { PrinterSingleton.data = HMap_new(100); }
 // arg utils
 // clang-format off
 
@@ -416,9 +350,11 @@ void print_f(outputFunction put, um_fp fmt, ...);
 __attribute__((constructor(205))) static void post_init() {
   outputFunction put = defaultPrinter;
   USETYPEPRINTER(um_fp, um_from("list of printer type names:\n"));
-  for (int i = 0; i < PrinterSingleton.N; i++) {
+  stringList_scoped *keys = HMap_getkeys(PrinterSingleton.data);
+  int length = stringList_length(keys);
+  for (int i = 0; i < length; i++) {
     USETYPEPRINTER(um_fp, um_from(" "));
-    USETYPEPRINTER(um_fp, PrinterSingleton.elements[i].n);
+    USETYPEPRINTER(um_fp, stringList_get(keys, i));
     USETYPEPRINTER(um_fp, um_from("\n"));
   }
 }
