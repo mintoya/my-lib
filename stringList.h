@@ -12,10 +12,10 @@ typedef struct {
   size_t nl;
 } um_fp_extended;
 #define nullUmfExt ((um_fp_extended){.n = nullUmf, .nl = 0})
-typedef struct stringMetaData {
+typedef struct {
   unsigned int index;
-  size_t width;
-  size_t _size;
+  uint16_t width;
+  uint16_t _size;
 } stringMetaData;
 
 typedef struct {
