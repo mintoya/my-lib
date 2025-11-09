@@ -29,24 +29,22 @@ static inline size_t HMap_footprint(HMap *hm) {
 
 // #TODO maybe add this submodule
 // faster i think
-// #include "komihash/komihash.h"
+#include "komihash/komihash.h"
 // __attribute__((pure)) static inline unsigned int HMap_hash(um_fp str) {
-//   return komihash(str.ptr, str.width, 6969);
+//   return komihash(str.ptr, str.width, 6767);
 // }
 __attribute__((pure)) static inline unsigned int HMap_hash(um_fp str) {
-  unsigned long h = 5381;
-  size_t chunk_size = sizeof(uintptr_t);
-  size_t full_chunks = str.width / chunk_size;
-  size_t leftover = str.width % chunk_size;
-  for (size_t i = 0; i < full_chunks; i++) {
-    uintptr_t val;
-    memcpy(&val, str.ptr + i * chunk_size, chunk_size);
-    h = ((h << 5) + h) + (unsigned int)val;
+  size_t h = (0x653342) ^ -1;
+  size_t arrLength = (str.width) / sizeof(uintptr_t);
+  size_t rest = str.width % sizeof(uintptr_t);
+  for (size_t i = 0; i < arrLength; i++) {
+    uintptr_t t;
+    memcpy(&t, str.ptr + (i * sizeof(uintptr_t)), sizeof(uintptr_t));
+    h = (h << 2) + t;
   }
-  for (size_t i = str.width - leftover; i < str.width; i++)
-    h = ((h << 5) + h) + str.ptr[i];
-
-  return (unsigned int)h;
+  for (size_t i = str.width - rest; i < str.width; i++)
+    h = h ^ (str.ptr)[i];
+  return h;
 }
 
 static inline HMap *HMap_new(size_t metaSize) {
@@ -101,6 +99,20 @@ static inline stringList *HMap_getkeys(HMap *map) {
   }
 
   return keys;
+}
+static inline size_t HMap_countCollisions(HMap *map) {
+  size_t collisions = 0;
+  for (size_t i = 0; i < map->metaSize; i++) {
+    HMap_innertype *h = &map->metadata[i];
+    while (h->hasindex && h->hasnext) {
+      collisions++;
+      h = (HMap_innertype *)List_getRef(map->links, h->next);
+      if (!h)
+        break;
+    }
+  }
+
+  return collisions;
 }
 
 struct HMap_both {

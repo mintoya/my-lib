@@ -67,6 +67,7 @@ static
     struct {
   HMap *data;
 } PrinterSingleton;
+static void PrinterSingleton_init() { PrinterSingleton.data = HMap_new(100); }
 static void PrinterSingleton_deinit() { HMap_free(PrinterSingleton.data); }
 static void PrinterSingleton_append(um_fp name, printerFunction function) {
   HMap_set(PrinterSingleton.data, name,
@@ -93,7 +94,6 @@ static printerFunction PrinterSingleton_get(um_fp name) {
   return p;
 }
 
-static void PrinterSingleton_init() { PrinterSingleton.data = HMap_new(100); }
 // arg utils
 // clang-format off
 
@@ -190,12 +190,28 @@ struct print_arg {
 // does the same in cpp
 
   REGISTER_PRINTER(um_fp, {
-    if (in.ptr) {
-      PUTS((char *)in.ptr, in.width);
-    } else {
-      PUTS("__NULLUMF__", 11);
+    if (in.ptr) { PUTS((char *)in.ptr, in.width); } else { PUTS("__NULLUMF__", 11); }
+  });
+  typedef void *void_ptr;
+  REGISTER_PRINTER(void_ptr, {
+    uintptr_t v = (uintptr_t)in;
+    PUTS("0x", 2);
+
+    int shift = (sizeof(uintptr_t) * 8) - 4;
+    int leading = 1;
+    while (shift >= 0) {
+      unsigned char nibble = (v >> shift) & 0xF;
+      if (nibble || !leading || shift == 0) {
+        leading = 0;
+        char c = (nibble < 10) ? ('0' + nibble) : ('a' + nibble - 10);
+        PUTS(&c, 1);
+      }
+      shift -= 4;
     }
   });
+  typedef char *char_ptr;
+  REGISTER_PRINTER(char_ptr, { while(*in){ PUTS(in,1); in++; } });
+
   REGISTER_PRINTER(int, {
     if (in < 0) {
       PUTS("-", 1);
@@ -307,6 +323,10 @@ MAKE_PRINT_ARG_TYPE(int);
 MAKE_PRINT_ARG_TYPE(um_fp);
 #include "printer/genericName.h"
 MAKE_PRINT_ARG_TYPE(size_t);
+#include "printer/genericName.h"
+MAKE_PRINT_ARG_TYPE(void_ptr);
+#include "printer/genericName.h"
+MAKE_PRINT_ARG_TYPE(char_ptr);
 
 // clang-format off
 #define MAKE_PRINT_ARG(a)                                                      \
@@ -324,6 +344,8 @@ MAKE_PRINT_ARG_TYPE(int);
 MAKE_PRINT_ARG_TYPE(um_fp);
 MAKE_PRINT_ARG_TYPE(char);
 MAKE_PRINT_ARG_TYPE(size_t);
+MAKE_PRINT_ARG_TYPE(void_ptr);
+MAKE_PRINT_ARG_TYPE(char_ptr);
 
 #define MAKE_PRINT_ARG(a)                                                      \
   ((struct print_arg){                                                         \
@@ -357,6 +379,9 @@ __attribute__((constructor(205))) static void post_init() {
     USETYPEPRINTER(um_fp, stringList_get(keys, i));
     USETYPEPRINTER(um_fp, um_from("\n"));
   }
+  USETYPEPRINTER(um_fp, um_from("collisions: "));
+  USETYPEPRINTER(int, HMap_countCollisions(PrinterSingleton.data));
+  USETYPEPRINTER(um_fp, um_from("\n"));
 }
 #endif // PRINTER_LIST_TYPENAMES
 
@@ -447,7 +472,7 @@ void print_f(outputFunction put, um_fp fmt, ...) {
         struct print_arg assumedName = va_arg(l, struct print_arg);
         if (!assumedName.ref) {
           va_end(l);
-          return put("__ NO ARGUMENT PROVIDED, ENDING PRINT __", 40, 1);
+          return put("__ NO ARGUMENT PROVIDED, ENDING PRINT __\n", 41, 1);
         }
 
         um_fp tname = printer_arg_until(':', typeName);
@@ -463,7 +488,11 @@ void print_f(outputFunction put, um_fp fmt, ...) {
     default:
       if (check)
         put(um_charArr(fmt) + i - 1, 1, 0);
-      put(um_charArr(fmt) + i, 1, 0);
+      size_t ne;
+      for (ne = 0; ne + i < fmt.width && um_charArr(fmt)[ne + i] != '$'; ne++)
+        ;
+      put(um_charArr(fmt) + i, ne, 0);
+      i += (ne - 1);
       check = 0;
     }
   }
