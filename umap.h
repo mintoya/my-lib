@@ -29,7 +29,7 @@ typedef enum {
 } UMap_innertype;
 
 static inline size_t UMap_footprint(UMap *um) {
-  return List_headArea(um->metadata) + stringList_footprint(um->keys) +
+  return List_fullHeadArea(um->metadata) + stringList_footprint(um->keys) +
          stringList_footprint(um->vals);
 }
 static inline um_fp UMap_getKeyAtIndex(UMap *map, unsigned int index) {

@@ -11,7 +11,7 @@ typedef struct {
   um_fp n;
   size_t nl;
 } um_fp_extended;
-#define nullUmfExt ((um_fp_extended){.n = nullUmf,.nl = 0})
+#define nullUmfExt ((um_fp_extended){.n = nullUmf, .nl = 0})
 typedef struct stringMetaData {
   unsigned int index;
   size_t width;
@@ -23,8 +23,8 @@ typedef struct {
   List List_stringMetaData;
 } stringList;
 static inline size_t stringList_footprint(stringList *sl) {
-  return List_headArea(&(sl->List_stringMetaData)) +
-         List_headArea(&(sl->List_char));
+  return List_fullHeadArea(&(sl->List_stringMetaData)) +
+         List_fullHeadArea(&(sl->List_char));
 }
 
 typedef struct {

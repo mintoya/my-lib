@@ -38,6 +38,7 @@
 typedef void (*outputFunction)(char *, unsigned int length, char flush);
 typedef void (*printerFunction)(outputFunction, void *, um_fp args);
 
+#ifndef OVERRIDE_DEFAULT_PRINTER
 #include <stdio.h>
 static void stdoutPrint(char *c, unsigned int length, char flush) {
   static struct {
@@ -57,6 +58,9 @@ static void stdoutPrint(char *c, unsigned int length, char flush) {
   }
 }
 static outputFunction defaultPrinter = stdoutPrint;
+#else
+extern outputFunction defaultPrinter;
+#endif
 
 static
 #ifdef __cplusplus
@@ -381,6 +385,9 @@ __attribute__((constructor(205))) static void post_init() {
   }
   USETYPEPRINTER(um_fp, um_from("collisions: "));
   USETYPEPRINTER(int, HMap_countCollisions(PrinterSingleton.data));
+  USETYPEPRINTER(um_fp, um_from("\n"));
+  USETYPEPRINTER(um_fp, um_from("footprint: "));
+  USETYPEPRINTER(size_t, HMap_footprint(PrinterSingleton.data));
   USETYPEPRINTER(um_fp, um_from("\n"));
 }
 #endif // PRINTER_LIST_TYPENAMES

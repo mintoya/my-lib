@@ -17,8 +17,10 @@ typedef struct {
   stringList *KVs;
 } HMap;
 static inline size_t HMap_footprint(HMap *hm) {
-  return stringList_footprint(hm->KVs) + hm->metaSize * sizeof(HMap_innertype) +
-         List_headArea(hm->links);
+  size_t res = stringList_footprint(hm->KVs) +
+               hm->metaSize * sizeof(HMap_innertype) +
+               List_fullHeadArea(hm->links);
+  return res;
 }
 
 #define HMap_innerEmpty                                                        \
@@ -29,7 +31,7 @@ static inline size_t HMap_footprint(HMap *hm) {
 
 // #TODO maybe add this submodule
 // faster i think
-#include "komihash/komihash.h"
+// #include "komihash/komihash.h"
 // __attribute__((pure)) static inline unsigned int HMap_hash(um_fp str) {
 //   return komihash(str.ptr, str.width, 6767);
 // }
