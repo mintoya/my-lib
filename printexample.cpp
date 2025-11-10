@@ -2,16 +2,16 @@
 #include "my-list.hpp"
 #include "print.h"
 #include "wheels.h"
-struct point {
-  int x;
-  int y;
-};
+typedef struct {
+  float x;
+  float y;
+} point;
 REGISTER_PRINTER(point, {
   PUTS("{x:", 3);
-  USETYPEPRINTER(int, in.x);
+  USETYPEPRINTER(float, in.x);
   PUTS(",", 1);
   PUTS("y:", 2);
-  USETYPEPRINTER(int, in.y);
+  USETYPEPRINTER(float, in.y);
   PUTS("}", 1);
 })
 
@@ -22,8 +22,8 @@ int main() {
   listPlus<point> points;
   // points.dontfree();
   points.push((point){0, 0});
-  points.push((point){1, 1});
-  points.push((point){0, 1});
+  points.push((point){1.983, 1});
+  points.push((point){0, 1.38});
   points.insert((point){1, 0}, 1);
   println("${}", points.get(2));
   println("${}", points.pop());

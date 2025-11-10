@@ -3,15 +3,15 @@
 #include "print.h"
 #include "wheels.h"
 typedef struct {
-  int x;
-  int y;
+  float x;
+  float y;
 } point;
 REGISTER_PRINTER(point, {
   PUTS("{x:", 3);
-  USETYPEPRINTER(int, in.x);
+  USETYPEPRINTER(float, in.x);
   PUTS(",", 1);
   PUTS("y:", 2);
-  USETYPEPRINTER(int, in.y);
+  USETYPEPRINTER(float, in.y);
   PUTS("}", 1);
 })
 
@@ -23,13 +23,13 @@ MList_typeDef(point);
 int main() {
   MList(point) points;
   MList_init(points);
-  MList_push(points,((point){0, 0}));
-  MList_push(points,((point){1, 1}));
-  MList_push(points,((point){0, 1}));
-  MList_insert(points,1,((point){1, 0}));
+  MList_push(points, ((point){0, 0}));
+  MList_push(points, ((point){1.983, 1}));
+  MList_push(points, ((point){0, 1.38}));
+  MList_insert(points, 1, ((point){1, 0}));
   println("${}", points.elements[2]);
   println("${}", MList_pop(points));
-  MList_foreach(points,_i,i,{ println("foreach : ${}", i); });
+  MList_foreach(points, _i, i, { println("foreach : ${}", i); });
   println("length  : ${int}\n"
           "capacity: ${int}",
           points.length, MList_capacity(points));

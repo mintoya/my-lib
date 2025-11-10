@@ -216,6 +216,26 @@ struct print_arg {
   typedef char *char_ptr;
   REGISTER_PRINTER(char_ptr, { while(*in){ PUTS(in,1); in++; } });
 
+  REGISTER_PRINTER(float, {
+    if (in < 0) {
+      PUTS("-", 1);
+      in *= -1;
+    }
+    int push = 0;
+    while (((int)in)) {
+      in /= 10;
+      push++;
+    }
+    in *= 10;
+    for (int i = 0; i < 7; i++) {
+      char dig = '0';
+      dig += ((int)in) % 10;
+      PUTS(&dig, 1);
+      if (i + 1 == push)
+        PUTS(".", 1);
+      in *= 10;
+    }
+  });
   REGISTER_PRINTER(int, {
     if (in < 0) {
       PUTS("-", 1);
@@ -331,6 +351,8 @@ MAKE_PRINT_ARG_TYPE(size_t);
 MAKE_PRINT_ARG_TYPE(void_ptr);
 #include "printer/genericName.h"
 MAKE_PRINT_ARG_TYPE(char_ptr);
+#include "printer/genericName.h"
+MAKE_PRINT_ARG_TYPE(float);
 
 // clang-format off
 #define MAKE_PRINT_ARG(a)                                                      \
@@ -350,6 +372,7 @@ MAKE_PRINT_ARG_TYPE(char);
 MAKE_PRINT_ARG_TYPE(size_t);
 MAKE_PRINT_ARG_TYPE(void_ptr);
 MAKE_PRINT_ARG_TYPE(char_ptr);
+MAKE_PRINT_ARG_TYPE(float);
 
 #define MAKE_PRINT_ARG(a)                                                      \
   ((struct print_arg){                                                         \
