@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "allocator.h"
 #include "hmap.h"
 #include "printer/macros.h"
 #include "printer/variadic.h"
@@ -71,7 +72,9 @@ static
     struct {
   HMap *data;
 } PrinterSingleton;
-static void PrinterSingleton_init() { PrinterSingleton.data = HMap_new(14); }
+static void PrinterSingleton_init() {
+  PrinterSingleton.data = HMap_new(&defaultAllocator, 90);
+}
 static void PrinterSingleton_deinit() { HMap_free(PrinterSingleton.data); }
 static void PrinterSingleton_append(um_fp name, printerFunction function) {
   HMap_set(PrinterSingleton.data, name,
@@ -229,7 +232,27 @@ struct print_arg {
     in *= 10;
     for (int i = 0; i < 6; i++) {
       char dig = '0';
-      dig += ((int)in) % 10;
+      dig += ((unsigned int)in) % 10;
+      PUTS(&dig, 1);
+      if (i + 1 == push)
+        PUTS(".", 1);
+      in *= 10;
+    }
+  });
+  REGISTER_PRINTER(double, {
+    if (in < 0) {
+      PUTS("-", 1);
+      in *= -1;
+    }
+    int push = 0;
+    while (((int)in)) {
+      in /= 10;
+      push++;
+    }
+    in *= 10;
+    for (int i = 0; i < 12; i++) {
+      char dig = '0';
+      dig += ((unsigned int)in) % 10;
       PUTS(&dig, 1);
       if (i + 1 == push)
         PUTS(".", 1);
@@ -353,6 +376,8 @@ MAKE_PRINT_ARG_TYPE(void_ptr);
 MAKE_PRINT_ARG_TYPE(char_ptr);
 #include "printer/genericName.h"
 MAKE_PRINT_ARG_TYPE(float);
+#include "printer/genericName.h"
+MAKE_PRINT_ARG_TYPE(double);
 
 // clang-format off
 #define MAKE_PRINT_ARG(a)                                                      \
@@ -373,6 +398,7 @@ MAKE_PRINT_ARG_TYPE(size_t);
 MAKE_PRINT_ARG_TYPE(void_ptr);
 MAKE_PRINT_ARG_TYPE(char_ptr);
 MAKE_PRINT_ARG_TYPE(float);
+MAKE_PRINT_ARG_TYPE(double);
 
 #define MAKE_PRINT_ARG(a)                                                      \
   ((struct print_arg){                                                         \
@@ -398,20 +424,40 @@ void print_f(outputFunction put, um_fp fmt, ...);
 #ifdef PRINTER_LIST_TYPENAMES
 __attribute__((constructor(205))) static void post_init() {
   outputFunction put = defaultPrinter;
-  USETYPEPRINTER(um_fp, um_from("list of printer type names:\n"));
-  stringList_scoped *keys = HMap_getkeys(PrinterSingleton.data);
-  int length = stringList_length(keys);
-  for (int i = 0; i < length; i++) {
-    USETYPEPRINTER(um_fp, um_from(" "));
-    USETYPEPRINTER(um_fp, stringList_get(keys, i));
-    USETYPEPRINTER(um_fp, um_from("\n"));
+  println("==============================");
+  println("printer debug");
+  println("==============================");
+  HMap_innertype *metas = PrinterSingleton.data->metadata;
+  for (int i = 0; i < PrinterSingleton.data->metaSize; i++) {
+    um_fp key = stringList_get(PrinterSingleton.data->KVs, metas[i].index);
+    if (metas[i].hasindex) {
+      println("${}", key);
+      if (metas[i].hasnext) {
+        HMap_innertype *h = metas + i;
+        h = (HMap_innertype *)List_getRef(PrinterSingleton.data->links,
+                                          h->next);
+
+        while (h->hasindex) {
+          um_fp key =
+              stringList_get(PrinterSingleton.data->KVs, metas[i].index);
+          println("   ${}",
+                  stringList_get(PrinterSingleton.data->KVs, h->index));
+
+          if (!h->hasnext)
+            break;
+
+          h = (HMap_innertype *)List_getRef(PrinterSingleton.data->links,
+                                            h->next);
+          if (!h)
+            break;
+        }
+      }
+    }
   }
-  USETYPEPRINTER(um_fp, um_from("collisions: "));
-  USETYPEPRINTER(int, HMap_countCollisions(PrinterSingleton.data));
-  USETYPEPRINTER(um_fp, um_from("\n"));
-  USETYPEPRINTER(um_fp, um_from("footprint: "));
-  USETYPEPRINTER(size_t, HMap_footprint(PrinterSingleton.data));
-  USETYPEPRINTER(um_fp, um_from("\n"));
+  println("list of printer type names: ");
+  println("footprint:  ${}", (size_t)HMap_footprint(PrinterSingleton.data));
+  println("collisions: ${}", (int)HMap_countCollisions(PrinterSingleton.data));
+  println("==============================");
 }
 #endif // PRINTER_LIST_TYPENAMES
 

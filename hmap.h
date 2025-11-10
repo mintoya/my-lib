@@ -1,5 +1,6 @@
 #ifndef HMAP_H
 #define HMAP_H
+#include "allocator.h"
 #include "stringList.h"
 #include "um_fp.h"
 #include <stdint.h>
@@ -50,15 +51,15 @@ __attribute__((pure)) static inline unsigned int HMap_hash(um_fp str) {
   return h;
 }
 
-static inline HMap *HMap_new(size_t metaSize) {
+static inline HMap *HMap_new(const My_allocator *allocator, size_t metaSize) {
 
-  HMap *res = (HMap *)malloc(sizeof(HMap));
+  HMap *res = (HMap *)allocator->alloc(sizeof(HMap));
   // clang-format off
   *res = (HMap){
     .metaSize = metaSize,
     .metadata = (HMap_innertype*)malloc(metaSize*sizeof(HMap_innertype)),
-    .links = mList(HMap_innertype), 
-    .KVs = stringList_new(),
+    .links = List_new(allocator,sizeof(HMap_innertype)),
+    .KVs = stringList_new(allocator),
   };
   List_resize(res->links, metaSize/10);
   // clang-format on
@@ -68,10 +69,11 @@ static inline HMap *HMap_new(size_t metaSize) {
 unsigned int HMap_set(HMap *, um_fp key, um_fp val);
 um_fp HMap_get(HMap *, um_fp);
 static inline void HMap_free(HMap *hm) {
+  const My_allocator *allocator = hm->links->allocator;
   List_free(hm->links);
   stringList_free(hm->KVs);
-  free(hm->metadata);
-  free(hm);
+  allocator->free(hm->metadata);
+  allocator->free(hm);
 }
 
 static inline void HMap_cleanup_handler(HMap **hm) {
@@ -85,7 +87,7 @@ static inline void HMap_remake(HMap *hm) {
   hm->KVs = l;
 }
 static inline stringList *HMap_getkeys(HMap *map) {
-  stringList *keys = stringList_new();
+  stringList *keys = stringList_new(map->KVs->List_stringMetaData.allocator);
 
   for (size_t i = 0; i < map->metaSize; i++) {
     HMap_innertype *h = &map->metadata[i];
@@ -117,7 +119,6 @@ struct HMap_both HMap_getBoth(HMap *map, um_fp key);
 
 #endif // HMAP_H
 
-// #define HMAP_C
 #ifdef HMAP_C
 unsigned int HMap_setForce(HMap *map, HMap_innertype *handle, um_fp key,
                            um_fp val) {

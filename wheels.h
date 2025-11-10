@@ -1,18 +1,13 @@
 // because order matters
 
-#ifdef PRINTER_H
-#define PRINTER_C
-#include "print.h"
-#endif
-
 #ifdef KML_PARSER_H
 #define KML_PARSER_C
 #include "kml.h"
 #endif
 
-#ifdef HMAP_H
-#define HMAP_C
-#include "hmap.h"
+#ifdef STATE_MACHINE_H
+#define STATE_MACHINE_C
+#include "stateMachine.h"
 #endif
 
 #ifdef UMAP_H
@@ -20,9 +15,14 @@
 #include "umap.h"
 #endif
 
-#ifdef STATE_MACHINE_H
-#define STATE_MACHINE_C
-#include "stateMachine.h"
+#ifdef PRINTER_H
+#define PRINTER_C
+#include "print.h"
+#endif
+
+#ifdef HMAP_H
+#define HMAP_C
+#include "hmap.h"
 #endif
 
 #ifdef STRING_LIST_H

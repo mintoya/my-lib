@@ -261,7 +261,7 @@ um_fp stringListView_get(stringListView slv, unsigned int index) {
 }
 void stringListView_free(stringListView slv) { free(slv.raw.ptr); }
 void stringList_free(stringList *l) {
-  My_allocator *allocator = l->List_char.allocator;
+  const My_allocator *allocator = l->List_char.allocator;
   allocator->free(l->List_char.head);
   allocator->free(l->List_stringMetaData.head);
   allocator->free(l);

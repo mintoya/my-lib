@@ -86,7 +86,7 @@ static inline void List_cleanup_handler(List **l) {
       __VA_ARGS__                                                              \
     }                                                                          \
   } while (0)
-#define mList(type) List_new(defaultAllocator, sizeof(type))
+#define mList(type) List_new(&defaultAllocator, sizeof(type))
 #define mList_get(list, type, index) (*(type *)List_getRef(list, index))
 #define mList_add(list, type, value)                                           \
   do {                                                                         \

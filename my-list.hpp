@@ -1,19 +1,21 @@
 #pragma once
+#include "allocator.h"
 #include "my-list.h"
 
 template <typename T> struct listPlus {
   List *ptr;
   bool dofree : 1;
 
-  listPlus() {
-    ptr = List_new(sizeof(T));
+  listPlus(const My_allocator *allocator = &defaultAllocator) {
+    ptr = List_new(allocator, sizeof(T));
     dofree = true;
   }
 
   listPlus(List *p) { ptr = p; }
 
-  listPlus(T *arr, unsigned int length) {
-    ptr = List_new(sizeof(T));
+  listPlus(T *arr, unsigned int length,
+           const My_allocator *allocator = &defaultAllocator) {
+    ptr = List_new(allocator, sizeof(T));
     List_fromArr(ptr, arr, length);
   }
   inline T *elements() { return (T *)ptr->head; }
@@ -22,7 +24,10 @@ template <typename T> struct listPlus {
 
   inline void dontfree() { dofree = false; }
   inline void unmake() { List_free(ptr); }
-  ~listPlus() { if(dofree)unmake(); }
+  ~listPlus() {
+    if (dofree)
+      unmake();
+  }
 
   void pad(unsigned int ammount) { List_pad(ptr, ammount); }
   void resize(unsigned int newSize) { List_resize(ptr, newSize); }
@@ -31,7 +36,7 @@ template <typename T> struct listPlus {
   inline void push(const T &value) { List_append(ptr, (void *)&value); }
   inline T get(unsigned int i) { return *((T *)List_getRef(ptr, i)); }
   T pop() {
-    T res = get(length()-1);
+    T res = get(length() - 1);
     ptr->length--;
     return res;
   }
@@ -51,7 +56,7 @@ template <typename T> struct listPlus {
   inline unsigned int capacity() const { return ptr->size; }
   template <typename FN> void foreach (FN &&function) {
     for (int i = 0; i < length(); i++) {
-      function(i,get(i));
+      function(i, get(i));
     }
   }
 };

@@ -3,15 +3,15 @@
 #include "print.h"
 #include "wheels.h"
 typedef struct {
-  float x;
-  float y;
+  double x;
+  double y;
 } point;
 REGISTER_PRINTER(point, {
   PUTS("{x:", 3);
-  USETYPEPRINTER(float, in.x);
+  USETYPEPRINTER(double, in.x);
   PUTS(",", 1);
   PUTS("y:", 2);
-  USETYPEPRINTER(float, in.y);
+  USETYPEPRINTER(double, in.y);
   PUTS("}", 1);
 })
 
