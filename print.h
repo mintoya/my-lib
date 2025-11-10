@@ -36,12 +36,12 @@
 #define REF(type, value) ((type[1]){value})
 #endif
 
-typedef void (*outputFunction)(char *, unsigned int length, char flush);
-typedef void (*printerFunction)(outputFunction, void *, um_fp args);
+typedef void (*outputFunction)(const char *, unsigned int length, char flush);
+typedef void (*printerFunction)(outputFunction, const void *, um_fp args);
 
 #ifndef OVERRIDE_DEFAULT_PRINTER
 #include <stdio.h>
-static void stdoutPrint(char *c, unsigned int length, char flush) {
+static void stdoutPrint(const char *c, unsigned int length, char flush) {
   static struct {
     char buf[2048];
     size_t place;
@@ -121,7 +121,7 @@ __attribute__((destructor)) static void printerDeinit() {
 #define PUTS(characters, length) put(characters, length, 0)
 #define REGISTER_PRINTER(T, ...)                                               \
   __attribute__((weak)) void GETTYPEPRINTERFN(T)(                              \
-      outputFunction put, void *_v_in_ptr, um_fp args) {                       \
+      outputFunction put, const void *_v_in_ptr, um_fp args) {                 \
     (void)args;                                                                \
     T in = *(T *)_v_in_ptr;                                                    \
     __VA_ARGS__                                                                \
@@ -132,7 +132,7 @@ __attribute__((destructor)) static void printerDeinit() {
   }
 
 #define REGISTER_SPECIAL_PRINTER_NEEDID(id, str, type, ...)                    \
-  __attribute__((weak)) void id(outputFunction put, void *_v_in_ptr,           \
+  __attribute__((weak)) void id(outputFunction put, const void *_v_in_ptr,     \
                                 um_fp args) {                                  \
     type in = *(type *)_v_in_ptr;                                              \
     __VA_ARGS__                                                                \
@@ -525,7 +525,7 @@ void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
 }
 
 #define um_charArr(um) ((char *)(um.ptr))
-void print_f(outputFunction put, um_fp fmt, ...) {
+void print_f(outputFunction put, const um_fp fmt, ...) {
   va_list l;
   va_start(l, fmt);
   char check = 0;
