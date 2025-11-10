@@ -35,17 +35,18 @@ static inline size_t HMap_footprint(HMap *hm) {
 // __attribute__((pure)) static inline unsigned int HMap_hash(um_fp str) {
 //   return komihash(str.ptr, str.width, 6767);
 // }
+static const size_t HMap_h = (0x67676141420);
 __attribute__((pure)) static inline unsigned int HMap_hash(um_fp str) {
-  size_t h = (0x653342) ^ -1;
+  size_t h = HMap_h;
   size_t arrLength = (str.width) / sizeof(uintptr_t);
   size_t rest = str.width % sizeof(uintptr_t);
   for (size_t i = 0; i < arrLength; i++) {
     uintptr_t t;
     memcpy(&t, str.ptr + (i * sizeof(uintptr_t)), sizeof(uintptr_t));
-    h = (h << 2) + t;
+    h = (h << 2) + h ^ t;
   }
   for (size_t i = str.width - rest; i < str.width; i++)
-    h = h ^ (str.ptr)[i];
+    h = (h << 2) + h ^ (str.ptr)[i];
   return h;
 }
 
@@ -140,13 +141,17 @@ unsigned int HMap_setForce(HMap *map, HMap_innertype *handle, um_fp key,
     return handle->index;
   } else {
     // collisoin
+    size_t next_index;
     if (!handle->hasnext) {
       handle->hasnext = 1;
       handle->next = map->links->length;
+      next_index = handle->next;
       mList_add(map->links, HMap_innertype, HMap_innerEmpty);
+    } else {
+      next_index = handle->next;
     }
     return HMap_setForce(
-        map, (HMap_innertype *)List_getRef(map->links, handle->next), key, val);
+        map, (HMap_innertype *)List_getRef(map->links, next_index), key, val);
   }
 }
 unsigned int HMap_set(HMap *map, um_fp key, um_fp val) {
