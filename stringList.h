@@ -1,5 +1,6 @@
 #ifndef STRING_LIST_H
 #define STRING_LIST_H
+#include "allocator.h"
 #include "my-list.h"
 #include "um_fp.h"
 #include <stddef.h>
@@ -31,7 +32,7 @@ typedef struct {
   um_fp raw;
 } stringListView;
 
-stringList *stringList_new();
+stringList *stringList_new(const My_allocator *);
 // returns null if over limit
 um_fp stringList_get(stringList *l, unsigned int index);
 um_fp_extended stringList_getExt(stringList *l, unsigned int index);
@@ -48,7 +49,8 @@ static inline stringListView stringList_tobuf(stringList *l) {
   size_t area = List_headArea(&(l->List_stringMetaData)) +
                 List_headArea(&(l->List_char)) + sizeof(size_t);
   size_t metalength = l->List_stringMetaData.length;
-  um_fp res = {.ptr = (uint8_t *)malloc(area), .width = area};
+  um_fp res = {.ptr = (uint8_t *)l->List_stringMetaData.allocator->alloc(area),
+               .width = area};
 
   uint8_t *use = res.ptr;
   advance(use, &metalength, sizeof(size_t));
@@ -69,21 +71,23 @@ static inline stringList *stringList_fromBuf(stringListView um) {
   size_t metalength;
   advance(&metalength, ptr, sizeof(size_t));
 
-  stringList *l = (stringList *)malloc(sizeof(stringList));
+  stringList *l = (stringList *)defaultAllocator.alloc(sizeof(stringList));
 
   l->List_stringMetaData = (List){
       .width = sizeof(stringMetaData),
       .length = (unsigned int)metalength,
       .size = (unsigned int)metalength,
-      .head = (uint8_t *)malloc(sizeof(stringMetaData) * metalength),
+      .head = (uint8_t *)defaultAllocator.alloc(sizeof(stringMetaData) *
+                                                metalength),
   };
   advance(l->List_stringMetaData.head, ptr,
           List_headArea(&(l->List_stringMetaData)));
   unsigned int charlength = (unsigned int)(um.raw.ptr + um.raw.width - ptr);
-  l->List_char = (List){.width = sizeof(char),
-                        .length = charlength,
-                        .size = charlength,
-                        .head = (uint8_t *)malloc(sizeof(char) * charlength)};
+  l->List_char = (List){
+      .width = sizeof(char),
+      .length = charlength,
+      .size = charlength,
+      .head = (uint8_t *)defaultAllocator.alloc(sizeof(char) * charlength)};
   advance(l->List_char.head, ptr, charlength);
 
   return l;
@@ -114,28 +118,29 @@ static inline void stringList_cleanup_handler(stringList **sl) {
 #endif // STRING_LIST_H
 
 #ifdef STRING_LIST_C
-#include <stdlib.h>
 #include <string.h>
 
 #ifndef STRING_LIST_minSize
 #define STRING_LIST_minSize 10
 #endif
 
-stringList *stringList_new() {
-  stringList *res = (stringList *)malloc(sizeof(stringList));
+stringList *stringList_new(const My_allocator *allocator) {
+  stringList *res = (stringList *)allocator->alloc(sizeof(stringList));
   // clang-format off
   *res = (stringList) {
     .List_char = {
       .width = sizeof(char),
       .length = 0,
       .size = 1,
-      .head = (uint8_t*)malloc(sizeof(char)),
+      .head = (uint8_t*)allocator->alloc(sizeof(char)),
+      .allocator = allocator,
     },
     .List_stringMetaData = {
       .width = sizeof(stringMetaData),
       .length = 0,
       .size = 1,
-      .head = (uint8_t*)malloc(sizeof(stringMetaData)),
+      .head = (uint8_t*)allocator->alloc(sizeof(stringMetaData)),
+      .allocator = allocator,
     },
 
   };
@@ -177,7 +182,7 @@ unsigned int stringList_search(stringList *l, um_fp what) {
   return res;
 }
 stringList *stringList_remake(stringList *origional) {
-  stringList *res = stringList_new();
+  stringList *res = stringList_new(origional->List_char.allocator);
   for (unsigned int i = 0; i < stringList_length(origional); i++) {
     um_fp item = stringList_get(origional, i);
     stringList_append(res, item);
@@ -256,9 +261,10 @@ um_fp stringListView_get(stringListView slv, unsigned int index) {
 }
 void stringListView_free(stringListView slv) { free(slv.raw.ptr); }
 void stringList_free(stringList *l) {
-  free(l->List_char.head);
-  free(l->List_stringMetaData.head);
-  free(l);
+  My_allocator *allocator = l->List_char.allocator;
+  allocator->free(l->List_char.head);
+  allocator->free(l->List_stringMetaData.head);
+  allocator->free(l);
 }
 
 #endif // STRING_LIST_C
