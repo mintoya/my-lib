@@ -44,10 +44,10 @@ __attribute__((pure)) static inline unsigned int HMap_hash(um_fp str) {
   for (size_t i = 0; i < arrLength; i++) {
     uintptr_t t;
     memcpy(&t, str.ptr + (i * sizeof(uintptr_t)), sizeof(uintptr_t));
-    h = (h << 2) + h ^ t;
+    h = (h << 2) + (h ^ t);
   }
   for (size_t i = str.width - rest; i < str.width; i++)
-    h = (h << 2) + h ^ (str.ptr)[i];
+    h = (h << 2) + (h ^ (str.ptr)[i]);
   return h;
 }
 

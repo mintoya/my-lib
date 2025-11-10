@@ -11,13 +11,13 @@ UMap *parse(UMap *parent, UMapList *lparent, um_fp kml);
 UMapList *parseList(UMapList *lparent, um_fp kml) {
   if (!kml.width) {
     if (!(lparent)) {
-      return UMapList_new();
+      return UMapList_new(&defaultAllocator);
     } else {
       return lparent ? lparent : NULL;
     }
   }
   if (!(lparent)) {
-    lparent = UMapList_new();
+    lparent = UMapList_new(&defaultAllocator);
   }
   kml = kml_removeSpacesPadding(kml);
   um_fp val, pval;
@@ -81,13 +81,13 @@ UMap *parse(UMap *parent, UMapList *lparent, um_fp kml) {
   kml = kml_removeSpacesPadding(kml);
   if (!kml.width) {
     if (!(parent || lparent)) {
-      return UMap_new();
+      return UMap_new(&defaultAllocator);
     } else {
       return parent ? parent : NULL;
     }
   }
   if (!(parent || lparent)) {
-    parent = UMap_new();
+    parent = UMap_new(&defaultAllocator);
   }
   if (fpChar(kml)[0] == '{') {
     kml = kml_inside("{}", kml);
@@ -95,7 +95,7 @@ UMap *parse(UMap *parent, UMapList *lparent, um_fp kml) {
   kml = kml_removeSpacesPadding(kml);
   if (!kml.width) {
     if (!(parent || lparent)) {
-      return UMap_new();
+      return UMap_new(&defaultAllocator);
     } else {
       return parent ? parent : NULL;
     }

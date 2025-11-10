@@ -1,6 +1,7 @@
 #ifndef UMAP_H
 #define UMAP_H
 
+#include "allocator.h"
 #include "my-list.h"
 #include "print.h"
 #include "stringList.h"
@@ -52,8 +53,8 @@ UMap_getInnerType(UMap *map, unsigned int index) {
 // clang-format on
 unsigned int UMap_binarySearch(UMap *map, um_fp key);
 unsigned int UMapView_binarySearch(UMapView map, um_fp key);
-UMap *UMap_new();
-UMapList *UMapList_new();
+UMap *UMap_new(const My_allocator *);
+UMapList *UMapList_new(const My_allocator *);
 
 um_fp UMap_getValAtKey(UMap *map, um_fp key);
 static inline um_fp UMap_get(UMap *map, um_fp key) {
@@ -73,15 +74,17 @@ static inline unsigned int UMapList_appendList(UMapList *map, UMapList *ref) {
 }
 
 static inline void UMap_free(UMap *map) {
+  const My_allocator *allocator = map->metadata->allocator;
   stringList_free(map->keys);
   stringList_free(map->vals);
   List_free(map->metadata);
-  free(map);
+  allocator->free(map);
 }
 static inline void UMapList_free(UMapList *map) {
+  const My_allocator *allocator = map->metadata->allocator;
   stringList_free(map->vals);
   List_free(map->metadata);
-  free(map);
+  allocator->free(map);
 }
 /*
  * not modifiable
@@ -270,20 +273,20 @@ unsigned int UMapView_binarySearch(UMapView map, um_fp key) {
   }
   return res;
 }
-UMap *UMap_new() {
-  UMap *res = (UMap *)malloc(sizeof(UMap));
+UMap *UMap_new(const My_allocator *allocator) {
+  UMap *res = (UMap *)allocator->alloc(sizeof(UMap));
   *res = (UMap){
-      .keys = stringList_new(),
-      .vals = stringList_new(),
-      .metadata = List_new(sizeof(UMap_innertype)),
+      .keys = stringList_new(allocator),
+      .vals = stringList_new(allocator),
+      .metadata = List_new(allocator, sizeof(UMap_innertype)),
   };
   return res;
 }
-UMapList *UMapList_new() {
+UMapList *UMapList_new(const My_allocator *allocator) {
   UMapList *res = (UMapList *)malloc(sizeof(UMapList));
   *res = (UMapList){
-      .vals = stringList_new(),
-      .metadata = List_new(sizeof(UMap_innertype)),
+      .vals = stringList_new(allocator),
+      .metadata = List_new(allocator, sizeof(UMap_innertype)),
   };
   return res;
 }
@@ -492,7 +495,7 @@ unsigned int UMap_setList(UMap *map, um_fp key, UMapList *ref) {
 }
 
 UMap *UMap_remake(UMap *map) {
-  UMap *res = UMap_new();
+  UMap *res = UMap_new(map->metadata->allocator);
   for (unsigned int i = 0; i < stringList_length(map->keys); i++) {
     um_fp key = UMap_getKeyAtIndex(map, i);
     um_fp val = UMap_getValAtIndex(map, i);
