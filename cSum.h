@@ -1,5 +1,6 @@
 #ifndef MY_CSUM_H
 #define MY_CSUM_H
+#include "allocator.h"
 #include "my-list.h"
 #include "um_fp.h"
 #include <stdint.h>
@@ -50,7 +51,7 @@ typedef struct {
 
 static dataChecker cSum_new() {
   printf("new csum item with  %ix redundancy\n", cSum_REDUNDANCY_AMMOUNT);
-  List *l = List_new(sizeof(uint8_t));
+  List *l = List_new(&defaultAllocator ,sizeof(uint8_t));
   List_resize(l, 20);
   return (dataChecker){.checkSumScratch = l};
 }

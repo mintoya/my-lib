@@ -2,30 +2,23 @@
 #define MY_LIST_H
 #include <errno.h>
 #include <stdint.h>
-// clang-format off
-#ifndef LIST_ALLOCATOR
-  #include <stdlib.h>
-  #define zero_alloc(length, size) calloc(length, size)
-  #define alloc(size) malloc(size)
-  #define realloc(source, newsize) realloc(source, newsize)
-  #define free_alloc(ptr) free(ptr)
-#endif
-// clang-format on
+#include <string.h>
 
 // clang-format off
   #ifndef LIST_GROW_EQ
     #define LIST_GROW_EQ(uint) ((uint + (uint << 1)) + 1)
   #endif
 // clang-format on
-#include <string.h>
+#include "allocator.h"
 typedef struct List {
   size_t width;
   unsigned int length;
   unsigned int size;
   uint8_t *head;
+  const My_allocator *allocator;
 } List;
 
-List *List_new(size_t bytes);
+List *List_new(const My_allocator *, size_t bytes);
 // valid bytes list owns
 static inline size_t List_headArea(const List *l) {
   return (l->width * l->length);
@@ -63,7 +56,8 @@ static inline void List_append(List *l, const void *element) {
 // helper function to pad with 0s
 void List_pad(List *l, unsigned int ammount);
 
-List *List_fromArr(const void *source, unsigned int size, unsigned int length);
+List *List_fromArr(const My_allocator *, const void *source, unsigned int size,
+                   unsigned int length);
 void List_appendFromArr(List *l, const void *source, unsigned int i);
 int List_search(List *l, const void *value);
 void List_insert(List *l, unsigned int i, void *element);
@@ -92,7 +86,7 @@ static inline void List_cleanup_handler(List **l) {
       __VA_ARGS__                                                              \
     }                                                                          \
   } while (0)
-#define mList(type) List_new(sizeof(type))
+#define mList(type) List_new(defaultAllocator, sizeof(type))
 #define mList_get(list, type, index) (*(type *)List_getRef(list, index))
 #define mList_add(list, type, value)                                           \
   do {                                                                         \
@@ -116,26 +110,25 @@ static inline void List_cleanup_handler(List **l) {
 
 #ifdef MY_LIST_C
 
-#include <stdio.h>
-List *List_new(size_t bytes) {
-  // printf("new list with %i size", bytes);
-  // fflush(stdout);
-  List *l = (List *)zero_alloc(1, sizeof(List));
+List *List_new(const My_allocator *allocator, size_t bytes) {
+  List *l = (List *)allocator->alloc(sizeof(List));
   *l = (List){
       .width = bytes,
       .length = 0,
       .size = 1,
-      .head = (uint8_t *)alloc(bytes),
+      .head = (uint8_t *)allocator->alloc(bytes),
+      .allocator = allocator,
   };
   return l;
 }
 void List_free(List *l) {
-  free_alloc(l->head);
-  free_alloc(l);
+  l->allocator->free(l->head);
+  l->allocator->free(l);
 }
 // same as list_resize but it enforces size
 void List_forceResize(List *l, unsigned int newSize) {
-  uint8_t *newPlace = (uint8_t *)realloc(l->head, newSize * l->width);
+  uint8_t *newPlace =
+      (uint8_t *)l->allocator->r_alloc(l->head, newSize * l->width);
   if (!newPlace) {
     exit(ENOMEM); // maybe something else idk
   }
@@ -144,16 +137,16 @@ void List_forceResize(List *l, unsigned int newSize) {
   l->length = (l->length < l->size) ? (l->length) : (l->size);
 }
 void List_resize(List *l, unsigned int newSize) {
-  if (newSize <= l->size)
+  if (newSize <= l->size / 10)
     return;
-  uint8_t *newPlace = (uint8_t *)realloc(l->head, newSize * l->width);
+  uint8_t *newPlace =
+      (uint8_t *)l->allocator->r_alloc(l->head, newSize * l->width);
   if (!newPlace) {
     exit(ENOMEM); // maybe something else idk
   }
   l->head = newPlace;
   l->size = newSize;
-  // never resizes down
-  // l->length = (l->length < l->size) ? (l->length) : (l->size);
+  l->length = (l->length < l->size) ? (l->length) : (l->size);
 }
 
 void List_pad(List *l, unsigned int ammount) {
@@ -167,13 +160,14 @@ void List_pad(List *l, unsigned int ammount) {
   memset(l->head + l->length * l->width, 0, ammount * l->width);
   l->length += ammount;
 }
-List *List_fromArr(const void *source, unsigned int width,
-                   unsigned int length) {
-  List *res = (List *)alloc(sizeof(List));
+List *List_fromArr(const My_allocator *allocator, const void *source,
+                   unsigned int width, unsigned int length) {
+  List *res = (List *)allocator->alloc(sizeof(List));
   res->width = width;
   res->length = length;
   res->size = length;
-  res->head = (uint8_t *)alloc(length * width);
+  res->allocator = allocator;
+  res->head = (uint8_t *)allocator->alloc(length * width);
   memcpy(res->head, source, length * width);
   return res;
 }
@@ -209,7 +203,7 @@ void List_remove(List *l, unsigned int i) {
 }
 
 List *List_deepCopy(List *l) {
-  return List_fromArr(l->head, l->width, l->length);
+  return List_fromArr(l->allocator,l->head, l->width, l->length);
 }
 
 // returns -1 if item not found

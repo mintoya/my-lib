@@ -27,7 +27,7 @@
 // automatically freed
 #define MList_init(list)                                                       \
   List_scoped *MList_heapList(list) =                                          \
-      List_new(sizeof(typeof(list.elements[0])));                              \
+      List_new(&defaultAllocator,sizeof(typeof(list.elements[0])));                              \
   list = MList_deconvert((*MList_heapList(list)), list);
 
 #define MList_push(list, ...)                                                  \
@@ -73,7 +73,7 @@
 
 // if you want to control the scope you have to provide a list pointer
 #define MList_DFInit(list, Listptr)                                            \
-  Listptr = List_new(sizeof(typeof(list.elements[0])));                        \
+  Listptr = List_new(&defaultAllocator,sizeof(typeof(list.elements[0])));                        \
   List *MList_heapList(list) = Listptr;                                        \
   list = MList_deconvert((*MList_heapList(list)), list);
 #define MList_DF(list, Listptr)                                                \

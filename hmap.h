@@ -60,6 +60,7 @@ static inline HMap *HMap_new(size_t metaSize) {
     .links = mList(HMap_innertype), 
     .KVs = stringList_new(),
   };
+  List_resize(res->links, metaSize/10);
   // clang-format on
   memset(res->metadata, 0, sizeof(HMap_innertype) * metaSize);
   return res;
@@ -104,18 +105,7 @@ static inline stringList *HMap_getkeys(HMap *map) {
   return keys;
 }
 static inline size_t HMap_countCollisions(HMap *map) {
-  size_t collisions = 0;
-  for (size_t i = 0; i < map->metaSize; i++) {
-    HMap_innertype *h = &map->metadata[i];
-    while (h->hasindex && h->hasnext) {
-      collisions++;
-      h = (HMap_innertype *)List_getRef(map->links, h->next);
-      if (!h)
-        break;
-    }
-  }
-
-  return collisions;
+  return (map->links->length);
 }
 
 struct HMap_both {

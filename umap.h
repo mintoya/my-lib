@@ -89,7 +89,6 @@ static inline void UMapList_free(UMapList *map) {
  */
 UMapView UMap_toBuf(UMap *map);
 UMapListView UMapList_toBuf(UMapList *map);
-UMap UMap_fromBuf(UMapView mapRasterized);
 UMap UMapList_fromBuf(UMapListView mapRasterized);
 
 um_fp UMapView_getKeyAtIndex(UMapView map, unsigned int index);

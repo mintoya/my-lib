@@ -71,7 +71,7 @@ static
     struct {
   HMap *data;
 } PrinterSingleton;
-static void PrinterSingleton_init() { PrinterSingleton.data = HMap_new(100); }
+static void PrinterSingleton_init() { PrinterSingleton.data = HMap_new(14); }
 static void PrinterSingleton_deinit() { HMap_free(PrinterSingleton.data); }
 static void PrinterSingleton_append(um_fp name, printerFunction function) {
   HMap_set(PrinterSingleton.data, name,
@@ -227,7 +227,7 @@ struct print_arg {
       push++;
     }
     in *= 10;
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < 6; i++) {
       char dig = '0';
       dig += ((int)in) % 10;
       PUTS(&dig, 1);
