@@ -78,8 +78,10 @@ static void PrinterSingleton_init() {
 static void PrinterSingleton_deinit() { HMap_free(PrinterSingleton.data); }
 static void PrinterSingleton_append(um_fp name, printerFunction function) {
   HMap_set(PrinterSingleton.data, name,
-           (um_fp){.ptr = (uint8_t *)(void *)REF(printerFunction, function),
-                   .width = sizeof(printerFunction)});
+           (um_fp){
+               .ptr = (uint8_t *)(void *)REF(printerFunction, function),
+               .width = sizeof(printerFunction),
+           });
 }
 static printerFunction lastprinters[2] = {NULL, NULL};
 static um_fp lastnames[2] = {nullUmf, nullUmf};
@@ -230,6 +232,8 @@ struct print_arg {
       push++;
     }
     in *= 10;
+    if(!push)
+        PUTS(".", 1);
     for (int i = 0; i < 6; i++) {
       char dig = '0';
       dig += ((unsigned int)in) % 10;
@@ -250,6 +254,8 @@ struct print_arg {
       push++;
     }
     in *= 10;
+    if(!push)
+        PUTS(".", 1);
     for (int i = 0; i < 12; i++) {
       char dig = '0';
       dig += ((unsigned int)in) % 10;
