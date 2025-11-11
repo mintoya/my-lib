@@ -15,8 +15,8 @@ typedef struct {
 #define nullUmfExt ((um_fp_extended){.n = nullUmf, .nl = 0})
 typedef struct {
   unsigned int index;
-  uint16_t width;
-  uint16_t _size;
+  size_t width;
+  size_t _size;
 } stringMetaData;
 
 typedef struct {

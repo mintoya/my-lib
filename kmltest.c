@@ -1,3 +1,4 @@
+#include "allocator.h"
 #include "kmlM.h"
 #include "macroList.h"
 #include "my-list.h"
@@ -9,11 +10,12 @@ List *buffer = NULL;
 MList(char) buf;
 
 __attribute__((destructor)) void freeList(void) { List_free(buffer); }
-__attribute__((constructor)) void setupList(void) { MList_DFInit(buf, buffer); }
+__attribute__((constructor)) void setupList(void) {
+  buffer = List_new(&defaultAllocator, sizeof(char));
+}
 
 void listPrinter(const char *c, unsigned int length, char flush) {
-  MList_DF(buf, buffer);
-  MList_addArr(buf, length, c);
+  List_appendFromArr(buffer, c, length);
 }
 
 int main() {
@@ -26,6 +28,7 @@ int main() {
   UMapList_append(testList, um_from("c"));
   UMap_setChild(test, um_from("innermap"), test);
   UMap_setList(test, um_from("innerlist"), testList);
+  println("${UMap*}", test);
   print_wf(listPrinter, "${UMap*}", test);
   UMap_scoped *output = parse(NULL, NULL, MList_fp(buf));
   println("object input : ${}", MList_fp(buf));

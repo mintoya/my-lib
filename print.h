@@ -73,7 +73,7 @@ static
   HMap *data;
 } PrinterSingleton;
 static void PrinterSingleton_init() {
-  PrinterSingleton.data = HMap_new(&defaultAllocator, 85);
+  PrinterSingleton.data = HMap_new(&defaultAllocator, 20);
 }
 static void PrinterSingleton_deinit() { HMap_free(PrinterSingleton.data); }
 static void PrinterSingleton_append(um_fp name, printerFunction function) {

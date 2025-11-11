@@ -6,8 +6,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 typedef struct {
-  uint16_t index;
-  uint16_t next;
+  size_t index;
+  size_t next;
   unsigned char hasindex : 1;
   unsigned char hasnext : 1;
 } HMap_innertype;
@@ -31,25 +31,25 @@ static inline size_t HMap_footprint(HMap *hm) {
 #include <string.h>
 
 // #TODO maybe add this submodule
-// faster i think
-// #include "komihash/komihash.h"
-// __attribute__((pure)) static inline unsigned int HMap_hash(um_fp str) {
-//   return komihash(str.ptr, str.width, 6767);
-// }
-static const size_t HMap_h = (0x67676141420);
+// redeculously faster
+#include "komihash/komihash.h"
 __attribute__((pure)) static inline unsigned int HMap_hash(um_fp str) {
-  size_t h = HMap_h;
-  size_t arrLength = (str.width) / sizeof(uintptr_t);
-  size_t rest = str.width % sizeof(uintptr_t);
-  for (size_t i = 0; i < arrLength; i++) {
-    uintptr_t t;
-    memcpy(&t, str.ptr + (i * sizeof(uintptr_t)), sizeof(uintptr_t));
-    h = (h << 2) + (h ^ t);
-  }
-  for (size_t i = str.width - rest; i < str.width; i++)
-    h = (h << 2) + (h ^ (str.ptr)[i]);
-  return h;
+  return komihash(str.ptr, str.width, 6767);
 }
+// static const intmax_t HMap_h = (0x67676141420);
+// __attribute__((pure)) static unsigned int HMap_hash(um_fp str) {
+//   intmax_t h = HMap_h;
+//   size_t arrLength = (str.width) / sizeof(uintptr_t);
+//   size_t rest = str.width % sizeof(uintptr_t);
+//   for (size_t i = 0; i < arrLength; i++) {
+//     intmax_t t;
+//     memcpy(&t, str.ptr + (i * sizeof(uintptr_t)), sizeof(uintptr_t));
+//     h = (h << 2) ^ t;
+//   }
+//   for (size_t i = str.width - rest; i < str.width; i++)
+//     h = (h << 2) ^ (str.ptr)[i];
+//   return h;
+// }
 
 static inline HMap *HMap_new(const My_allocator *allocator, size_t metaSize) {
 
