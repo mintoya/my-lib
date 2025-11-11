@@ -25,23 +25,21 @@ UMapList *parseList(UMapList *lparent, um_fp kml) {
   case '[': {
     val = kml_around("[]", kml);
     pval = kml_inside("[]", kml);
-    UMapList *newmap = parseList(NULL, pval);
+    UMapList_scoped *newmap = parseList(NULL, pval);
     if (newmap) {
       if (lparent) {
         UMapList_appendList(lparent, newmap);
       }
-      UMapList_free(newmap);
     }
   } break;
   case '{': {
     val = kml_around("{}", kml);
     pval = kml_inside("{}", kml);
-    UMap *newmap = parse(NULL, NULL, pval);
+    UMap_scoped *newmap = parse(NULL, NULL, pval);
     if (newmap) {
       if (lparent) {
         UMapList_appendChild(lparent, newmap);
       }
-      UMap_free(newmap);
     }
   } break;
   case '"': {
@@ -114,7 +112,7 @@ UMap *parse(UMap *parent, UMapList *lparent, um_fp kml) {
   case '[': {
     val = kml_around("[]", val);
     pval = kml_inside("[]", val);
-    UMapList *newmap = parseList(NULL, pval);
+    UMapList_scoped *newmap = parseList(NULL, pval);
     if (newmap) {
       if (lparent) {
         UMapList_appendList(lparent, newmap);
@@ -122,13 +120,12 @@ UMap *parse(UMap *parent, UMapList *lparent, um_fp kml) {
       if (parent) {
         UMap_setList(parent, key, newmap);
       }
-      UMapList_free(newmap);
     }
   } break;
   case '{': {
     val = kml_around("{}", val);
     pval = kml_inside("{}", val);
-    UMap *newmap = parse(NULL, NULL, pval);
+    UMap_scoped *newmap = parse(NULL, NULL, pval);
     if (newmap) {
       if (lparent) {
         UMapList_appendChild(lparent, newmap);
@@ -136,7 +133,6 @@ UMap *parse(UMap *parent, UMapList *lparent, um_fp kml) {
       if (parent) {
         UMap_setChild(parent, key, newmap);
       }
-      UMap_free(newmap);
     }
   } break;
   case '"': {

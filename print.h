@@ -113,33 +113,29 @@ static printerFunction PrinterSingleton_get(um_fp name) {
 
 // clang-format on
 
-__attribute__((constructor(200))) static void printerInit() {
-  PrinterSingleton_init();
-}
-__attribute__((destructor)) static void printerDeinit() {
-  PrinterSingleton_deinit();
-}
+[[gnu::constructor(200)]] static void printerInit() { PrinterSingleton_init(); }
+[[gnu::destructor]] static void printerDeinit() { PrinterSingleton_deinit(); }
 
 #define PUTS(characters, length) put(characters, length, 0)
 #define REGISTER_PRINTER(T, ...)                                               \
-  __attribute__((weak)) void GETTYPEPRINTERFN(T)(                              \
-      outputFunction put, const void *_v_in_ptr, um_fp args) {                 \
+  [[gnu::weak]] void GETTYPEPRINTERFN(T)(outputFunction put,                   \
+                                         const void *_v_in_ptr, um_fp args) {  \
     (void)args;                                                                \
     T in = *(T *)_v_in_ptr;                                                    \
     __VA_ARGS__                                                                \
   }                                                                            \
-  __attribute__((constructor(201))) static void register_##T() {               \
+  [[gnu::constructor(201)]] static void register_##T() {                       \
     um_fp key = (um_fp){.ptr = (uint8_t *)#T, .width = sizeof(#T) - 1};        \
     PrinterSingleton_append(key, GETTYPEPRINTERFN(T));                         \
   }
 
 #define REGISTER_SPECIAL_PRINTER_NEEDID(id, str, type, ...)                    \
-  __attribute__((weak)) void id(outputFunction put, const void *_v_in_ptr,     \
-                                um_fp args) {                                  \
+  [[gnu::weak]] void id(outputFunction put, const void *_v_in_ptr,             \
+                        um_fp args) {                                          \
     type in = *(type *)_v_in_ptr;                                              \
     __VA_ARGS__                                                                \
   }                                                                            \
-  __attribute__((constructor(202))) static void UNIQUE_PRINTER_FN2() {         \
+  [[gnu::constructor(202)]] static void UNIQUE_PRINTER_FN2() {                 \
     um_fp key = (um_fp){.ptr = (uint8_t *)str, .width = strlen(str)};          \
     PrinterSingleton_append(key, id);                                          \
   }
@@ -162,7 +158,7 @@ __attribute__((destructor)) static void printerDeinit() {
   }
 
 #define REGISTER_ALIASED_PRINTER(realtype, alias)                              \
-  __attribute__((constructor(201))) static void register__##alias() {          \
+  [[gnu::constructor(201)]] static void register__##alias() {                  \
     um_fp key = (um_fp){.ptr = (uint8_t *)EXPAND_AND_STRINGIFY(alias),         \
                         .width = sizeof(EXPAND_AND_STRINGIFY(alias)) - 1};     \
     uint8_t *refFn =                                                           \
@@ -428,7 +424,7 @@ void print_f(outputFunction put, um_fp fmt, ...);
 #define println(fmt, ...) print_wf(defaultPrinter, fmt "\n", __VA_ARGS__)
 
 #ifdef PRINTER_LIST_TYPENAMES
-__attribute__((constructor(205))) static void post_init() {
+[[gnu::constructor(205)]] static void post_init() {
   outputFunction put = defaultPrinter;
   print("==============================\n"
         "printer debug\n"
@@ -461,9 +457,11 @@ __attribute__((constructor(205))) static void post_init() {
       }
     }
   }
-  println("footprint:  ${}\n"
+  println("buckets   : ${}\n"
+          "footprint : ${}\n"
           "collisions: ${}\n"
           "==============================\n",
+          (size_t)PrinterSingleton.data->metaSize,
           (size_t)HMap_footprint(PrinterSingleton.data),
           (int)HMap_countCollisions(PrinterSingleton.data));
 }

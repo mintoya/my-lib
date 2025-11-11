@@ -49,7 +49,7 @@ static inline stringListView stringList_tobuf(stringList *l) {
   size_t area = List_headArea(&(l->List_stringMetaData)) +
                 List_headArea(&(l->List_char)) + sizeof(size_t);
   size_t metalength = l->List_stringMetaData.length;
-  um_fp res = {.ptr = (uint8_t *)l->List_stringMetaData.allocator->alloc(area),
+  um_fp res = {.ptr = (uint8_t *)aAlloc(l->List_char.allocator, area),
                .width = area};
 
   uint8_t *use = res.ptr;
@@ -71,14 +71,14 @@ static inline stringList *stringList_fromBuf(stringListView um) {
   size_t metalength;
   advance(&metalength, ptr, sizeof(size_t));
 
-  stringList *l = (stringList *)defaultAllocator.alloc(sizeof(stringList));
+  stringList *l = (stringList *)aAlloc((&defaultAllocator), sizeof(stringList));
 
   l->List_stringMetaData = (List){
       .width = sizeof(stringMetaData),
       .length = (unsigned int)metalength,
       .size = (unsigned int)metalength,
-      .head = (uint8_t *)defaultAllocator.alloc(sizeof(stringMetaData) *
-                                                metalength),
+      .head = (uint8_t *)aAlloc((&defaultAllocator),
+                                sizeof(stringMetaData) * metalength),
   };
   advance(l->List_stringMetaData.head, ptr,
           List_headArea(&(l->List_stringMetaData)));
@@ -87,7 +87,9 @@ static inline stringList *stringList_fromBuf(stringListView um) {
       .width = sizeof(char),
       .length = charlength,
       .size = charlength,
-      .head = (uint8_t *)defaultAllocator.alloc(sizeof(char) * charlength)};
+      .head = (uint8_t *)aAlloc((&defaultAllocator), sizeof(char) * charlength),
+  };
+
   advance(l->List_char.head, ptr, charlength);
 
   return l;
@@ -113,7 +115,7 @@ static inline void stringList_cleanup_handler(stringList **sl) {
 }
 
 #define stringList_scoped                                                      \
-  stringList __attribute__((cleanup(stringList_cleanup_handler)))
+  stringList [[gnu::cleanup(stringList_cleanup_handler)]]
 
 #endif // STRING_LIST_H
 
@@ -125,21 +127,21 @@ static inline void stringList_cleanup_handler(stringList **sl) {
 #endif
 
 stringList *stringList_new(const My_allocator *allocator) {
-  stringList *res = (stringList *)allocator->alloc(sizeof(stringList));
+  stringList *res = (stringList *)aAlloc(allocator, sizeof(stringList));
   // clang-format off
   *res = (stringList) {
     .List_char = {
       .width = sizeof(char),
       .length = 0,
       .size = 1,
-      .head = (uint8_t*)allocator->alloc(sizeof(char)),
+      .head = (uint8_t*)aAlloc(allocator,sizeof(char)),
       .allocator = allocator,
     },
     .List_stringMetaData = {
       .width = sizeof(stringMetaData),
       .length = 0,
       .size = 1,
-      .head = (uint8_t*)allocator->alloc(sizeof(stringMetaData)),
+      .head = (uint8_t*)aAlloc(allocator,sizeof(stringMetaData)),
       .allocator = allocator,
     },
 
@@ -262,9 +264,9 @@ um_fp stringListView_get(stringListView slv, unsigned int index) {
 void stringListView_free(stringListView slv) { free(slv.raw.ptr); }
 void stringList_free(stringList *l) {
   const My_allocator *allocator = l->List_char.allocator;
-  allocator->free(l->List_char.head);
-  allocator->free(l->List_stringMetaData.head);
-  allocator->free(l);
+  aFree(allocator, l->List_char.head);
+  aFree(allocator, l->List_stringMetaData.head);
+  aFree(allocator, l);
 }
 
 #endif // STRING_LIST_C

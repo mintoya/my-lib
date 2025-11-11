@@ -1,3 +1,4 @@
+#define PRINTER_LIST_TYPENAMES
 #include "allocator.h"
 #include "kmlM.h"
 #include "my-list.h"
@@ -32,9 +33,8 @@ int main() {
   UMapList_append(testList, um_from("c"));
   UMap_setChild(test, um_from("innermap"), test);
   UMap_setList(test, um_from("innerlist"), testList);
-  println("${UMap*}", test);
   print_wf(listPrinter, "${UMap*}", test);
   UMap_scoped *output = parse(NULL, NULL, um_flist(buffer));
-  println("object input : ${}", um_flist(buffer));
-  println("entire object: ${UMap*}", output);
+  println("object input  : ${}", um_flist(buffer));
+  println("object output : ${UMap*}", output);
 }

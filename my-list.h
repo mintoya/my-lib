@@ -76,7 +76,7 @@ static inline void List_cleanup_handler(List **l) {
   *l = NULL;
 }
 // experimental idk
-#define List_scoped List __attribute__((cleanup(List_cleanup_handler)))
+#define List_scoped [[gnu::cleanup(List_cleanup_handler)]] List 
 
 #define mList_forEach(list, type, name, ...)                                   \
   do {                                                                         \
@@ -111,24 +111,24 @@ static inline void List_cleanup_handler(List **l) {
 #ifdef MY_LIST_C
 
 List *List_new(const My_allocator *allocator, size_t bytes) {
-  List *l = (List *)allocator->alloc(sizeof(List));
+  List *l = (List *)aAlloc(allocator, sizeof(List));
   *l = (List){
       .width = bytes,
       .length = 0,
       .size = 1,
-      .head = (uint8_t *)allocator->alloc(bytes),
+      .head = (uint8_t *)aAlloc(allocator, bytes),
       .allocator = allocator,
   };
   return l;
 }
 void List_free(List *l) {
-  l->allocator->free(l->head);
-  l->allocator->free(l);
+  aFree(l->allocator, l->head);
+  aFree(l->allocator, l);
 }
 // same as list_resize but it enforces size
 void List_forceResize(List *l, unsigned int newSize) {
   uint8_t *newPlace =
-      (uint8_t *)l->allocator->r_alloc(l->head, newSize * l->width);
+      (uint8_t *)aRealloc(l->allocator, l->head, newSize * l->width);
   if (!newPlace) {
     exit(ENOMEM); // maybe something else idk
   }
@@ -137,10 +137,10 @@ void List_forceResize(List *l, unsigned int newSize) {
   l->length = (l->length < l->size) ? (l->length) : (l->size);
 }
 void List_resize(List *l, unsigned int newSize) {
-  if(!( newSize>l->size || newSize<l->size/10 ))
+  if (!(newSize > l->size || newSize < l->size / 10))
     return;
   uint8_t *newPlace =
-      (uint8_t *)l->allocator->r_alloc(l->head, newSize * l->width);
+      (uint8_t *)aRealloc(l->allocator, l->head, newSize * l->width);
   if (!newPlace) {
     exit(ENOMEM);
   }
@@ -162,12 +162,12 @@ void List_pad(List *l, unsigned int ammount) {
 }
 List *List_fromArr(const My_allocator *allocator, const void *source,
                    unsigned int width, unsigned int length) {
-  List *res = (List *)allocator->alloc(sizeof(List));
+  List *res = (List *)aAlloc(allocator, sizeof(List));
   res->width = width;
   res->length = length;
   res->size = length;
   res->allocator = allocator;
-  res->head = (uint8_t *)allocator->alloc(length * width);
+  res->head = (uint8_t *)aAlloc(allocator, length * width);
   memcpy(res->head, source, length * width);
   return res;
 }

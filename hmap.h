@@ -53,11 +53,11 @@ __attribute__((pure)) static inline unsigned int HMap_hash(um_fp str) {
 
 static inline HMap *HMap_new(const My_allocator *allocator, size_t metaSize) {
 
-  HMap *res = (HMap *)allocator->alloc(sizeof(HMap));
+  HMap *res = (HMap *)aAlloc(allocator, sizeof(HMap));
   // clang-format off
   *res = (HMap){
     .metaSize = metaSize,
-    .metadata = (HMap_innertype*)allocator->alloc(metaSize*sizeof(HMap_innertype)),
+    .metadata = (HMap_innertype*)aAlloc(allocator,metaSize*sizeof(HMap_innertype)),
     .links = List_new(allocator,sizeof(HMap_innertype)),
     .KVs = stringList_new(allocator),
   };
@@ -72,8 +72,8 @@ static inline void HMap_free(HMap *hm) {
   const My_allocator *allocator = hm->links->allocator;
   List_free(hm->links);
   stringList_free(hm->KVs);
-  allocator->free(hm->metadata);
-  allocator->free(hm);
+  aFree(allocator, hm->metadata);
+  aFree(allocator, hm);
 }
 
 static inline void HMap_cleanup_handler(HMap **hm) {
@@ -115,7 +115,7 @@ struct HMap_both {
   um_fp val;
 };
 struct HMap_both HMap_getBoth(HMap *map, um_fp key);
-#define HMap_scoped HMap __attribute__((cleanup(HMap_cleanup_handler)))
+#define HMap_scoped [[gnu::cleanup(HMap_cleanup_handler)]] HMap 
 
 #endif // HMAP_H
 

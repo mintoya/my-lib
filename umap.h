@@ -78,13 +78,13 @@ static inline void UMap_free(UMap *map) {
   stringList_free(map->keys);
   stringList_free(map->vals);
   List_free(map->metadata);
-  allocator->free(map);
+  aFree(allocator, map);
 }
 static inline void UMapList_free(UMapList *map) {
   const My_allocator *allocator = map->metadata->allocator;
   stringList_free(map->vals);
   List_free(map->metadata);
-  allocator->free(map);
+  aFree(allocator, map);
 }
 /*
  * not modifiable
@@ -233,9 +233,8 @@ static inline void UMapList_cleanup_handler(UMapList **um) {
   *um = NULL;
 }
 
-#define UMap_scoped UMap __attribute__((cleanup(UMap_cleanup_handler)))
-#define UMapList_scoped                                                        \
-  UMapList __attribute__((cleanup(UMapList_cleanup_handler)))
+#define UMap_scoped [[gnu::cleanup(UMap_cleanup_handler)]] UMap
+#define UMapList_scoped [[gnu::cleanup(UMapList_cleanup_handler)]] UMapList
 
 #endif // UMAP_H
 #ifdef UMAP_C
@@ -274,7 +273,7 @@ unsigned int UMapView_binarySearch(UMapView map, um_fp key) {
   return res;
 }
 UMap *UMap_new(const My_allocator *allocator) {
-  UMap *res = (UMap *)allocator->alloc(sizeof(UMap));
+  UMap *res = (UMap *)aAlloc(allocator, sizeof(UMap));
   *res = (UMap){
       .keys = stringList_new(allocator),
       .vals = stringList_new(allocator),
