@@ -430,14 +430,15 @@ void print_f(outputFunction put, um_fp fmt, ...);
 #ifdef PRINTER_LIST_TYPENAMES
 __attribute__((constructor(205))) static void post_init() {
   outputFunction put = defaultPrinter;
-  println("==============================");
-  println("printer debug");
-  println("==============================");
+  print("==============================\n"
+        "printer debug\n"
+        "==============================\n");
+  println("list of printer type names: ");
   HMap_innertype *metas = PrinterSingleton.data->metadata;
   for (int i = 0; i < PrinterSingleton.data->metaSize; i++) {
     um_fp key = stringList_get(PrinterSingleton.data->KVs, metas[i].index);
     if (metas[i].hasindex) {
-      println("${}", key);
+      println(" ${}", key);
       if (metas[i].hasnext) {
         HMap_innertype *h = metas + i;
         h = (HMap_innertype *)List_getRef(PrinterSingleton.data->links,
@@ -460,10 +461,11 @@ __attribute__((constructor(205))) static void post_init() {
       }
     }
   }
-  println("list of printer type names: ");
-  println("footprint:  ${}", (size_t)HMap_footprint(PrinterSingleton.data));
-  println("collisions: ${}", (int)HMap_countCollisions(PrinterSingleton.data));
-  println("==============================");
+  println("footprint:  ${}\n"
+          "collisions: ${}\n"
+          "==============================\n",
+          (size_t)HMap_footprint(PrinterSingleton.data),
+          (int)HMap_countCollisions(PrinterSingleton.data));
 }
 #endif // PRINTER_LIST_TYPENAMES
 

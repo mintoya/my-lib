@@ -137,12 +137,12 @@ void List_forceResize(List *l, unsigned int newSize) {
   l->length = (l->length < l->size) ? (l->length) : (l->size);
 }
 void List_resize(List *l, unsigned int newSize) {
-  if (newSize <= l->size / 10)
+  if(!( newSize>l->size || newSize<l->size/10 ))
     return;
   uint8_t *newPlace =
       (uint8_t *)l->allocator->r_alloc(l->head, newSize * l->width);
   if (!newPlace) {
-    exit(ENOMEM); // maybe something else idk
+    exit(ENOMEM);
   }
   l->head = newPlace;
   l->size = newSize;
@@ -203,7 +203,7 @@ void List_remove(List *l, unsigned int i) {
 }
 
 List *List_deepCopy(List *l) {
-  return List_fromArr(l->allocator,l->head, l->width, l->length);
+  return List_fromArr(l->allocator, l->head, l->width, l->length);
 }
 
 // returns -1 if item not found

@@ -57,7 +57,7 @@ static inline HMap *HMap_new(const My_allocator *allocator, size_t metaSize) {
   // clang-format off
   *res = (HMap){
     .metaSize = metaSize,
-    .metadata = (HMap_innertype*)malloc(metaSize*sizeof(HMap_innertype)),
+    .metadata = (HMap_innertype*)allocator->alloc(metaSize*sizeof(HMap_innertype)),
     .links = List_new(allocator,sizeof(HMap_innertype)),
     .KVs = stringList_new(allocator),
   };

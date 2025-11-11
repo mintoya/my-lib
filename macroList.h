@@ -27,7 +27,7 @@
 // automatically freed
 #define MList_init(list)                                                       \
   List_scoped *MList_heapList(list) =                                          \
-      List_new(&defaultAllocator,sizeof(typeof(list.elements[0])));                              \
+      List_new(&defaultAllocator, sizeof(typeof(list.elements[0])));           \
   list = MList_deconvert((*MList_heapList(list)), list);
 
 #define MList_push(list, ...)                                                  \
@@ -63,7 +63,7 @@
 #define MList_addArr(list, size, ...)                                          \
   do {                                                                         \
     MList_heapList(list)->length = list.length;                                \
-    typeof(list.elements) __temp = (typeof(list.elements)) __VA_ARGS__;     \
+    typeof(list.elements) __temp = (typeof(list.elements))__VA_ARGS__;         \
     void *__ref = (void *)__temp;                                              \
     List_appendFromArr(MList_heapList(list), __ref, size);                     \
     list = MList_deconvert((*MList_heapList(list)), list);                     \
@@ -73,11 +73,12 @@
 
 // if you want to control the scope you have to provide a list pointer
 #define MList_DFInit(list, Listptr)                                            \
-  Listptr = List_new(&defaultAllocator,sizeof(typeof(list.elements[0])));                        \
+  Listptr = List_new(&defaultAllocator, sizeof(typeof(list.elements[0])));     \
   List *MList_heapList(list) = Listptr;                                        \
   list = MList_deconvert((*MList_heapList(list)), list);
-#define MList_DF(list, Listptr)                                                \
+#define MList_DF(list, type, Listptr)                                          \
   List *MList_heapList(list) = Listptr;                                        \
+  MList(type) list;                                                            \
   list = MList_deconvert((*MList_heapList(list)), list);
 
 #define MList_fp(list)                                                         \
