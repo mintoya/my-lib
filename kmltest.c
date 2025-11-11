@@ -1,13 +1,11 @@
 #include "allocator.h"
 #include "kmlM.h"
-#include "macroList.h"
 #include "my-list.h"
 #include "print.h"
 #include "umap.h"
 #include "wheels.h"
 
 List *buffer = NULL;
-MList(char) buf;
 
 __attribute__((destructor)) void freeList(void) { List_free(buffer); }
 __attribute__((constructor)) void setupList(void) {
@@ -18,6 +16,12 @@ void listPrinter(const char *c, unsigned int length, char flush) {
   List_appendFromArr(buffer, c, length);
 }
 
+static inline um_fp um_flist(List *l) {
+  return (um_fp){
+      .ptr = l->head,
+      .width = List_headArea(l),
+  };
+}
 int main() {
   UMap_scoped *test = UMap_new(&defaultAllocator);
   UMap_set(test, um_from("a"), um_from("a"));
@@ -30,7 +34,7 @@ int main() {
   UMap_setList(test, um_from("innerlist"), testList);
   println("${UMap*}", test);
   print_wf(listPrinter, "${UMap*}", test);
-  UMap_scoped *output = parse(NULL, NULL, MList_fp(buf));
-  println("object input : ${}", MList_fp(buf));
+  UMap_scoped *output = parse(NULL, NULL, um_flist(buffer));
+  println("object input : ${}", um_flist(buffer));
   println("entire object: ${UMap*}", output);
 }
