@@ -11,7 +11,7 @@ typedef struct ArenaBlock {
   ArenaBlock *next;
   size_t place;
   size_t size;
-  uint8_t arr[];
+  uint8_t buffer[];
 } ArenaBlock;
 
 ArenaBlock *arenablock_new(size_t blockSize);
@@ -71,10 +71,10 @@ void *arena_alloc(const My_allocator *ref, size_t size) {
   void *res = NULL;
   while (!res) {
     if (it->size - it->place >= size + sizeof(size_t)) {
-      *(size_t *)(it->arr + it->place) = size;
+      *(size_t *)(it->buffer + it->place) = size;
       it->place += sizeof(size_t);
 
-      res = it->arr + it->place;
+      res = it->buffer + it->place;
       it->place += size;
     } else {
       if (!it->next) {
