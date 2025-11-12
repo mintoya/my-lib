@@ -1,3 +1,4 @@
+// #define PRINTER_LIST_TYPENAMES
 #include "arenaAllocator.h"
 #include "hmap.h"
 #include "macroList.h"
@@ -8,9 +9,9 @@
 #include <stdint.h>
 
 int main(void) {
-  Arena_scoped *local = arena_new(1024);
-  List_scoped *hlist = List_new(local, sizeof(intmax_t));
-  MList_DF(list, intmax_t, hlist);
+  Arena_scoped *local = arena_new(1800);
+  List *hl = List_new(local, sizeof(intmax_t));
+  MList_DF(list, intmax_t, hl);
 
   MList_push(list, 5);
   MList_push(list, 8);
@@ -21,14 +22,35 @@ int main(void) {
   MList_push(list, 7);
   MList_push(list, 9);
   MList_foreach(list, index, element, { println("${}", (int)element); });
+  println("list footprint : ${}",List_headArea(hl));
+  List_free(hl);
 
-  HMap_scoped *hm = HMap_new(local, 10);
+  HMap *hm = HMap_new(local, 10);
+  UMap *um = UMap_new(local);
+
   HMap_set(hm, um_from("hello"), um_from("world"));
   HMap_set(hm, um_from("world"), um_from("hello"));
+  HMap_set(hm, um_from("lsajdf"), um_from("world"));
+  HMap_set(hm, um_from("askjdf"), um_from("hello"));
+
   println("${}", HMap_get(hm, um_from("hello")));
-  UMap_scoped *um = UMap_new(local);
+  println("${}", HMap_get(hm, um_from("world")));
+  println("hmap footprint : ${}",HMap_footprint(hm));
+  HMap_free(hm);
+
+
   UMap_set(um, um_from("hello"), um_from("world"));
   UMap_set(um, um_from("world"), um_from("hello"));
+
+
+  UMap_set(um, um_from("heliafj"), um_from("world"));
+  UMap_set(um, um_from("asvd k"), um_from("hello"));
+
+  println("${}", UMap_get(um, um_from("world")));
   println("${}", UMap_get(um, um_from("hello")));
+
+  println("umap footprint : ${}",UMap_footprint(um));
+  println("allocated area : ${}",arena_footprint(local));
+
   return 0;
 }

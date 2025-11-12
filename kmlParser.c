@@ -1,4 +1,5 @@
 #include "kml.h"
+#include "macroList.h"
 #include "my-list.h"
 #include "print.h"
 #include <stdio.h>
@@ -8,19 +9,15 @@
 #include "wheels.h"
 
 um_fp read_stdin() {
-  List fl = {
-      .width = sizeof(char),
-      .length = 0,
-      .size = 10,
-      .head = (uint8_t *)malloc(sizeof(char) * 10),
-  };
+  List *fl = List_new(&defaultAllocator, sizeof(char));
+  MList_DF(chars, char, fl);
   int c;
 
   while ((c = fgetc(stdin)) != EOF) {
-    mList_add(&fl, char, c);
+    MList_push(chars, c);
   }
 
-  um_fp res = {.ptr = (&fl)->head, .width = (&fl)->length * (&fl)->width};
+  um_fp res = {.ptr = fl->head, .width = sizeof(char) * fl->length};
   return res;
 }
 

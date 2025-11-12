@@ -11,19 +11,37 @@ typedef struct ArenaBlock {
   ArenaBlock *next;
   size_t place;
   size_t size;
+  size_t *freelist[10];
   uint8_t buffer[];
 } ArenaBlock;
 
 ArenaBlock *arenablock_new(size_t blockSize);
 void *arena_alloc(const My_allocator *ref, size_t size);
-void *arena_alloc(const My_allocator *ref, size_t size);
 static void arena_free(const My_allocator *allocator, void *ptr) {
+  size_t *thisSize = (size_t *)((uint8_t *)ptr - sizeof(size_t));
+  ArenaBlock *it = (ArenaBlock *)(allocator->arb);
+  for (int i = 0; i < 10; i++) {
+    if (!it->freelist[i] || (*it->freelist[i] < *thisSize)) {
+      it->freelist[i] = thisSize;
+      break;
+    }
+  }
   // noop
 }
 void *arena_r_alloc(const My_allocator *arena, void *ptr, size_t size);
 My_allocator *arena_new(size_t blockSize);
 void arenablock_free(ArenaBlock *block);
 void arena_cleanup(My_allocator *arena);
+static size_t arena_footprint(My_allocator *arena) {
+  size_t res = 0;
+  ArenaBlock *block = (ArenaBlock *)(arena->arb);
+  while (block) {
+    ArenaBlock *next = block->next;
+    res += block->size;
+    block = next;
+  }
+  return res;
+}
 static void arena_cleanup_handler(My_allocator **arenaPtr) {
   if (arenaPtr && *arenaPtr)
     arena_cleanup(*arenaPtr);
@@ -59,16 +77,28 @@ My_allocator *arena_new(size_t blockSize) {
   return res;
 }
 void *arena_r_alloc(const My_allocator *arena, void *ptr, size_t size) {
+  if (!ptr)
+    exit(1);
   size_t *lastSize = (size_t *)((uint8_t *)ptr - sizeof(size_t));
   if (*lastSize > size)
     return ptr;
   void *res = arena_alloc(arena, size);
   memmove(res, ptr, (*lastSize));
+  arena_free(arena, ptr);
   return res;
 }
 void *arena_alloc(const My_allocator *ref, size_t size) {
   ArenaBlock *it = (ArenaBlock *)(ref->arb);
   void *res = NULL;
+  for (int i = 0; i < 10; i++) {
+    if (it->freelist[i]) {
+      size_t *sizeptr = it->freelist[i];
+      if (*sizeptr >= size) {
+        it->freelist[i] = NULL;
+        return (void *)(sizeptr + 1);
+      }
+    }
+  }
   while (!res) {
     if (it->size - it->place >= size + sizeof(size_t)) {
       *(size_t *)(it->buffer + it->place) = size;
@@ -96,6 +126,19 @@ ArenaBlock *arenablock_new(size_t blockSize) {
       .next = NULL,
       .place = 0,
       .size = blockSize,
+      .freelist =
+          {
+              NULL,
+              NULL,
+              NULL,
+              NULL,
+              NULL,
+              NULL,
+              NULL,
+              NULL,
+              NULL,
+              NULL,
+          },
   };
   return res;
 }
