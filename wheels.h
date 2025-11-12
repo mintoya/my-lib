@@ -1,5 +1,10 @@
 // because order matters
 
+#ifdef ARENA_ALLOCATOR_H
+#define ARENA_ALLOCATOR_C
+#include "arenaAllocator.h"
+#endif
+
 #ifdef KML_PARSER_H
 #define KML_PARSER_C
 #include "kml.h"
