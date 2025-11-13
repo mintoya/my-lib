@@ -10,6 +10,7 @@
 #include <stdint.h>
 
 int main(void) {
+  char *l;
   Arena_scoped *local = arena_new(1500);
   List *hl;
   MList(int) list;
@@ -30,24 +31,24 @@ int main(void) {
   HMap *hm = HMap_new(local, 10);
   UMap *um = UMap_new(local);
 
-  HMap_set(hm, um_from("hello"), um_from("world"));
-  HMap_set(hm, um_from("world"), um_from("hello"));
-  HMap_set(hm, um_from("lsajdf"), um_from("world"));
-  HMap_set(hm, um_from("askjdf"), um_from("hello"));
+  HMap_set(hm, fp_from("hello"), fp_from("world"));
+  HMap_set(hm, fp_from("world"), fp_from("hello"));
+  HMap_set(hm, fp_from("lsajdf"), fp_from("world"));
+  HMap_set(hm, fp_from("askjdf"), fp_from("hello"));
 
-  println("${}", HMap_get(hm, um_from("hello")));
-  println("${}", HMap_get(hm, um_from("world")));
+  println("${}", HMap_get(hm, fp_from("hello")));
+  println("${}", HMap_get(hm, fp_from("world")));
   println("hmap footprint : ${}", HMap_footprint(hm));
   HMap_free(hm);
 
-  UMap_set(um, um_from("hello"), um_from("world"));
-  UMap_set(um, um_from("world"), um_from("hello"));
+  UMap_set(um, fp_from("hello"), fp_from("world"));
+  UMap_set(um, fp_from("world"), fp_from("hello"));
 
-  UMap_set(um, um_from("heliafj"), um_from("world"));
-  UMap_set(um, um_from("asvd k"), um_from("hello"));
+  UMap_set(um, fp_from("heliafj"), fp_from("world"));
+  UMap_set(um, fp_from("asvd k"), fp_from("hello"));
 
-  println("${}", UMap_get(um, um_from("world")));
-  println("${}", UMap_get(um, um_from("hello")));
+  println("${}", UMap_get(um, fp_from("world")));
+  println("${}", UMap_get(um, fp_from("hello")));
 
   println("umap footprint : ${}", UMap_footprint(um));
   println("allocated area : ${}", arena_footprint(local));

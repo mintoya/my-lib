@@ -5,6 +5,7 @@
 #include "my-list.h"
 #include "print.h"
 #include "stringList.h"
+#include "um_fp.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -18,10 +19,10 @@ typedef struct {
   List *metadata;
 } UMapList;
 typedef struct {
-  um_fp raw;
+  fptr raw;
 } UMapView;
 typedef struct {
-  um_fp raw;
+  fptr raw;
 } UMapListView;
 typedef enum {
   NORMAL = 0, // raw data
@@ -33,10 +34,10 @@ static inline size_t UMap_footprint(UMap *um) {
   return List_fullHeadArea(um->metadata) + stringList_footprint(um->keys) +
          stringList_footprint(um->vals);
 }
-static inline um_fp UMap_getKeyAtIndex(UMap *map, unsigned int index) {
+static inline fptr UMap_getKeyAtIndex(UMap *map, unsigned int index) {
   return stringList_get(map->keys, index);
 };
-static inline um_fp UMap_getValAtIndex(UMap *map, unsigned int index) {
+static inline fptr UMap_getValAtIndex(UMap *map, unsigned int index) {
   return stringList_get(map->vals, index);
 };
 // clang-format off
@@ -51,19 +52,19 @@ UMap_getInnerType(UMap *map, unsigned int index) {
   return res;
 };
 // clang-format on
-unsigned int UMap_binarySearch(UMap *map, um_fp key);
-unsigned int UMapView_binarySearch(UMapView map, um_fp key);
+unsigned int UMap_binarySearch(UMap *map, fptr key);
+unsigned int UMapView_binarySearch(UMapView map, fptr key);
 UMap *UMap_new(const My_allocator *);
 UMapList *UMapList_new(const My_allocator *);
 
-um_fp UMap_getValAtKey(UMap *map, um_fp key);
-static inline um_fp UMap_get(UMap *map, um_fp key) {
+fptr UMap_getValAtKey(UMap *map, fptr key);
+static inline fptr UMap_get(UMap *map, fptr key) {
   return UMap_getValAtKey(map, key);
 }
-unsigned int UMap_set(UMap *map, um_fp key, um_fp val);
+unsigned int UMap_set(UMap *map, fptr key, fptr val);
 UMap *UMap_remake(UMap *map);
-unsigned int UMap_setChild(UMap *map, um_fp key, UMap *ref);
-unsigned int UMap_setList(UMap *map, um_fp key, UMapList *ref);
+unsigned int UMap_setChild(UMap *map, fptr key, UMap *ref);
+unsigned int UMap_setList(UMap *map, fptr key, UMapList *ref);
 unsigned int UMapList_setChild(UMapList *map, unsigned int key, UMap *ref);
 unsigned int UMapList_setList(UMapList *map, unsigned int key, UMapList *ref);
 static inline unsigned int UMapList_appendChild(UMapList *map, UMap *ref) {
@@ -94,24 +95,24 @@ UMapView UMap_toBuf(UMap *map);
 UMapListView UMapList_toBuf(UMapList *map);
 UMap UMapList_fromBuf(UMapListView mapRasterized);
 
-um_fp UMapView_getKeyAtIndex(UMapView map, unsigned int index);
-um_fp UMapView_getValAtIndex(UMapView map, unsigned int index);
-unsigned int UMapList_set(UMapList *map, unsigned int index, um_fp val);
-unsigned int UMapList_append(UMapList *map, um_fp val);
-um_fp UMapList_get(UMapList *map, unsigned int key);
+fptr UMapView_getKeyAtIndex(UMapView map, unsigned int index);
+fptr UMapView_getValAtIndex(UMapView map, unsigned int index);
+unsigned int UMapList_set(UMapList *map, unsigned int index, fptr val);
+unsigned int UMapList_append(UMapList *map, fptr val);
+fptr UMapList_get(UMapList *map, unsigned int key);
 
 stringListView UMapView_getVals(UMapView map);
 stringListView UMapView_getKeys(UMapView map);
 List UMapView_getMeta(UMapView map);
-um_fp UMapView_getKeyAtIndex(UMapView map, unsigned int index);
-um_fp UMapView_getValAtIndex(UMapView map, unsigned int index);
-um_fp UMapView_getValAtKey(UMapView map, um_fp key);
+fptr UMapView_getKeyAtIndex(UMapView map, unsigned int index);
+fptr UMapView_getValAtIndex(UMapView map, unsigned int index);
+fptr UMapView_getValAtKey(UMapView map, fptr key);
 void UMapView_free(UMapView umv);
 void UMapListView_free(UMapListView umv);
 
 stringListView UMapListView_getVals(UMapListView map);
 List UMapListView_getMeta(UMapListView map);
-um_fp UMapListView_getVal(UMapListView map, unsigned int index);
+fptr UMapListView_getVal(UMapListView map, unsigned int index);
 
 REGISTER_SPECIAL_PRINTER("UMap", UMap, {
   List *metaList = in.metadata;
@@ -120,12 +121,12 @@ REGISTER_SPECIAL_PRINTER("UMap", UMap, {
   PUTS("{", 1);
   for (int i = 0; i < metaList->length; i++) {
     UMap_innertype type = mList_get(metaList, UMap_innertype, i);
-    USETYPEPRINTER(um_fp, stringList_get(keys, i));
+    USETYPEPRINTER(fptr, stringList_get(keys, i));
     PUTS(":", 1);
-    um_fp val = stringList_get(vals, i);
+    fptr val = stringList_get(vals, i);
     switch (type) {
     case NORMAL:
-      USETYPEPRINTER(um_fp, val);
+      USETYPEPRINTER(fptr, val);
       PUTS(";", 1);
 
       break;
@@ -148,12 +149,12 @@ REGISTER_SPECIAL_PRINTER("UMapView", UMapView, {
   PUTS("{", 1);
   for (int i = 0; i < metaList.length; i++) {
     UMap_innertype type = meta[i];
-    USETYPEPRINTER(um_fp, stringListView_get(keys, i));
+    USETYPEPRINTER(fptr, stringListView_get(keys, i));
     PUTS(":", 1);
-    um_fp val = stringListView_get(vals, i);
+    fptr val = stringListView_get(vals, i);
     switch (type) {
     case NORMAL:
-      USETYPEPRINTER(um_fp, val);
+      USETYPEPRINTER(fptr, val);
       PUTS(";", 1);
 
       break;
@@ -172,13 +173,13 @@ REGISTER_SPECIAL_PRINTER("UMapList", UMapList, {
   stringList *slv = in.vals;
   List *metaList = in.metadata;
   UMap_innertype *meta = (UMap_innertype *)metaList->head;
-  USETYPEPRINTER(um_fp, um_from("["));
+  USETYPEPRINTER(fptr, fp_from("["));
   for (int i = 0; i < metaList->length; i++) {
     UMap_innertype type = meta[i];
-    um_fp val = stringList_get(slv, i);
+    fptr val = stringList_get(slv, i);
     switch (type) {
     case NORMAL:
-      USETYPEPRINTER(um_fp, val);
+      USETYPEPRINTER(fptr, val);
       break;
     case LIST:
       USENAMEDPRINTER("UMapListView", ((UMapListView){.raw = val}))
@@ -188,21 +189,21 @@ REGISTER_SPECIAL_PRINTER("UMapList", UMapList, {
       break;
     }
     if (i + 1 != metaList->length)
-      USETYPEPRINTER(um_fp, um_from(","));
+      USETYPEPRINTER(fptr, fp_from(","));
   }
-  USETYPEPRINTER(um_fp, um_from("]"));
+  USETYPEPRINTER(fptr, fp_from("]"));
 })
 REGISTER_SPECIAL_PRINTER("UMapListView", UMapListView, {
   stringListView slv = UMapListView_getVals(in);
   List metaList = UMapListView_getMeta(in);
   UMap_innertype *meta = (UMap_innertype *)metaList.head;
-  USETYPEPRINTER(um_fp, um_from("["));
+  USETYPEPRINTER(fptr, fp_from("["));
   for (int i = 0; i < metaList.length; i++) {
     UMap_innertype type = meta[i];
-    um_fp val = stringListView_get(slv, i);
+    fptr val = stringListView_get(slv, i);
     switch (type) {
     case NORMAL:
-      USETYPEPRINTER(um_fp, val);
+      USETYPEPRINTER(fptr, val);
       break;
     case LIST:
       USENAMEDPRINTER("UMapListView", ((UMapListView){.raw = val}))
@@ -212,9 +213,9 @@ REGISTER_SPECIAL_PRINTER("UMapListView", UMapListView, {
       break;
     }
     if (i + 1 != metaList.length)
-      USETYPEPRINTER(um_fp, um_from(","));
+      USETYPEPRINTER(fptr, fp_from(","));
   }
-  USETYPEPRINTER(um_fp, um_from("]"));
+  USETYPEPRINTER(fptr, fp_from("]"));
 })
 
 REGISTER_SPECIAL_PRINTER("UMap*", UMap *, { USENAMEDPRINTER("UMap", *in); });
@@ -244,15 +245,15 @@ static inline void UMapList_cleanup_handler(UMapList **um) {
 #include <stdlib.h>
 
 // static unsigned int runs = 0;
-unsigned int UMap_linearSearch(UMap *map, um_fp key) {
+unsigned int UMap_linearSearch(UMap *map, fptr key) {
   unsigned int res = 0;
   unsigned int len = stringList_length(map->keys);
-  while (res < len && um_fp_cmp(key, UMap_getKeyAtIndex(map, res)) > 0) {
+  while (res < len && fptr_cmp(key, UMap_getKeyAtIndex(map, res)) > 0) {
     res++;
   }
   return res;
 }
-unsigned int UMapView_binarySearch(UMapView map, um_fp key) {
+unsigned int UMapView_binarySearch(UMapView map, fptr key) {
   stringListView keys = UMapView_getKeys(map);
   unsigned int length = stringListView_MetaList(keys).length;
   unsigned int region = length;
@@ -260,14 +261,14 @@ unsigned int UMapView_binarySearch(UMapView map, um_fp key) {
 
   while (region > 2) {
     char less =
-        um_fp_cmp(key, UMapView_getKeyAtIndex(map, front + region / 2)) > 0;
+        fptr_cmp(key, UMapView_getKeyAtIndex(map, front + region / 2)) > 0;
     region /= 2;
     if (less)
       front += region;
   }
 
   unsigned int res = front;
-  while (res < length && um_fp_cmp(key, UMapView_getKeyAtIndex(map, res)) > 0) {
+  while (res < length && fptr_cmp(key, UMapView_getKeyAtIndex(map, res)) > 0) {
     res++;
   }
   return res;
@@ -290,26 +291,26 @@ UMapList *UMapList_new(const My_allocator *allocator) {
   return res;
 }
 
-um_fp UMap_getValAtKey(UMap *map, um_fp key) {
+fptr UMap_getValAtKey(UMap *map, fptr key) {
   unsigned int index = UMap_binarySearch(map, key);
-  um_fp res = nullUmf;
-  um_fp temp = UMap_getKeyAtIndex(map, index);
-  int cmp = um_fp_cmp(key, temp);
+  fptr res = nullUmf;
+  fptr temp = UMap_getKeyAtIndex(map, index);
+  int cmp = fptr_cmp(key, temp);
   if (!cmp) {
     res = stringList_get(map->vals, index);
   }
   return res;
 }
-um_fp UMapList_get(UMapList *map, unsigned int key) {
+fptr UMapList_get(UMapList *map, unsigned int key) {
   return stringList_get(map->vals, key);
 }
 
-unsigned int UMap_binarySearch(UMap *map, um_fp key) {
+unsigned int UMap_binarySearch(UMap *map, fptr key) {
   unsigned int region = stringList_length(map->keys);
   unsigned int front = 0;
 
   while (region > 2) {
-    char less = um_fp_cmp(key, UMap_getKeyAtIndex(map, front + region / 2)) > 0;
+    char less = fptr_cmp(key, UMap_getKeyAtIndex(map, front + region / 2)) > 0;
     region /= 2;
     if (less)
       front += region;
@@ -317,18 +318,18 @@ unsigned int UMap_binarySearch(UMap *map, um_fp key) {
 
   unsigned int res = front;
   while (res < stringList_length(map->keys) &&
-         um_fp_cmp(key, UMap_getKeyAtIndex(map, res)) > 0) {
+         fptr_cmp(key, UMap_getKeyAtIndex(map, res)) > 0) {
     res++;
   }
   return res;
 }
-unsigned int UMap_set(UMap *map, um_fp key, um_fp val) {
+unsigned int UMap_set(UMap *map, fptr key, fptr val) {
   if (!key.width)
     return -1;
   unsigned int index = UMap_binarySearch(map, key);
   unsigned int length = map->metadata->length;
 
-  if (index < length && !um_fp_cmp(UMap_getKeyAtIndex(map, index), key)) {
+  if (index < length && !fptr_cmp(UMap_getKeyAtIndex(map, index), key)) {
     stringList_set(map->keys, key, index);
     stringList_set(map->vals, val, index);
     mList_set(map->metadata, UMap_innertype, NORMAL, index);
@@ -339,7 +340,7 @@ unsigned int UMap_set(UMap *map, um_fp key, um_fp val) {
   }
   return index;
 };
-unsigned int UMapList_set(UMapList *map, unsigned int index, um_fp val) {
+unsigned int UMapList_set(UMapList *map, unsigned int index, fptr val) {
   while (index >= map->metadata->length) {
     stringList_append(map->vals, nullUmf);
     mList_add(map->metadata, UMap_innertype, NORMAL);
@@ -348,7 +349,7 @@ unsigned int UMapList_set(UMapList *map, unsigned int index, um_fp val) {
   mList_set(map->metadata, UMap_innertype, NORMAL, index);
   return index;
 };
-unsigned int UMapList_append(UMapList *map, um_fp val) {
+unsigned int UMapList_append(UMapList *map, fptr val) {
   stringList_append(map->vals, val);
   mList_add(map->metadata, UMap_innertype, NORMAL);
   return map->metadata->length - 1;
@@ -362,14 +363,14 @@ unsigned int UMapList_append(UMapList *map, um_fp val) {
 UMapView UMap_toBuf(UMap *map) {
   stringListView kb = stringList_tobuf(map->keys);
   stringListView vb = stringList_tobuf(map->vals);
-  um_fp keys = kb.raw;
-  um_fp vals = vb.raw;
-  um_fp meta = (um_fp){
+  fptr keys = kb.raw;
+  fptr vals = vb.raw;
+  fptr meta = (fptr){
       .ptr = map->metadata->head,
       .width = List_headArea(map->metadata),
   };
   size_t finalWidth = keys.width + vals.width + meta.width + 3 * sizeof(size_t);
-  um_fp res = (um_fp){
+  fptr res = (fptr){
       .ptr = (uint8_t *)malloc(finalWidth),
       .width = finalWidth,
   };
@@ -392,13 +393,13 @@ UMapView UMap_toBuf(UMap *map) {
 //  { valsSize|metaSize|vals|meta }
 UMapListView UMapList_toBuf(UMapList *map) {
   stringListView vb = stringList_tobuf(map->vals);
-  um_fp vals = vb.raw;
-  um_fp meta = (um_fp){
+  fptr vals = vb.raw;
+  fptr meta = (fptr){
       .ptr = map->metadata->head,
       .width = List_headArea(map->metadata),
   };
   size_t finalWidth = vals.width + meta.width + 3 * sizeof(size_t);
-  um_fp res = (um_fp){
+  fptr res = (fptr){
       .ptr = (uint8_t *)malloc(finalWidth),
       .width = finalWidth,
   };
@@ -428,41 +429,41 @@ stringListView UMapView_getVals(UMapView map) {
   stringListView res;
   size_t *sizes = ((size_t *)map.raw.ptr);
   uint8_t *place = map.raw.ptr + sizeof(size_t) * 3 + sizes[0];
-  res.raw = (um_fp){.ptr = place, .width = sizes[1]};
+  res.raw = (fptr){.ptr = place, .width = sizes[1]};
   return res;
 }
 stringListView UMapView_getKeys(UMapView map) {
   stringListView res;
   size_t size = *(size_t *)map.raw.ptr;
   uint8_t *place = map.raw.ptr + sizeof(size_t) * 3;
-  res.raw = (um_fp){.ptr = place, .width = size};
+  res.raw = (fptr){.ptr = place, .width = size};
   return res;
 }
-um_fp UMapView_getKeyAtIndex(UMapView map, unsigned int index) {
+fptr UMapView_getKeyAtIndex(UMapView map, unsigned int index) {
   stringListView sl = UMapView_getKeys(map);
   List meta = stringListView_MetaList(sl);
   return stringListView_get(sl, index);
 };
-um_fp UMapView_getValAtIndex(UMapView map, unsigned int index) {
+fptr UMapView_getValAtIndex(UMapView map, unsigned int index) {
   stringListView sl = UMapView_getVals(map);
   List meta = stringListView_MetaList(sl);
   return stringListView_get(sl, index);
 };
 
-um_fp UMapView_getValAtKey(UMapView map, um_fp key) {
+fptr UMapView_getValAtKey(UMapView map, fptr key) {
   unsigned int index = UMapView_binarySearch(map, key);
-  um_fp res = nullUmf;
-  int cmp = um_fp_cmp(key, UMapView_getKeyAtIndex(map, index));
+  fptr res = nullUmf;
+  int cmp = fptr_cmp(key, UMapView_getKeyAtIndex(map, index));
   if (!cmp) {
     res = stringListView_get(UMapView_getVals(map), index);
   }
   return res;
 }
 
-unsigned int UMap_setChild(UMap *map, um_fp key, UMap *ref) {
+unsigned int UMap_setChild(UMap *map, fptr key, UMap *ref) {
   if (!key.width)
     return -1;
-  um_fp um = UMap_toBuf(ref).raw;
+  fptr um = UMap_toBuf(ref).raw;
   unsigned int index = UMap_set(map, key, um);
   mList_set(map->metadata, UMap_innertype, MAP, index);
   free(um.ptr);
@@ -470,23 +471,23 @@ unsigned int UMap_setChild(UMap *map, um_fp key, UMap *ref) {
 }
 
 unsigned int UMapList_setChild(UMapList *map, unsigned int key, UMap *ref) {
-  um_fp um = UMap_toBuf(ref).raw;
+  fptr um = UMap_toBuf(ref).raw;
   unsigned int index = UMapList_set(map, key, um);
   mList_set(map->metadata, UMap_innertype, MAP, index);
   free(um.ptr);
   return index;
 }
 unsigned int UMapList_setList(UMapList *map, unsigned int key, UMapList *ref) {
-  um_fp um = UMapList_toBuf(ref).raw;
+  fptr um = UMapList_toBuf(ref).raw;
   unsigned int index = UMapList_set(map, key, um);
   mList_set(map->metadata, UMap_innertype, LIST, index);
   free(um.ptr);
   return index;
 }
-unsigned int UMap_setList(UMap *map, um_fp key, UMapList *ref) {
+unsigned int UMap_setList(UMap *map, fptr key, UMapList *ref) {
   if (!key.width)
     return -1;
-  um_fp um = UMapList_toBuf(ref).raw;
+  fptr um = UMapList_toBuf(ref).raw;
   unsigned int index = UMap_set(map, key, um);
   mList_set(map->metadata, UMap_innertype, LIST, index);
   free(um.ptr);
@@ -496,8 +497,8 @@ unsigned int UMap_setList(UMap *map, um_fp key, UMapList *ref) {
 UMap *UMap_remake(UMap *map) {
   UMap *res = UMap_new(map->metadata->allocator);
   for (unsigned int i = 0; i < stringList_length(map->keys); i++) {
-    um_fp key = UMap_getKeyAtIndex(map, i);
-    um_fp val = UMap_getValAtIndex(map, i);
+    fptr key = UMap_getKeyAtIndex(map, i);
+    fptr val = UMap_getValAtIndex(map, i);
     if (key.ptr && key.width && val.ptr && val.width)
       UMap_set(res, key, val);
   }
@@ -509,7 +510,7 @@ stringListView UMapListView_getVals(UMapListView map) {
   stringListView res;
   size_t *sizes = ((size_t *)map.raw.ptr);
   uint8_t *place = map.raw.ptr + sizeof(size_t) * 2;
-  res.raw = (um_fp){.ptr = place, .width = sizes[0]};
+  res.raw = (fptr){.ptr = place, .width = sizes[0]};
   return res;
 }
 
@@ -522,7 +523,7 @@ List UMapListView_getMeta(UMapListView map) {
   res.head = map.raw.ptr + sizeof(size_t) * 2 + sizes[0];
   return res;
 }
-um_fp UMapListView_getVal(UMapListView map, unsigned int index) {
+fptr UMapListView_getVal(UMapListView map, unsigned int index) {
   return stringListView_get(UMapListView_getVals(map), index);
 }
 

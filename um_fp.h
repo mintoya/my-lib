@@ -7,10 +7,18 @@
 typedef struct fat_pointer {
   uint8_t *ptr;
   size_t width;
-} um_fp;
+} fptr;
+
+typedef struct {
+  uint8_t *ptr;
+  size_t width;
+  size_t capacity;
+} ffptr;
+
+typedef fptr um_fp;
 
 // #include <string.h>
-static inline int um_fp_cmp(const um_fp a, const um_fp b) {
+static inline int fptr_cmp(const fptr a, const fptr b) {
   int wd = a.width - b.width;
   if (wd) {
     return wd;
@@ -40,59 +48,75 @@ static inline int um_fp_cmp(const um_fp a, const um_fp b) {
     result = 1;
   return result;
 }
+static int (*um_fp_cmp)(const fptr, const fptr) = fptr_cmp;
 
-static char um_eq(um_fp a, um_fp b) { return !um_fp_cmp(a, b); }
+static char fptr_eq(fptr a, fptr b) { return !um_fp_cmp(a, b); }
+static char (*um_eq)(fptr, fptr) = fptr_eq;
 
 #define UM_DEFAULT(...) {__VA_ARGS__}
 #define UM_CASE(fp, ...)                                                       \
-  if (um_eq(um_from(fp), __temp)) {                                            \
+  if (um_eq(fp_from(fp), __temp)) {                                            \
     __VA_ARGS__                                                                \
   } else
 #define UM_SWITCH(fp, ...)                                                     \
   do {                                                                         \
-    um_fp __temp = fp;                                                         \
+    fptr __temp = fp;                                                          \
     __VA_ARGS__                                                                \
   } while (0)
 
 #ifdef __cplusplus
-inline bool operator==(const um_fp &a, const um_fp &b) { return um_eq(a, b); }
-inline bool operator!=(const um_fp &a, const um_fp &b) { return !um_eq(a, b); }
+inline bool operator==(const fptr &a, const fptr &b) { return um_eq(a, b); }
+inline bool operator!=(const fptr &a, const fptr &b) { return !um_eq(a, b); }
 #endif
 
-#define nullUmf ((um_fp){.ptr = (uint8_t *)NULL, .width = 0})
+#define nullUmf ((fptr){.ptr = (uint8_t *)NULL, .width = 0})
+#define nullFptr ((fptr){.ptr = (uint8_t *)NULL, .width = 0})
+#define nullFFptr ((ffptr){.ptr = (uint8_t *)NULL, .width = 0, .capacity = 0})
 
 #define um_block(var)                                                          \
-  ((um_fp){.ptr = (uint8_t *)(typeof(var)[1]){var},                            \
-           .width = sizeof(typeof(var))})
+  ((fptr){.ptr = (uint8_t *)(typeof(var)[1]){var},                             \
+          .width = sizeof(typeof(var))})
 #define um_blockT(type, ...)                                                   \
-  ((um_fp){.ptr = (uint8_t *)(type[1]){__VA_ARGS__}, .width = sizeof(type)})
+  ((fptr){.ptr = (uint8_t *)(type[1]){__VA_ARGS__}, .width = sizeof(type)})
 
 #ifndef __cplusplus
-#define um_fromP(ref, size) ((um_fp){.ptr = ref, .width = size})
-#define um_from(val)                                                           \
-  _Generic((val),                                                              \
-      um_fp: val,                                                              \
-      default: ((um_fp){.ptr = ((uint8_t *)val), .width = strlen(val)}))
+
+#define is_comparr(x)                                                          \
+  (!__builtin_types_compatible_p(__typeof__(x), __typeof__(&(x)[0])))
+#define fp_fromP(ref, size) ((fptr){.ptr = ref, .width = size})
+#define fp_from(val)                                                           \
+  _Generic(&(val),                                                             \
+      fptr *: *(fptr *)&(val),                                                 \
+      ffptr *: ((fptr){                                                        \
+                 .ptr = ((ffptr *)&(val))->ptr,                                \
+                 .width = ((ffptr *)&(val))->width,                            \
+             }),                                                               \
+      default: ((fptr){                                                        \
+          .ptr = (uint8_t *)(val),                                             \
+          .width = (is_comparr(val) ? sizeof(val) - 1                          \
+                                    : strlen((const char *)(val))),            \
+      }))
+
 #else
 #include <cstdint>
 #include <cstring>
 #include <string>
-template <typename T> inline um_fp um_from(T &val) {
+template <typename T> inline fptr fp_from(T &val) {
   return {reinterpret_cast<uint8_t *>(&val), sizeof(T)};
 }
-// inline um_fp um_from(std::string &s) {
+// inline fptr fp_from(std::string &s) {
 //   return {reinterpret_cast<uint8_t *>(s.data()), s.size()};
 // }
-inline um_fp um_from(um_fp u) { return u; }
-inline um_fp um_from(const std::string &s) {
+inline fptr fp_from(fptr u) { return u; }
+inline fptr fp_from(const std::string &s) {
   return {const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(s.data())),
           s.size()};
 }
-inline um_fp um_from(const char *s) {
+inline fptr fp_from(const char *s) {
   return {const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(s)),
           std::strlen(s)};
 }
-template <size_t N> inline um_fp um_from(const char (&s)[N]) {
+template <size_t N> inline fptr fp_from(const char (&s)[N]) {
   return {const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(s)), N - 1};
 }
 

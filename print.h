@@ -37,7 +37,7 @@
 #endif
 
 typedef void (*outputFunction)(const char *, unsigned int length, char flush);
-typedef void (*printerFunction)(outputFunction, const void *, um_fp args);
+typedef void (*printerFunction)(outputFunction, const void *, fptr args);
 
 #ifndef OVERRIDE_DEFAULT_PRINTER
 #include <stdio.h>
@@ -69,7 +69,7 @@ extern outputFunction defaultPrinter;
 #define tlocal _Thread_local
 #endif
 static tlocal size_t snPlace = 0;
-static tlocal um_fp snBuff = nullUmf;
+static tlocal fptr snBuff = nullUmf;
 static void snPrint(const char *c, unsigned int length, char flush) {
   (void)flush;
   size_t start = snPlace;
@@ -88,20 +88,20 @@ static void PrinterSingleton_init() {
   PrinterSingleton.data = HMap_new(&defaultAllocator, 20);
 }
 static void PrinterSingleton_deinit() { HMap_free(PrinterSingleton.data); }
-static void PrinterSingleton_append(um_fp name, printerFunction function) {
+static void PrinterSingleton_append(fptr name, printerFunction function) {
   HMap_set(PrinterSingleton.data, name,
-           (um_fp){
+           (fptr){
                .ptr = (uint8_t *)(void *)REF(printerFunction, function),
                .width = sizeof(printerFunction),
            });
 }
 static printerFunction lastprinters[2] = {NULL, NULL};
-static um_fp lastnames[2] = {nullUmf, nullUmf};
+static fptr lastnames[2] = {nullUmf, nullUmf};
 static char lasttick = 0;
-static printerFunction PrinterSingleton_get(um_fp name) {
-  if (!um_fp_cmp(name, lastnames[lasttick])) {
+static printerFunction PrinterSingleton_get(fptr name) {
+  if (!fptr_cmp(name, lastnames[lasttick])) {
     return lastprinters[lasttick];
-  } else if (!um_fp_cmp(name, lastnames[!lasttick])) {
+  } else if (!fptr_cmp(name, lastnames[!lasttick])) {
     return lastprinters[!lasttick];
   }
   struct HMap_both both = HMap_getBoth(PrinterSingleton.data, name);
@@ -118,10 +118,10 @@ static printerFunction PrinterSingleton_get(um_fp name) {
 // arg utils
 // clang-format off
 
-  unsigned int printer_arg_indexOf(um_fp string, char c);
-  um_fp printer_arg_until(char delim, um_fp string) ;
-  um_fp printer_arg_after(char delim, um_fp slice) ;
-  um_fp printer_arg_trim(um_fp in) ;
+  unsigned int printer_arg_indexOf(fptr string, char c);
+  fptr printer_arg_until(char delim, fptr string) ;
+  fptr printer_arg_after(char delim, fptr slice) ;
+  fptr printer_arg_trim(fptr in) ;
 
 // clang-format on
 
@@ -131,24 +131,24 @@ static printerFunction PrinterSingleton_get(um_fp name) {
 #define PUTS(characters, length) put(characters, length, 0)
 #define REGISTER_PRINTER(T, ...)                                               \
   [[gnu::weak]] void GETTYPEPRINTERFN(T)(outputFunction put,                   \
-                                         const void *_v_in_ptr, um_fp args) {  \
+                                         const void *_v_in_ptr, fptr args) {   \
     (void)args;                                                                \
     T in = *(T *)_v_in_ptr;                                                    \
     __VA_ARGS__                                                                \
   }                                                                            \
   [[gnu::constructor(201)]] static void register_##T() {                       \
-    um_fp key = (um_fp){.ptr = (uint8_t *)#T, .width = sizeof(#T) - 1};        \
+    fptr key = (fptr){.ptr = (uint8_t *)#T, .width = sizeof(#T) - 1};          \
     PrinterSingleton_append(key, GETTYPEPRINTERFN(T));                         \
   }
 
 #define REGISTER_SPECIAL_PRINTER_NEEDID(id, str, type, ...)                    \
   [[gnu::weak]] void id(outputFunction put, const void *_v_in_ptr,             \
-                        um_fp args) {                                          \
+                        fptr args) {                                           \
     type in = *(type *)_v_in_ptr;                                              \
     __VA_ARGS__                                                                \
   }                                                                            \
   [[gnu::constructor(202)]] static void UNIQUE_PRINTER_FN2() {                 \
-    um_fp key = (um_fp){.ptr = (uint8_t *)str, .width = strlen(str)};          \
+    fptr key = (fptr){.ptr = (uint8_t *)str, .width = strlen(str)};            \
     PrinterSingleton_append(key, id);                                          \
   }
 
@@ -158,12 +158,12 @@ static printerFunction PrinterSingleton_get(um_fp name) {
 #define USENAMEDPRINTER(strname, val)                                          \
   print_f_helper(                                                              \
       (struct print_arg){.ref = REF(typeof(val), val), .name = nullUmf},       \
-      printer_arg_trim(printer_arg_until(':', um_from(strname))), put,         \
-      printer_arg_after(':', um_from(strname)));
+      printer_arg_trim(printer_arg_until(':', fp_from(strname))), put,         \
+      printer_arg_after(':', fp_from(strname)));
 #define PRINTERARGSEACH(...)                                                   \
-  um_fp tempargs = printer_arg_trim(args);                                     \
+  fptr tempargs = printer_arg_trim(args);                                      \
   while (tempargs.width) {                                                     \
-    um_fp arg = printer_arg_until(' ', tempargs);                              \
+    fptr arg = printer_arg_until(' ', tempargs);                               \
     __VA_ARGS__                                                                \
     tempargs = printer_arg_after(' ', tempargs);                               \
     tempargs = printer_arg_trim(tempargs);                                     \
@@ -171,8 +171,8 @@ static printerFunction PrinterSingleton_get(um_fp name) {
 
 #define REGISTER_ALIASED_PRINTER(realtype, alias)                              \
   [[gnu::constructor(201)]] static void register__##alias() {                  \
-    um_fp key = (um_fp){.ptr = (uint8_t *)EXPAND_AND_STRINGIFY(alias),         \
-                        .width = sizeof(EXPAND_AND_STRINGIFY(alias)) - 1};     \
+    fptr key = (fptr){.ptr = (uint8_t *)EXPAND_AND_STRINGIFY(alias),           \
+                      .width = sizeof(EXPAND_AND_STRINGIFY(alias)) - 1};       \
     uint8_t *refFn =                                                           \
         (uint8_t *)(void *)REF(printerFunction, GETTYPEPRINTERFN(realtype));   \
     PrinterSingleton_append(key, GETTYPEPRINTERFN(realtype));                  \
@@ -180,7 +180,7 @@ static printerFunction PrinterSingleton_get(um_fp name) {
 
 struct print_arg {
   void *ref;
-  um_fp name;
+  fptr name;
 };
 // clang-format off
 
@@ -197,7 +197,7 @@ struct print_arg {
 // to keep output consistant, but that makes it recursive
 // 
 // you can pass args with a printerid and a colon 
-// ex: "um_fp<void>: c0 length"
+// ex: "fptr<void>: c0 length"
 //
 // #include "printer/genericName.h"
 // MAKE_PRINT_ARG_TYPE(size_t);
@@ -206,7 +206,7 @@ struct print_arg {
 // MAKE_PRINT_ARG_TYPE(size_t);
 // does the same in cpp
 
-  REGISTER_PRINTER(um_fp, {
+  REGISTER_PRINTER(fptr, {
     if (in.ptr) { PUTS((char *)in.ptr, in.width); } else { PUTS("__NULLUMF__", 11); }
   });
   typedef void *void_ptr;
@@ -300,7 +300,7 @@ struct print_arg {
       l /= 10;
     }
   });
-  REGISTER_SPECIAL_PRINTER("um_fp<void>", um_fp, {
+  REGISTER_SPECIAL_PRINTER("fptr<void>", fptr, {
       const char *hex_chars = "0123456789abcdef";
       char cut0s = 0;
       char useLength = 0;
@@ -374,7 +374,7 @@ struct print_arg {
 
 MAKE_PRINT_ARG_TYPE(int);
 #include "printer/genericName.h"
-MAKE_PRINT_ARG_TYPE(um_fp);
+MAKE_PRINT_ARG_TYPE(fptr);
 #include "printer/genericName.h"
 MAKE_PRINT_ARG_TYPE(size_t);
 #include "printer/genericName.h"
@@ -388,12 +388,12 @@ MAKE_PRINT_ARG_TYPE(double);
 #include "printer/genericName.h"
 MAKE_PRINT_ARG_TYPE(char);
 
-// clang-format off
 #define MAKE_PRINT_ARG(a)                                                      \
-  ((struct print_arg){.ref = REF(typeof(a), a),                                \
-                      .name = ((um_fp){.ptr=(uint8_t*)GENERIC_NAME(a),.width=sizeof(GENERIC_NAME(a))-1} )})
+  ((struct print_arg){                                                         \
+      .ref = REF(typeof(a), a),                                                \
+      .name = fp_from(GENERIC_NAME(a)),                                        \
+  })
 
-// clang-format on
 #else
 template <typename T> constexpr const char *type_name_cstr() { return ""; }
 
@@ -401,7 +401,7 @@ template <typename T> constexpr const char *type_name_cstr() { return ""; }
   template <> constexpr const char *type_name_cstr<type>() { return #type; }
 
 MAKE_PRINT_ARG_TYPE(int);
-MAKE_PRINT_ARG_TYPE(um_fp);
+MAKE_PRINT_ARG_TYPE(fptr);
 MAKE_PRINT_ARG_TYPE(char);
 MAKE_PRINT_ARG_TYPE(size_t);
 MAKE_PRINT_ARG_TYPE(void_ptr);
@@ -412,18 +412,18 @@ MAKE_PRINT_ARG_TYPE(double);
 #define MAKE_PRINT_ARG(a)                                                      \
   ((struct print_arg){                                                         \
       .ref = REF(typeof(a), a),                                                \
-      .name = um_from(type_name_cstr<std::decay_t<decltype(a)>>())})
+      .name = fp_from(type_name_cstr<std::decay_t<decltype(a)>>())})
 #endif
 #define EMPTY_PRINT_ARG ((struct print_arg){.ref = NULL, .name = nullUmf})
 
-void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
-                    um_fp args);
+void print_f_helper(struct print_arg p, fptr typeName, outputFunction put,
+                    fptr args);
 
-void print_f(outputFunction put, um_fp fmt, ...);
+void print_f(outputFunction put, fptr fmt, ...);
 
 #define print_wf(print, fmt, ...)                                              \
   print_f(print,                                                               \
-          um_from("" fmt) __VA_OPT__(, APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)),  \
+          fp_from("" fmt) __VA_OPT__(, APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)),  \
           EMPTY_PRINT_ARG)
 #define println_wf(printerfunction, fmt, ...)                                  \
   print_wf(printerfunction, fmt "\n", __VA_ARGS__)
@@ -453,7 +453,7 @@ void print_f(outputFunction put, um_fp fmt, ...);
   println("list of printer type names: ");
   HMap_innertype *metas = PrinterSingleton.data->metadata;
   for (int i = 0; i < PrinterSingleton.data->metaSize; i++) {
-    um_fp key = stringList_get(PrinterSingleton.data->KVs, metas[i].index);
+    fptr key = stringList_get(PrinterSingleton.data->KVs, metas[i].index);
     if (metas[i].hasindex) {
       println(" ${}", key);
       if (metas[i].hasnext) {
@@ -462,8 +462,7 @@ void print_f(outputFunction put, um_fp fmt, ...);
                                           h->next);
 
         while (h->hasindex) {
-          um_fp key =
-              stringList_get(PrinterSingleton.data->KVs, metas[i].index);
+          fptr key = stringList_get(PrinterSingleton.data->KVs, metas[i].index);
           println("   ${}",
                   stringList_get(PrinterSingleton.data->KVs, h->index));
 
@@ -491,7 +490,7 @@ void print_f(outputFunction put, um_fp fmt, ...);
 #endif
 
 #ifdef PRINTER_C
-inline unsigned int printer_arg_indexOf(um_fp string, char c) {
+inline unsigned int printer_arg_indexOf(fptr string, char c) {
   int i;
   char *ptr = (char *)string.ptr;
   for (i = 0; i < string.width && ptr[i] != c; i++)
@@ -499,7 +498,7 @@ inline unsigned int printer_arg_indexOf(um_fp string, char c) {
   return i;
 }
 
-inline um_fp printer_arg_until(char delim, um_fp string) {
+inline fptr printer_arg_until(char delim, fptr string) {
   size_t i = 0;
   uint8_t *ptr = (uint8_t *)string.ptr;
   while (i < string.width && ptr[i] != delim)
@@ -508,7 +507,7 @@ inline um_fp printer_arg_until(char delim, um_fp string) {
   return string;
 }
 
-inline um_fp printer_arg_after(char delim, um_fp slice) {
+inline fptr printer_arg_after(char delim, fptr slice) {
   size_t i = 0;
   uint8_t *ptr = slice.ptr;
   while (i < slice.width && ptr[i] != delim)
@@ -518,8 +517,8 @@ inline um_fp printer_arg_after(char delim, um_fp slice) {
   slice.width -= i;
   return slice;
 }
-inline um_fp printer_arg_trim(um_fp in) {
-  um_fp res = in;
+inline fptr printer_arg_trim(fptr in) {
+  fptr res = in;
   int front = 0;
   int back = in.width - 1;
   while (front < in.width && ((uint8_t *)in.ptr)[front] == ' ') {
@@ -528,31 +527,31 @@ inline um_fp printer_arg_trim(um_fp in) {
   while (back > front && ((uint8_t *)in.ptr)[front] == ' ') {
     back--;
   }
-  res = (um_fp){
+  res = (fptr){
       .ptr = in.ptr + front,
       .width = (size_t)(back - front + 1),
   };
   return res;
 }
 
-void print_f_helper(struct print_arg p, um_fp typeName, outputFunction put,
-                    um_fp args) {
+void print_f_helper(struct print_arg p, fptr typeName, outputFunction put,
+                    fptr args) {
   void *ref = p.ref;
   if (!typeName.width) {
     typeName = p.name;
   }
   printerFunction fn = PrinterSingleton_get(typeName);
   if (!fn) {
-    USETYPEPRINTER(um_fp, um_from("__ NO_TYPE("));
-    USETYPEPRINTER(um_fp, typeName);
-    USETYPEPRINTER(um_fp, um_from(") __"));
+    USETYPEPRINTER(fptr, fp_from("__ NO_TYPE("));
+    USETYPEPRINTER(fptr, typeName);
+    USETYPEPRINTER(fptr, fp_from(") __"));
   } else {
     fn(put, ref, args);
   }
 }
 
 #define um_charArr(um) ((char *)(um.ptr))
-void print_f(outputFunction put, const um_fp fmt, ...) {
+void print_f(outputFunction put, const fptr fmt, ...) {
   va_list l;
   va_start(l, fmt);
   char check = 0;
@@ -570,16 +569,16 @@ void print_f(outputFunction put, const um_fp fmt, ...) {
         unsigned int j;
         for (j = i + 1; j < fmt.width && um_charArr(fmt)[j] != '}'; j++)
           ;
-        um_fp typeName = {.ptr = ((uint8_t *)fmt.ptr) + i + 1,
-                          .width = j - i - 1};
+        fptr typeName = {.ptr = ((uint8_t *)fmt.ptr) + i + 1,
+                         .width = j - i - 1};
         struct print_arg assumedName = va_arg(l, struct print_arg);
         if (!assumedName.ref) {
           va_end(l);
           return put("__ NO ARGUMENT PROVIDED, ENDING PRINT __\n", 41, 1);
         }
 
-        um_fp tname = printer_arg_until(':', typeName);
-        um_fp parseargs = printer_arg_after(':', typeName);
+        fptr tname = printer_arg_until(':', typeName);
+        fptr parseargs = printer_arg_after(':', typeName);
         tname = printer_arg_trim(tname);
         print_f_helper(assumedName, tname, put, parseargs);
         i = j;
