@@ -28,7 +28,6 @@ typedef struct {
 } stringListView;
 
 stringList *stringList_new(const My_allocator *);
-// returns null if over limit
 fptr stringList_get(stringList *l, unsigned int index);
 ffptr stringList_getExt(stringList *l, unsigned int index);
 void stringList_insert(stringList *l, fptr, unsigned int index);
@@ -45,7 +44,7 @@ static inline stringListView stringList_tobuf(stringList *l) {
                 List_headArea(&(l->List_char)) + sizeof(size_t);
   size_t metalength = l->List_stringMetaData.length;
   fptr res = {.ptr = (uint8_t *)aAlloc(l->List_char.allocator, area),
-               .width = area};
+              .width = area};
 
   uint8_t *use = res.ptr;
   advance(use, &metalength, sizeof(size_t));
@@ -148,11 +147,11 @@ stringList *stringList_new(const My_allocator *allocator) {
 
 fptr stringList_get(stringList *l, unsigned int index) {
   if (index >= l->List_stringMetaData.length)
-    return nullUmf;
+    return nullFptr;
   stringMetaData thisS =
       mList_get(&(l->List_stringMetaData), stringMetaData, index);
   return ((fptr){.ptr = (uint8_t *)(List_getRef(&(l->List_char), thisS.index)),
-                  .width = thisS.width});
+                 .width = thisS.width});
 }
 ffptr stringList_getExt(stringList *l, unsigned int index) {
   if (index >= l->List_stringMetaData.length)

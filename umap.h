@@ -293,7 +293,7 @@ UMapList *UMapList_new(const My_allocator *allocator) {
 
 fptr UMap_getValAtKey(UMap *map, fptr key) {
   unsigned int index = UMap_binarySearch(map, key);
-  fptr res = nullUmf;
+  fptr res = nullFptr;
   fptr temp = UMap_getKeyAtIndex(map, index);
   int cmp = fptr_cmp(key, temp);
   if (!cmp) {
@@ -342,7 +342,7 @@ unsigned int UMap_set(UMap *map, fptr key, fptr val) {
 };
 unsigned int UMapList_set(UMapList *map, unsigned int index, fptr val) {
   while (index >= map->metadata->length) {
-    stringList_append(map->vals, nullUmf);
+    stringList_append(map->vals, nullFptr);
     mList_add(map->metadata, UMap_innertype, NORMAL);
   }
   stringList_set(map->vals, val, index);
@@ -452,7 +452,7 @@ fptr UMapView_getValAtIndex(UMapView map, unsigned int index) {
 
 fptr UMapView_getValAtKey(UMapView map, fptr key) {
   unsigned int index = UMapView_binarySearch(map, key);
-  fptr res = nullUmf;
+  fptr res = nullFptr;
   int cmp = fptr_cmp(key, UMapView_getKeyAtIndex(map, index));
   if (!cmp) {
     res = stringListView_get(UMapView_getVals(map), index);

@@ -52,6 +52,16 @@ static int (*um_fp_cmp)(const fptr, const fptr) = fptr_cmp;
 
 static char fptr_eq(fptr a, fptr b) { return !um_fp_cmp(a, b); }
 static char (*um_eq)(fptr, fptr) = fptr_eq;
+#define structEq(a, b)                                                         \
+  (fptr_eq(                                                                    \
+      (fptr){                                                                  \
+          .ptr = (uint8_t *)(&(a)),                                            \
+          .width = sizeof(a),                                                  \
+      },                                                                       \
+      (fptr){                                                                  \
+          .ptr = (uint8_t *)(&(b)),                                            \
+          .width = sizeof(b),                                                  \
+      }))
 
 #define UM_DEFAULT(...) {__VA_ARGS__}
 #define UM_CASE(fp, ...)                                                       \
@@ -78,6 +88,7 @@ inline bool operator!=(const fptr &a, const fptr &b) { return !um_eq(a, b); }
           .width = sizeof(typeof(var))})
 #define um_blockT(type, ...)                                                   \
   ((fptr){.ptr = (uint8_t *)(type[1]){__VA_ARGS__}, .width = sizeof(type)})
+#define ffp_convert(val) ((fptr){.ptr = val.ptr, .width = val.width})
 
 #ifndef __cplusplus
 
@@ -90,7 +101,6 @@ inline bool operator!=(const fptr &a, const fptr &b) { return !um_eq(a, b); }
       .width =                                                                 \
           (is_comparr(val) ? sizeof(val) - 1 : strlen((const char *)(val))),   \
   })
-#define ffp_convert(val) ((fptr){.ptr = val.ptr,.width=val.width})
 
 #else
 #include <cstdint>

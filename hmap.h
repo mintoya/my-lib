@@ -167,7 +167,7 @@ fptr HMap_get(HMap *map, fptr key) {
       return stringList_get(map->KVs, ht->index + 1);
     }
     if (!ht->hasnext)
-      return nullUmf;
+      return nullFptr;
     ht = (HMap_innertype *)List_getRef(map->links, ht->next);
   }
 }
@@ -182,7 +182,7 @@ struct HMap_both HMap_getBoth(HMap *map, fptr key) {
       };
     }
     if (!ht->hasnext)
-      return (struct HMap_both){nullUmf, nullUmf};
+      return (struct HMap_both){nullFptr, nullFptr};
     ht = (HMap_innertype *)List_getRef(map->links, ht->next);
   }
 }
