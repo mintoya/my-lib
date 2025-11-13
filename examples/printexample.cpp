@@ -1,7 +1,7 @@
 #define PRINTER_LIST_TYPENAMES
-#include "my-list.hpp"
-#include "print.h"
-#include "wheels.h"
+#include "../my-list.hpp"
+#include "../print.h"
+#include "../wheels.h"
 typedef struct {
   double x;
   double y;
@@ -15,7 +15,7 @@ REGISTER_PRINTER(point, {
   PUTS("}", 1);
 })
 
-#include "printer/genericName.h" // unnececary in cpp
+#include "../printer/genericName.h" // unnececary in cpp
 MAKE_PRINT_ARG_TYPE(point);
 
 int main() {

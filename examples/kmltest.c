@@ -1,10 +1,10 @@
 #define PRINTER_LIST_TYPENAMES
-#include "allocator.h"
-#include "kmlM.h"
-#include "my-list.h"
-#include "print.h"
-#include "umap.h"
-#include "wheels.h"
+#include "../allocator.h"
+#include "../kmlM.h"
+#include "../my-list.h"
+#include "../print.h"
+#include "../umap.h"
+#include "../wheels.h"
 
 List *buffer = NULL;
 

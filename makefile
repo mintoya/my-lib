@@ -1,9 +1,9 @@
-CC = clang
+CC = gcc
 DIR = build
 # CFLAGS = -w -O3
 CFLAGS = -fsanitize=address -g -O0 -w
 
-OBJECTS = ./alloctest.c
+OBJECTS = ./examples/alloctest.c
 
 UNAME_S := $(shell uname -s 2>/dev/null)
 

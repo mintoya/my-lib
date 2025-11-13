@@ -1,7 +1,7 @@
 #define PRINTER_LIST_TYPENAMES
-#include "macroList.h"
-#include "print.h"
-#include "wheels.h"
+#include "../macroList.h"
+#include "../print.h"
+#include "../wheels.h"
 typedef struct {
   double x;
   double y;
@@ -15,7 +15,7 @@ REGISTER_PRINTER(point, {
   PUTS("}", 1);
 })
 
-#include "printer/genericName.h" // advances typenaems
+#include "../printer/genericName.h" // advances typenaems
 MAKE_PRINT_ARG_TYPE(point);
 
 MList_typeDef(point);

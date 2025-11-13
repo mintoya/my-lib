@@ -68,15 +68,14 @@ extern outputFunction defaultPrinter;
 #else
 #define tlocal _Thread_local
 #endif
-static tlocal size_t snPlace = 0;
-static tlocal fptr snBuff = nullUmf;
+static tlocal ffptr snBuff = nullFFptr;
 static void snPrint(const char *c, unsigned int length, char flush) {
   (void)flush;
-  size_t start = snPlace;
-  size_t end = snPlace + length;
-  end = end > snBuff.width ? snBuff.width : end;
-  for (; snPlace < end; snPlace++)
-    snBuff.ptr[snPlace] = c[snPlace - start];
+  size_t start = snBuff.width;
+  size_t end = snBuff.width + length;
+  end = end > snBuff.capacity ? snBuff.capacity : end;
+  for (; snBuff.width < end; snBuff.width++)
+    snBuff.ptr[snBuff.width] = c[snBuff.width - start];
 }
 static outputFunction snPrinter = snPrint;
 
@@ -433,15 +432,11 @@ void print_f(outputFunction put, fptr fmt, ...);
 #include <assert.h>
 #define print_sn(charUm, fmt, ...)                                             \
   do {                                                                         \
-    assert(!snPlace && !snBuff.ptr && !snBuff.width &&                         \
-           "dont call this recursivley");                                      \
-    snPlace = 0;                                                               \
+    assert(!snBuff.ptr && "dont call this recursivley");                       \
     snBuff = charUm;                                                           \
     print_wf(snPrinter, fmt, __VA_ARGS__);                                     \
-    if (snPlace < snBuff.width)                                                \
-      snBuff.ptr[snPlace] = 0;                                                 \
-    snPlace = 0;                                                               \
-    snBuff = nullUmf;                                                          \
+    charUm = snBuff;                                                           \
+    snBuff = nullFFptr;                                                        \
   } while (0)
 
 #ifdef PRINTER_LIST_TYPENAMES

@@ -81,21 +81,16 @@ inline bool operator!=(const fptr &a, const fptr &b) { return !um_eq(a, b); }
 
 #ifndef __cplusplus
 
+#define fp_fromP(ref, size) ((fptr){.ptr = ref, .width = size})
 #define is_comparr(x)                                                          \
   (!__builtin_types_compatible_p(__typeof__(x), __typeof__(&(x)[0])))
-#define fp_fromP(ref, size) ((fptr){.ptr = ref, .width = size})
 #define fp_from(val)                                                           \
-  _Generic(&(val),                                                             \
-      fptr *: *(fptr *)&(val),                                                 \
-      ffptr *: ((fptr){                                                        \
-                 .ptr = ((ffptr *)&(val))->ptr,                                \
-                 .width = ((ffptr *)&(val))->width,                            \
-             }),                                                               \
-      default: ((fptr){                                                        \
-          .ptr = (uint8_t *)(val),                                             \
-          .width = (is_comparr(val) ? sizeof(val) - 1                          \
-                                    : strlen((const char *)(val))),            \
-      }))
+  ((fptr){                                                                     \
+      .ptr = (uint8_t *)(val),                                                 \
+      .width =                                                                 \
+          (is_comparr(val) ? sizeof(val) - 1 : strlen((const char *)(val))),   \
+  })
+#define ffp_convert(val) ((fptr){.ptr = val.ptr,.width=val.width})
 
 #else
 #include <cstdint>
