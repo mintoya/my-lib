@@ -30,27 +30,27 @@ static inline size_t HMap_footprint(HMap *hm) {
 #include <stdint.h>
 #include <string.h>
 
-// #TODO maybe add this submodule
+// #TODO 
 // redeculously faster
-#include "komihash/komihash.h"
-__attribute__((pure)) static inline unsigned int HMap_hash(um_fp str) {
-  return komihash(str.ptr, str.width, 6767);
-}
-// static const intmax_t HMap_h = (0x67676141420);
-// __attribute__((pure)) static unsigned int HMap_hash(um_fp str) {
-//   intmax_t h = HMap_h;
-//   size_t arrLength = (str.width) / sizeof(uintptr_t);
-//   size_t rest = str.width % sizeof(uintptr_t);
-//   for (size_t i = 0; i < arrLength; i++) {
-//     intmax_t t;
-//     memcpy(&t, str.ptr + (i * sizeof(uintptr_t)), sizeof(uintptr_t));
-//     h = (h << 2) ^ t;
-//   }
-//   for (size_t i = str.width - rest; i < str.width; i++)
-//     h = (h << 2) ^ (str.ptr)[i];
-//   return h;
+// #include "komihash/komihash.h"
+// [[gnu::pure]] static inline unsigned int HMap_hash(um_fp str) {
+//   return komihash(str.ptr, str.width, 6767);
 // }
 
+static const intmax_t HMap_h = (0x67676141420);
+[[gnu::pure]] static inline intmax_t HMap_hash(um_fp str) {
+  intmax_t res = HMap_h;
+  size_t top = str.width / sizeof(intmax_t);
+  intmax_t *starta = (intmax_t *)str.ptr;
+  int resta = top * (sizeof(intmax_t));
+  for (size_t i = 0; i < top; i++) {
+    res ^= (res << 7) + starta[i];
+  }
+  for (size_t i = resta; i < str.width; i++) {
+    res ^= (res << 3) + str.ptr[i];
+  }
+  return res;
+}
 static inline HMap *HMap_new(const My_allocator *allocator, size_t metaSize) {
 
   HMap *res = (HMap *)aAlloc(allocator, sizeof(HMap));
@@ -115,7 +115,7 @@ struct HMap_both {
   um_fp val;
 };
 struct HMap_both HMap_getBoth(HMap *map, um_fp key);
-#define HMap_scoped [[gnu::cleanup(HMap_cleanup_handler)]] HMap 
+#define HMap_scoped [[gnu::cleanup(HMap_cleanup_handler)]] HMap
 
 #endif // HMAP_H
 

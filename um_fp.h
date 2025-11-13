@@ -9,8 +9,8 @@ typedef struct fat_pointer {
   size_t width;
 } um_fp;
 
-#include <string.h>
-inline int um_fp_cmp(const um_fp a, const um_fp b) {
+// #include <string.h>
+static inline int um_fp_cmp(const um_fp a, const um_fp b) {
   int wd = a.width - b.width;
   if (wd) {
     return wd;
@@ -18,20 +18,22 @@ inline int um_fp_cmp(const um_fp a, const um_fp b) {
   if (!a.width) {
     return 0;
   }
-  return
-   memcmp(a.ptr, b.ptr, a.width);
-  // int res = 0;
-  // size_t top = a.width / sizeof(intmax_t);
-  // size_t bottom = a.width % sizeof(intmax_t);
-  // uint8_t *resta = a.ptr + (top * (sizeof(intmax_t)));
-  // uint8_t *restb = b.ptr + (top * (sizeof(intmax_t)));
-  // for (size_t i = 0; i < top && !res; i++)
-  //   res = (a.ptr[i] - b.ptr[i]);
-  // for (size_t i = 0; i < bottom && !res; i++)
-  //   res = (resta[i] - restb[i]);
-  // if (!res)
-  //   return 0;
-  // return (res < 0 ? -1 : 1);
+  // return
+  // memcmp(a.ptr, b.ptr, a.width);
+  int res = 0;
+  size_t top = a.width / sizeof(intmax_t);
+  size_t bottom = a.width % sizeof(intmax_t);
+  intmax_t *starta = (intmax_t *)a.ptr;
+  intmax_t *startb = (intmax_t *)b.ptr;
+  uint8_t *resta = a.ptr + (top * (sizeof(intmax_t)));
+  uint8_t *restb = b.ptr + (top * (sizeof(intmax_t)));
+  for (size_t i = 0; i < top && !res; i++)
+    res = (starta[i] - startb[i]);
+  for (size_t i = 0; i < bottom && !res; i++)
+    res = (resta[i] - restb[i]);
+  if (!res)
+    return 0;
+  return (res < 0 ? -1 : 1);
 }
 
 static char um_eq(um_fp a, um_fp b) { return !um_fp_cmp(a, b); }
