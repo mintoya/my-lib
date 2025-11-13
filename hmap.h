@@ -38,7 +38,7 @@ static inline size_t HMap_footprint(HMap *hm) {
 // }
 
 static const intmax_t HMap_h = (0x67676141420);
-[[gnu::reprducible, gnu::pure]] static inline intmax_t
+[[gnu::reproducible, reproducible, gnu::pure]] static inline intmax_t
 HMap_hash(const um_fp str) {
   intmax_t res = HMap_h;
 

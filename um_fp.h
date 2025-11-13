@@ -31,9 +31,14 @@ static inline int um_fp_cmp(const um_fp a, const um_fp b) {
     res = (starta[i] - startb[i]);
   for (size_t i = 0; i < bottom && !res; i++)
     res = (resta[i] - restb[i]);
+  int result;
   if (!res)
-    return 0;
-  return (res < 0 ? -1 : 1);
+    result = 0;
+  else if (res < 0)
+    result = -1;
+  else
+    result = 1;
+  return result;
 }
 
 static char um_eq(um_fp a, um_fp b) { return !um_fp_cmp(a, b); }

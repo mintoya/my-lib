@@ -28,8 +28,12 @@ static const My_allocator defaultAllocator = {
     .r_alloc = default_r_alloc,
     .arb = NULL,
 };
-#define aAlloc(allocatorptr, size) (allocatorptr->alloc(allocatorptr, size))
+#define aAlloc(allocatorptr, size) ((allocatorptr)->alloc((allocatorptr), size))
+
 #define aRealloc(allocatorptr, voidptr, size)                                  \
-  (allocatorptr->r_alloc(allocatorptr, voidptr, size))
-#define aFree(allocatorptr, voidptr) (allocatorptr->free(allocatorptr, voidptr))
+  ((allocatorptr)->r_alloc((allocatorptr), voidptr, size))
+
+#define aFree(allocatorptr, voidptr)                                           \
+  ((allocatorptr)->free((allocatorptr), voidptr))
+
 #endif // MY_ALLOCATOR_H

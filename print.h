@@ -63,15 +63,27 @@ static outputFunction defaultPrinter = stdoutPrint;
 extern outputFunction defaultPrinter;
 #endif
 
-static
 #ifdef __cplusplus
-    thread_local
+#define tlocal thread_local
 #else
-    _Thread_local
+#define tlocal _Thread_local
 #endif
-    struct {
+static tlocal size_t snPlace = 0;
+static tlocal um_fp snBuff = nullUmf;
+static void snPrint(const char *c, unsigned int length, char flush) {
+  (void)flush;
+  size_t start = snPlace;
+  size_t end = snPlace + length;
+  end = end > snBuff.width ? snBuff.width : end;
+  for (; snPlace < end; snPlace++)
+    snBuff.ptr[snPlace] = c[snPlace - start];
+}
+static outputFunction snPrinter = snPrint;
+
+static tlocal struct {
   HMap *data;
 } PrinterSingleton;
+#undef tlocal
 static void PrinterSingleton_init() {
   PrinterSingleton.data = HMap_new(&defaultAllocator, 20);
 }
@@ -216,6 +228,7 @@ struct print_arg {
   });
   typedef char *char_ptr;
   REGISTER_PRINTER(char_ptr, { while(*in){ PUTS(in,1); in++; } });
+  REGISTER_PRINTER(char, {PUTS(&in,1);});
 
   REGISTER_PRINTER(float, {
     if (in < 0) {
@@ -287,76 +300,68 @@ struct print_arg {
       l /= 10;
     }
   });
-
   REGISTER_SPECIAL_PRINTER("um_fp<void>", um_fp, {
+      const char *hex_chars = "0123456789abcdef";
+      char cut0s = 0;
+      char useLength = 0;
 
-    char cut0s = 0;
-    char useLength = 0;
-    PRINTERARGSEACH({
-      if (um_eq(um_from("c0"), arg)) {
-        cut0s = 1;
-      } else if (um_eq(um_from("length"), arg)) {
-        useLength = 1;
+      PRINTERARGSEACH({
+        UM_SWITCH(arg,{
+          UM_CASE("c0",{cut0s = 1;});
+          UM_CASE("length",{useLength = 1;});
+          UM_DEFAULT();
+        });
+      });
+
+
+      PUTS("<", 1);
+      if (useLength) {
+          USETYPEPRINTER(size_t, in.width);
       }
-    });
+      PUTS("<", 1);
 
+      int zero_count = 0;
+      while (in.width) {
+          uint8_t byte = ((uint8_t *)in.ptr)[in.width - 1];
+          unsigned char top = byte >> 4;
+          unsigned char bottom = byte & 0x0F;
 
-    PUTS("um_fp:", 6);
-    if(useLength){
-      USETYPEPRINTER(size_t, in.width);
-    }else{
-    }
-    PUTS("{", 1);
-    int counter = 0;
-    while (in.width) {
-      uint8_t c = ((uint8_t *)in.ptr)[in.width - 1];
-      unsigned char top = c >> 4;
-      unsigned char bottom = c & 0x0f;
-
-      if (!top && !bottom) {
-        counter += 2;
-      } else if (!bottom) {
-        counter++;
-      } else if (!top) {
-        counter++;
-
-        if (cut0s) {
-          PUTS("(", 1);
-          USETYPEPRINTER(int, counter);
-          PUTS(")", 1);
-        } else {
-          while(counter){
-            counter--;
-            PUTS("0", 1);
+          // Count trailing zeros
+          if (top == 0 && bottom == 0) {
+              zero_count += 2;
+          } else if (top == 0) {
+              zero_count += 1;
+          } else if (bottom == 0) {
+              zero_count += 1;
           }
-        }
-        counter = 0;
+          if (top || bottom) {
+              if (zero_count) {
+                  if (cut0s) {
+                      PUTS("(", 1);
+                      USETYPEPRINTER(int, zero_count);
+                      PUTS(")", 1);
+                  } else {
+                      for (int i = 0; i < zero_count; i++) PUTS("0", 1);
+                  }
+                  zero_count = 0;
+              }
+              if (top) PUTS(&hex_chars[top], 1);
+              if (bottom) PUTS(&hex_chars[bottom], 1);
+          }
+
+          in.width--;
+      }
+      if (zero_count) {
+          if (cut0s) {
+              PUTS("(", 1);
+              USETYPEPRINTER(int, zero_count);
+              PUTS(")", 1);
+          } else {
+              for (int i = 0; i < zero_count; i++) PUTS("0", 1);
+          }
       }
 
-      // clang-format off
-      switch (top) {
-       case 0x1: PUTS("1", 1); break;
-        case 0x2: PUTS("2", 1); break; case 0x3: PUTS("3", 1); break;
-        case 0x4: PUTS("4", 1); break; case 0x5: PUTS("5", 1); break;
-        case 0x6: PUTS("6", 1); break; case 0x7: PUTS("7", 1); break;
-        case 0x8: PUTS("8", 1); break; case 0x9: PUTS("9", 1); break;
-        case 0xa: PUTS("a", 1); break; case 0xb: PUTS("b", 1); break;
-        case 0xc: PUTS("c", 1); break; case 0xd: PUTS("d", 1); break;
-        case 0xe: PUTS("e", 1); break; case 0xf: PUTS("f", 1); break;
-      }
-      switch (bottom) {
-        break; case 0x1: PUTS("1", 1); break;
-        case 0x2: PUTS("2", 1); break; case 0x3: PUTS("3", 1); break;
-        case 0x4: PUTS("4", 1); break; case 0x5: PUTS("5", 1); break;
-        case 0x6: PUTS("6", 1); break; case 0x7: PUTS("7", 1); break;
-        case 0x8: PUTS("8", 1); break; case 0x9: PUTS("9", 1); break;
-        case 0xa: PUTS("a", 1); break; case 0xb: PUTS("b", 1); break;
-        case 0xc: PUTS("c", 1); break; case 0xd: PUTS("d", 1); break;
-        case 0xe: PUTS("e", 1); break; case 0xf: PUTS("f", 1); break;
-      }
-      in.width -= sizeof(uint8_t);
-    }
-    PUTS("}", 2);
+      PUTS(">>", 2);
   });
 
 // clang-format on
@@ -380,6 +385,8 @@ MAKE_PRINT_ARG_TYPE(char_ptr);
 MAKE_PRINT_ARG_TYPE(float);
 #include "printer/genericName.h"
 MAKE_PRINT_ARG_TYPE(double);
+#include "printer/genericName.h"
+MAKE_PRINT_ARG_TYPE(char);
 
 // clang-format off
 #define MAKE_PRINT_ARG(a)                                                      \
@@ -422,6 +429,20 @@ void print_f(outputFunction put, um_fp fmt, ...);
   print_wf(printerfunction, fmt "\n", __VA_ARGS__)
 #define print(fmt, ...) print_wf(defaultPrinter, fmt, __VA_ARGS__)
 #define println(fmt, ...) print_wf(defaultPrinter, fmt "\n", __VA_ARGS__)
+
+#include <assert.h>
+#define print_sn(charUm, fmt, ...)                                             \
+  do {                                                                         \
+    assert(!snPlace && !snBuff.ptr && !snBuff.width &&                         \
+           "dont call this recursivley");                                      \
+    snPlace = 0;                                                               \
+    snBuff = charUm;                                                           \
+    print_wf(snPrinter, fmt, __VA_ARGS__);                                     \
+    if (snPlace < snBuff.width)                                                \
+      snBuff.ptr[snPlace] = 0;                                                 \
+    snPlace = 0;                                                               \
+    snBuff = nullUmf;                                                          \
+  } while (0)
 
 #ifdef PRINTER_LIST_TYPENAMES
 [[gnu::constructor(205)]] static void post_init() {

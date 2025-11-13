@@ -71,14 +71,15 @@
 
 #define MList_capacity(list) MList_heapList(list)->size
 
-// if you want to control the scope you have to provide a list pointer
-#define MList_DFInit(list, Listptr)                                            \
-  Listptr = List_new(&defaultAllocator, sizeof(typeof(list.elements[0])));     \
-  List *MList_heapList(list) = Listptr;                                        \
-  list = MList_deconvert((*MList_heapList(list)), list);
+// list is already made
 #define MList_DF(list, type, Listptr)                                          \
   List *MList_heapList(list) = Listptr;                                        \
   MList(type) list;                                                            \
+  list = MList_deconvert((*MList_heapList(list)), list);
+// list is already declared
+#define MList_DFInit(list, allocatorptr, Listptr)                              \
+  Listptr = List_new(allocatorptr, sizeof(typeof(list.elements[0])));          \
+  List *MList_heapList(list) = Listptr;                                        \
   list = MList_deconvert((*MList_heapList(list)), list);
 
 #define MList_fp(list)                                                         \
