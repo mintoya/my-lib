@@ -30,7 +30,7 @@ static inline size_t HMap_footprint(HMap *hm) {
 #include <stdint.h>
 #include <string.h>
 
-// #TODO 
+// #TODO
 // redeculously faster
 // #include "komihash/komihash.h"
 // [[gnu::pure]] static inline unsigned int HMap_hash(um_fp str) {
@@ -38,17 +38,26 @@ static inline size_t HMap_footprint(HMap *hm) {
 // }
 
 static const intmax_t HMap_h = (0x67676141420);
-[[gnu::pure]] static inline intmax_t HMap_hash(um_fp str) {
+[[gnu::reprducible, gnu::pure]] static inline intmax_t
+HMap_hash(const um_fp str) {
   intmax_t res = HMap_h;
-  size_t top = str.width / sizeof(intmax_t);
-  intmax_t *starta = (intmax_t *)str.ptr;
-  int resta = top * (sizeof(intmax_t));
+
+  const size_t width = str.width;
+  const uint8_t *ptr = str.ptr;
+  const intmax_t *starta = (intmax_t *)ptr;
+  size_t top = width / sizeof(intmax_t);
+  size_t resta = top * sizeof(intmax_t);
+
+  // for (size_t i = 0; i < top; i++)
+  //   res ^= (res << 7) + starta[i];
   for (size_t i = 0; i < top; i++) {
-    res ^= (res << 7) + starta[i];
+    intmax_t chunk;
+    memcpy(&chunk, ptr + i * sizeof(intmax_t), sizeof(intmax_t));
+    res ^= (res << 7) + chunk;
   }
-  for (size_t i = resta; i < str.width; i++) {
-    res ^= (res << 3) + str.ptr[i];
-  }
+  for (size_t i = resta; i < width; i++)
+    res ^= (res << 3) + ptr[i];
+
   return res;
 }
 static inline HMap *HMap_new(const My_allocator *allocator, size_t metaSize) {
