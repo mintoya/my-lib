@@ -55,14 +55,11 @@ int main(void) {
   println("allocated area : ${}", arena_footprint(local));
 
   ffptr bufferTest = (ffptr){
-      .ptr = aAlloc(local, 50),
+      .ptr = (uint8_t *)aAlloc(local, 50),
       .width = 0,
       .capacity = 50,
   };
-  print_sn(bufferTest, "he${}lo world ${}", 'l', bufferTest.width);
-  println("${}", ffp_convert(bufferTest));
-  println("${}", ffp_convert(bufferTest).width);
-  print_sn(bufferTest, "lkjskdjfksdfjslfkjslkjflskjksflj");
+  print_sn(bufferTest, "he${}lo world ${}", (char)'l', bufferTest.width);
   println("${}", ffp_convert(bufferTest));
 
   return 0;

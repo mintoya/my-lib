@@ -366,13 +366,13 @@ UMapView UMap_toBuf(UMap *map) {
   fptr keys = kb.raw;
   fptr vals = vb.raw;
   fptr meta = (fptr){
-      .ptr = map->metadata->head,
       .width = List_headArea(map->metadata),
+      .ptr = map->metadata->head,
   };
   size_t finalWidth = keys.width + vals.width + meta.width + 3 * sizeof(size_t);
   fptr res = (fptr){
-      .ptr = (uint8_t *)malloc(finalWidth),
       .width = finalWidth,
+      .ptr = (uint8_t *)malloc(finalWidth),
   };
   uint8_t *ptr = res.ptr;
 
@@ -395,13 +395,13 @@ UMapListView UMapList_toBuf(UMapList *map) {
   stringListView vb = stringList_tobuf(map->vals);
   fptr vals = vb.raw;
   fptr meta = (fptr){
-      .ptr = map->metadata->head,
       .width = List_headArea(map->metadata),
+      .ptr = map->metadata->head,
   };
   size_t finalWidth = vals.width + meta.width + 3 * sizeof(size_t);
   fptr res = (fptr){
-      .ptr = (uint8_t *)malloc(finalWidth),
       .width = finalWidth,
+      .ptr = (uint8_t *)malloc(finalWidth),
   };
   uint8_t *ptr = res.ptr;
 
@@ -429,14 +429,20 @@ stringListView UMapView_getVals(UMapView map) {
   stringListView res;
   size_t *sizes = ((size_t *)map.raw.ptr);
   uint8_t *place = map.raw.ptr + sizeof(size_t) * 3 + sizes[0];
-  res.raw = (fptr){.ptr = place, .width = sizes[1]};
+  res.raw = (fptr){
+      .width = sizes[1],
+      .ptr = place,
+  };
   return res;
 }
 stringListView UMapView_getKeys(UMapView map) {
   stringListView res;
   size_t size = *(size_t *)map.raw.ptr;
   uint8_t *place = map.raw.ptr + sizeof(size_t) * 3;
-  res.raw = (fptr){.ptr = place, .width = size};
+  res.raw = (fptr){
+      .width = size,
+      .ptr = place,
+  };
   return res;
 }
 fptr UMapView_getKeyAtIndex(UMapView map, unsigned int index) {
@@ -510,7 +516,10 @@ stringListView UMapListView_getVals(UMapListView map) {
   stringListView res;
   size_t *sizes = ((size_t *)map.raw.ptr);
   uint8_t *place = map.raw.ptr + sizeof(size_t) * 2;
-  res.raw = (fptr){.ptr = place, .width = sizes[0]};
+  res.raw = (fptr){
+      .width = sizes[0],
+      .ptr = place,
+  };
   return res;
 }
 

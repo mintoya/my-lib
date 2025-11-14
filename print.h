@@ -90,8 +90,8 @@ static void PrinterSingleton_deinit() { HMap_free(PrinterSingleton.data); }
 static void PrinterSingleton_append(fptr name, printerFunction function) {
   HMap_set(PrinterSingleton.data, name,
            (fptr){
-               .ptr = (uint8_t *)(void *)REF(printerFunction, function),
                .width = sizeof(printerFunction),
+               .ptr = (uint8_t *)(void *)REF(printerFunction, function),
            });
 }
 static printerFunction lastprinters[2] = {NULL, NULL};
@@ -136,7 +136,10 @@ static printerFunction PrinterSingleton_get(fptr name) {
     __VA_ARGS__                                                                \
   }                                                                            \
   [[gnu::constructor(201)]] static void register_##T() {                       \
-    fptr key = (fptr){.ptr = (uint8_t *)#T, .width = sizeof(#T) - 1};          \
+    fptr key = (fptr){                                                         \
+        .width = sizeof(#T) - 1,                                               \
+        .ptr = (uint8_t *)#T,                                                  \
+    };                                                                         \
     PrinterSingleton_append(key, GETTYPEPRINTERFN(T));                         \
   }
 
@@ -147,7 +150,10 @@ static printerFunction PrinterSingleton_get(fptr name) {
     __VA_ARGS__                                                                \
   }                                                                            \
   [[gnu::constructor(202)]] static void UNIQUE_PRINTER_FN2() {                 \
-    fptr key = (fptr){.ptr = (uint8_t *)str, .width = strlen(str)};            \
+    fptr key = (fptr){                                                         \
+        .width = strlen(str),                                                  \
+        .ptr = (uint8_t *)str,                                                 \
+    };                                                                         \
     PrinterSingleton_append(key, id);                                          \
   }
 
@@ -156,7 +162,7 @@ static printerFunction PrinterSingleton_get(fptr name) {
 #define USETYPEPRINTER(T, val) GETTYPEPRINTERFN(T)(put, REF(T, val), nullUmf)
 #define USENAMEDPRINTER(strname, val)                                          \
   print_f_helper(                                                              \
-      (struct print_arg){.ref = REF(typeof(val), val), .name = nullUmf},       \
+      (struct print_arg){.ref = REF(typeof(val), val), .name = nullFptr},      \
       printer_arg_trim(printer_arg_until(':', fp_from(strname))), put,         \
       printer_arg_after(':', fp_from(strname)));
 #define PRINTERARGSEACH(...)                                                   \
@@ -170,8 +176,10 @@ static printerFunction PrinterSingleton_get(fptr name) {
 
 #define REGISTER_ALIASED_PRINTER(realtype, alias)                              \
   [[gnu::constructor(201)]] static void register__##alias() {                  \
-    fptr key = (fptr){.ptr = (uint8_t *)EXPAND_AND_STRINGIFY(alias),           \
-                      .width = sizeof(EXPAND_AND_STRINGIFY(alias)) - 1};       \
+    fptr key = (fptr){                                                         \
+        .width = sizeof(EXPAND_AND_STRINGIFY(alias)) - 1,                      \
+        .ptr = (uint8_t *)EXPAND_AND_STRINGIFY(alias),                         \
+    };                                                                         \
     uint8_t *refFn =                                                           \
         (uint8_t *)(void *)REF(printerFunction, GETTYPEPRINTERFN(realtype));   \
     PrinterSingleton_append(key, GETTYPEPRINTERFN(realtype));                  \
@@ -523,8 +531,8 @@ inline fptr printer_arg_trim(fptr in) {
     back--;
   }
   res = (fptr){
-      .ptr = in.ptr + front,
       .width = (size_t)(back - front + 1),
+      .ptr = in.ptr + front,
   };
   return res;
 }
@@ -564,8 +572,10 @@ void print_f(outputFunction put, const fptr fmt, ...) {
         unsigned int j;
         for (j = i + 1; j < fmt.width && um_charArr(fmt)[j] != '}'; j++)
           ;
-        fptr typeName = {.ptr = ((uint8_t *)fmt.ptr) + i + 1,
-                         .width = j - i - 1};
+        fptr typeName = {
+            .width = j - i - 1,
+            .ptr = ((uint8_t *)fmt.ptr) + i + 1,
+        };
         struct print_arg assumedName = va_arg(l, struct print_arg);
         if (!assumedName.ref) {
           va_end(l);

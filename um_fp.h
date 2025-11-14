@@ -5,20 +5,21 @@
 #include <stdint.h>
 
 typedef struct fat_pointer {
-  uint8_t *ptr;
   size_t width;
+  uint8_t *ptr __attribute__((__counted_by__(width)));
 } fptr;
 
 typedef struct {
-  uint8_t *ptr;
   size_t width;
+  uint8_t *ptr __attribute__((__counted_by__(width)));
   size_t capacity;
 } ffptr;
 
 typedef fptr um_fp;
 
 // #include <string.h>
-static inline int fptr_cmp(const fptr a, const fptr b) {
+[[gnu::pure, unsequenced]] static inline int fptr_cmp(const fptr a,
+                                                      const fptr b) {
   int wd = a.width - b.width;
   if (wd) {
     return wd;
@@ -55,12 +56,12 @@ static char (*um_eq)(fptr, fptr) = fptr_eq;
 #define structEq(a, b)                                                         \
   (fptr_eq(                                                                    \
       (fptr){                                                                  \
-          .ptr = (uint8_t *)(&(a)),                                            \
           .width = sizeof(a),                                                  \
+          .ptr = (uint8_t *)(&(a)),                                            \
       },                                                                       \
       (fptr){                                                                  \
-          .ptr = (uint8_t *)(&(b)),                                            \
           .width = sizeof(b),                                                  \
+          .ptr = (uint8_t *)(&(b)),                                            \
       }))
 
 #define UM_DEFAULT(...) {__VA_ARGS__}
@@ -79,27 +80,53 @@ inline bool operator==(const fptr &a, const fptr &b) { return um_eq(a, b); }
 inline bool operator!=(const fptr &a, const fptr &b) { return !um_eq(a, b); }
 #endif
 
-#define nullUmf ((fptr){.ptr = (uint8_t *)NULL, .width = 0})
-#define nullFptr ((fptr){.ptr = (uint8_t *)NULL, .width = 0})
-#define nullFFptr ((ffptr){.ptr = (uint8_t *)NULL, .width = 0, .capacity = 0})
+#define nullUmf                                                                \
+  ((fptr){                                                                     \
+      .width = 0,                                                              \
+      .ptr = (uint8_t *)NULL,                                                  \
+  })
+#define nullFptr                                                               \
+  ((fptr){                                                                     \
+      .width = 0,                                                              \
+      .ptr = (uint8_t *)NULL,                                                  \
+  })
+#define nullFFptr                                                              \
+  ((ffptr){                                                                    \
+      .width = 0,                                                              \
+      .ptr = (uint8_t *)NULL,                                                  \
+      .capacity = 0,                                                           \
+  })
 
 #define um_block(var)                                                          \
-  ((fptr){.ptr = (uint8_t *)(typeof(var)[1]){var},                             \
-          .width = sizeof(typeof(var))})
+  ((fptr){                                                                     \
+      .width = sizeof(typeof(var)),                                            \
+      .ptr = (uint8_t *)(typeof(var)[1]){var},                                 \
+  })
 #define um_blockT(type, ...)                                                   \
-  ((fptr){.ptr = (uint8_t *)(type[1]){__VA_ARGS__}, .width = sizeof(type)})
-#define ffp_convert(val) ((fptr){.ptr = val.ptr, .width = val.width})
+  ((fptr){                                                                     \
+      .width = sizeof(type),                                                   \
+      .ptr = (uint8_t *)(type[1]){__VA_ARGS__},                                \
+  })
+#define ffp_convert(val)                                                       \
+  ((fptr){                                                                     \
+      .width = val.width,                                                      \
+      .ptr = val.ptr,                                                          \
+  })
 
 #ifndef __cplusplus
 
-#define fp_fromP(ref, size) ((fptr){.ptr = ref, .width = size})
+#define fp_fromP(ref, size)                                                    \
+  ((fptr){                                                                     \
+      .ptr = ref,                                                              \
+      .width = size,                                                           \
+  })
 #define is_comparr(x)                                                          \
   (!__builtin_types_compatible_p(__typeof__(x), __typeof__(&(x)[0])))
 #define fp_from(val)                                                           \
   ((fptr){                                                                     \
-      .ptr = (uint8_t *)(val),                                                 \
       .width =                                                                 \
           (is_comparr(val) ? sizeof(val) - 1 : strlen((const char *)(val))),   \
+      .ptr = (uint8_t *)(val),                                                 \
   })
 
 #else
@@ -107,22 +134,32 @@ inline bool operator!=(const fptr &a, const fptr &b) { return !um_eq(a, b); }
 #include <cstring>
 #include <string>
 template <typename T> inline fptr fp_from(T &val) {
-  return {reinterpret_cast<uint8_t *>(&val), sizeof(T)};
+  return {
+      .width = sizeof(T),
+      .ptr = reinterpret_cast<uint8_t *>(&val),
+  };
 }
 // inline fptr fp_from(std::string &s) {
 //   return {reinterpret_cast<uint8_t *>(s.data()), s.size()};
 // }
 inline fptr fp_from(fptr u) { return u; }
 inline fptr fp_from(const std::string &s) {
-  return {const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(s.data())),
-          s.size()};
+  return {
+      .width = s.size(),
+      .ptr = const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(s.data())),
+  };
 }
 inline fptr fp_from(const char *s) {
-  return {const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(s)),
-          std::strlen(s)};
+  return {
+      .width = std::strlen(s),
+      .ptr = const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(s)),
+  };
 }
 template <size_t N> inline fptr fp_from(const char (&s)[N]) {
-  return {const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(s)), N - 1};
+  return {
+      .width = N - 1,
+      .ptr = const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(s)),
+  };
 }
 
 #endif

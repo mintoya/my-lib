@@ -20,17 +20,18 @@ typedef struct List {
 
 List *List_new(const My_allocator *, size_t bytes);
 // valid bytes list owns
-static inline size_t List_headArea(const List *l) {
+[[gnu::pure]] static inline size_t List_headArea(const List *l) {
   return (l->width * l->length);
 }
 // all bytes list owns
-static inline size_t List_fullHeadArea(const List *l) {
+[[gnu::pure]] static inline size_t List_fullHeadArea(const List *l) {
   return (l->width * l->size);
 }
-static inline void *List_getRefForce(const List *l, unsigned int i) {
+[[gnu::pure]] static inline void *List_getRefForce(const List *l,
+                                                   unsigned int i) {
   return (l->head + l->width * i);
 }
-static inline void *List_getRef(const List *l, unsigned int i) {
+[[gnu::pure]] static inline void *List_getRef(const List *l, unsigned int i) {
   void *res;
   res = (i < l->length) ? (l->head + l->width * i) : (NULL);
   return res;
@@ -76,7 +77,7 @@ static inline void List_cleanup_handler(List **l) {
   *l = NULL;
 }
 // experimental idk
-#define List_scoped [[gnu::cleanup(List_cleanup_handler)]] List 
+#define List_scoped [[gnu::cleanup(List_cleanup_handler)]] List
 
 #define mList_forEach(list, type, name, ...)                                   \
   do {                                                                         \

@@ -43,8 +43,10 @@ static inline stringListView stringList_tobuf(stringList *l) {
   size_t area = List_headArea(&(l->List_stringMetaData)) +
                 List_headArea(&(l->List_char)) + sizeof(size_t);
   size_t metalength = l->List_stringMetaData.length;
-  fptr res = {.ptr = (uint8_t *)aAlloc(l->List_char.allocator, area),
-              .width = area};
+  fptr res = {
+      .width = area,
+      .ptr = (uint8_t *)aAlloc(l->List_char.allocator, area),
+  };
 
   uint8_t *use = res.ptr;
   advance(use, &metalength, sizeof(size_t));
@@ -150,8 +152,10 @@ fptr stringList_get(stringList *l, unsigned int index) {
     return nullFptr;
   stringMetaData thisS =
       mList_get(&(l->List_stringMetaData), stringMetaData, index);
-  return ((fptr){.ptr = (uint8_t *)(List_getRef(&(l->List_char), thisS.index)),
-                 .width = thisS.width});
+  return ((fptr){
+      .width = thisS.width,
+      .ptr = (uint8_t *)(List_getRef(&(l->List_char), thisS.index)),
+  });
 }
 ffptr stringList_getExt(stringList *l, unsigned int index) {
   if (index >= l->List_stringMetaData.length)
@@ -159,8 +163,8 @@ ffptr stringList_getExt(stringList *l, unsigned int index) {
   stringMetaData thisS =
       mList_get(&(l->List_stringMetaData), stringMetaData, index);
   return ((ffptr){
-      .ptr = (uint8_t *)(List_getRef(&(l->List_char), thisS.index)),
       .width = thisS.width,
+      .ptr = (uint8_t *)(List_getRef(&(l->List_char), thisS.index)),
       .capacity = thisS._size,
   });
 }
@@ -169,10 +173,11 @@ unsigned int stringList_search(stringList *l, fptr what) {
   unsigned int res = 0;
   unsigned int length = stringList_length(l);
 
-  for (res; res < length; res++) {
+  for (; res < length; res++) {
     fptr thisS = ((um_fp){
+        .width = meta[res].width,
         .ptr = (uint8_t *)List_getRef(&(l->List_char), meta[res].index),
-        .width = meta[res].width});
+    });
     if (um_eq(thisS, what))
       return res;
   }

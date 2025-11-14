@@ -21,9 +21,15 @@ static void arena_free(const My_allocator *allocator, void *ptr) {
   size_t *thisSize = (size_t *)((uint8_t *)ptr - sizeof(size_t));
   ArenaBlock *it = (ArenaBlock *)(allocator->arb);
   for (int i = 0; i < 10; i++) {
-    if (!it->freelist[i] || (*it->freelist[i] < *thisSize)) {
+    if (!it->freelist[i]) {
       it->freelist[i] = thisSize;
-      break;
+      return;
+    }
+  }
+  for (int i = 0; i < 10; i++) {
+    if (*it->freelist[i] < *thisSize) {
+      it->freelist[i] = thisSize;
+      return;
     }
   }
   // noop
