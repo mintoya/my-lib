@@ -4,22 +4,29 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef struct fat_pointer {
-  size_t width;
-  uint8_t *ptr __attribute__((__counted_by__(width)));
-} fptr;
-
 typedef struct {
   size_t width;
-  uint8_t *ptr __attribute__((__counted_by__(width)));
+  uint8_t *ptr;
+} fptr;
+
+struct fatter_pointer {
+  fptr fpart;
   size_t capacity;
+};
+
+typedef union {
+  struct {
+    fptr fpart;
+    size_t capacity;
+  } ffptr;
+  fptr fptr;
 } ffptr;
 
 typedef fptr um_fp;
 
 // #include <string.h>
-[[gnu::pure, unsequenced]] static inline int fptr_cmp(const fptr a,
-                                                      const fptr b) {
+[[gnu::pure]] static inline int fptr_cmp(const fptr a, const fptr b)
+    [[unsequenced]] {
   int wd = a.width - b.width;
   if (wd) {
     return wd;
@@ -80,22 +87,9 @@ inline bool operator==(const fptr &a, const fptr &b) { return um_eq(a, b); }
 inline bool operator!=(const fptr &a, const fptr &b) { return !um_eq(a, b); }
 #endif
 
-#define nullUmf                                                                \
-  ((fptr){                                                                     \
-      .width = 0,                                                              \
-      .ptr = (uint8_t *)NULL,                                                  \
-  })
-#define nullFptr                                                               \
-  ((fptr){                                                                     \
-      .width = 0,                                                              \
-      .ptr = (uint8_t *)NULL,                                                  \
-  })
-#define nullFFptr                                                              \
-  ((ffptr){                                                                    \
-      .width = 0,                                                              \
-      .ptr = (uint8_t *)NULL,                                                  \
-      .capacity = 0,                                                           \
-  })
+#define nullFptr ((fptr){0})
+#define nullUmf nullFptr
+#define nullFFptr ((ffptr){0})
 
 #define um_block(var)                                                          \
   ((fptr){                                                                     \

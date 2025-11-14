@@ -1,7 +1,7 @@
 #ifndef ARENA_ALLOCATOR_H
 #define ARENA_ALLOCATOR_H
 #include "allocator.h"
-#include "print.h"
+// #include "print.h"
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
@@ -17,24 +17,8 @@ typedef struct ArenaBlock {
 
 ArenaBlock *arenablock_new(size_t blockSize);
 void *arena_alloc(const My_allocator *ref, size_t size);
-static void arena_free(const My_allocator *allocator, void *ptr) {
-  size_t *thisSize = (size_t *)((uint8_t *)ptr - sizeof(size_t));
-  ArenaBlock *it = (ArenaBlock *)(allocator->arb);
-  for (int i = 0; i < 10; i++) {
-    if (!it->freelist[i]) {
-      it->freelist[i] = thisSize;
-      return;
-    }
-  }
-  for (int i = 0; i < 10; i++) {
-    if (*it->freelist[i] < *thisSize) {
-      it->freelist[i] = thisSize;
-      return;
-    }
-  }
-  // noop
-}
 void *arena_r_alloc(const My_allocator *arena, void *ptr, size_t size);
+void arena_free(const My_allocator *allocator, void *ptr);
 My_allocator *arena_new(size_t blockSize);
 void arenablock_free(ArenaBlock *block);
 void arena_cleanup(My_allocator *arena);
@@ -68,6 +52,23 @@ void arenablock_free(ArenaBlock *block) {
     aFree((&defaultAllocator), block);
     block = next;
   }
+}
+void arena_free(const My_allocator *allocator, void *ptr) {
+  size_t *thisSize = (size_t *)((uint8_t *)ptr - sizeof(size_t));
+  ArenaBlock *it = (ArenaBlock *)(allocator->arb);
+  for (int i = 0; i < 10; i++) {
+    if (!it->freelist[i]) {
+      it->freelist[i] = thisSize;
+      return;
+    }
+  }
+  for (int i = 0; i < 10; i++) {
+    if (*it->freelist[i] < *thisSize) {
+      it->freelist[i] = thisSize;
+      return;
+    }
+  }
+  // noop
 }
 My_allocator *arena_new(size_t blockSize) {
   My_allocator *res =

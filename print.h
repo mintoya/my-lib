@@ -71,18 +71,21 @@ extern outputFunction defaultPrinter;
 static tlocal ffptr snBuff = nullFFptr;
 static void snPrint(const char *c, unsigned int length, char flush) {
   (void)flush;
-  size_t start = snBuff.width;
-  size_t end = snBuff.width + length;
-  end = end > snBuff.capacity ? snBuff.capacity : end;
-  for (; snBuff.width < end; snBuff.width++)
-    snBuff.ptr[snBuff.width] = c[snBuff.width - start];
+
+  size_t start = snBuff.fptr.width;
+  size_t end1 = snBuff.fptr.width + length;
+  size_t end2 = snBuff.ffptr.capacity;
+  size_t end = end1 < end2 ? end1 : end2;
+
+  for (; start < end; start++)
+    snBuff.fptr.ptr[start] = c[start - snBuff.fptr.width];
+  snBuff.fptr.width = end;
 }
 static outputFunction snPrinter = snPrint;
 
 static tlocal struct {
   HMap *data;
 } PrinterSingleton;
-#undef tlocal
 static void PrinterSingleton_init() {
   PrinterSingleton.data = HMap_new(&defaultAllocator, 20);
 }
@@ -440,13 +443,14 @@ void print_f(outputFunction put, fptr fmt, ...);
 #include <assert.h>
 #define print_sn(charUm, fmt, ...)                                             \
   do {                                                                         \
-    assert(!snBuff.ptr && "dont call this recursivley");                       \
+    assert(!snBuff.fptr.ptr && "dont call this recursivley");                  \
     snBuff = charUm;                                                           \
     print_wf(snPrinter, fmt, __VA_ARGS__);                                     \
     charUm = snBuff;                                                           \
     snBuff = nullFFptr;                                                        \
   } while (0)
 
+#undef tlocal
 #ifdef PRINTER_LIST_TYPENAMES
 [[gnu::constructor(205)]] static void post_init() {
   outputFunction put = defaultPrinter;
@@ -454,11 +458,13 @@ void print_f(outputFunction put, fptr fmt, ...);
         "printer debug\n"
         "==============================\n");
   println("list of printer type names: ");
+  int count = 0;
   HMap_innertype *metas = PrinterSingleton.data->metadata;
   for (int i = 0; i < PrinterSingleton.data->metaSize; i++) {
     fptr key = stringList_get(PrinterSingleton.data->KVs, metas[i].index);
     if (metas[i].hasindex) {
       println(" ${}", key);
+      count++;
       if (metas[i].hasnext) {
         HMap_innertype *h = metas + i;
         h = (HMap_innertype *)List_getRef(PrinterSingleton.data->links,
@@ -468,6 +474,7 @@ void print_f(outputFunction put, fptr fmt, ...);
           fptr key = stringList_get(PrinterSingleton.data->KVs, metas[i].index);
           println("   ${}",
                   stringList_get(PrinterSingleton.data->KVs, h->index));
+          count++;
 
           if (!h->hasnext)
             break;
@@ -482,10 +489,12 @@ void print_f(outputFunction put, fptr fmt, ...);
   }
   println("buckets   : ${}\n"
           "footprint : ${}\n"
+          "types     : ${}\n"
           "collisions: ${}\n"
           "==============================\n",
           (size_t)PrinterSingleton.data->metaSize,
           (size_t)HMap_footprint(PrinterSingleton.data),
+          (size_t)count,
           (int)HMap_countCollisions(PrinterSingleton.data));
 }
 #endif // PRINTER_LIST_TYPENAMES

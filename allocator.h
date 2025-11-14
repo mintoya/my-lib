@@ -6,7 +6,7 @@ typedef struct My_allocator {
   void *(*alloc)(const My_allocator *, size_t);
   void (*free)(const My_allocator *, void *);
   void *(*r_alloc)(const My_allocator *, void *, size_t);
-  void *arb;
+  void *arb; // state
 } My_allocator;
 
 #include <stdlib.h>

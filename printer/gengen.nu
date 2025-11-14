@@ -32,9 +32,11 @@ def main [ammount:int] {
     $filec = $filec + "#endif\n"
 
     $filec = $filec + "#if GENERIC_NAME_N == 1\n"
+    $filec = $filec + "#undef GENERIC_TYPE_1\n"
     $filec = $filec + "#define GENERIC_TYPE_1 GENERIC_ELEMENT(_1____tn)\n"
     for i in 2..$amt {
       $filec = $filec + $"#elif GENERIC_NAME_N == ($i)\n"
+      $filec = $filec + $"#undef GENERIC_TYPE_($i)\n"
       $filec = $filec + $"#define GENERIC_TYPE_($i) GENERIC_ELEMENT\(_($i)____tn\)\n"
     }
     $filec = $filec + "#endif\n"

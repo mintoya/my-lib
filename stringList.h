@@ -163,9 +163,9 @@ ffptr stringList_getExt(stringList *l, unsigned int index) {
   stringMetaData thisS =
       mList_get(&(l->List_stringMetaData), stringMetaData, index);
   return ((ffptr){
-      .width = thisS.width,
-      .ptr = (uint8_t *)(List_getRef(&(l->List_char), thisS.index)),
-      .capacity = thisS._size,
+      .ffptr.fpart.width = thisS.width,
+      .ffptr.fpart.ptr = (uint8_t *)List_getRef(&(l->List_char), thisS.index),
+      .ffptr.capacity = thisS._size,
   });
 }
 unsigned int stringList_search(stringList *l, fptr what) {

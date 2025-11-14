@@ -38,7 +38,8 @@ static inline size_t HMap_footprint(HMap *hm) {
 // }
 
 static const intmax_t HMap_h = (0x67676141420);
-[[gnu::pure, unsequenced]] static inline intmax_t HMap_hash(const fptr str) {
+[[gnu::pure]] static inline intmax_t HMap_hash(const fptr str)
+    [[gnu::unsequenced]] {
   intmax_t res = HMap_h;
 
   const size_t width = str.width;
