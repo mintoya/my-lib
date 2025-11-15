@@ -39,6 +39,29 @@
 typedef void (*outputFunction)(const char *, unsigned int length, char flush);
 typedef void (*printerFunction)(outputFunction, const void *, fptr args);
 
+typedef struct {
+  struct {
+    uint row, col;
+  } pos;
+  struct {
+    uint8_t r, g, b;
+  } fg;
+  struct {
+    uint8_t r, g, b;
+  } bg;
+  unsigned char poset : 1; // set position
+  unsigned char bgset : 1; // enable bg
+  unsigned char fgset : 1; // enable fg
+  unsigned char clear : 1; // clear screen
+  unsigned char reset : 1; // reset effects
+} pEsc;
+typedef pEsc printerEscape;
+#define pEscRst                                                                \
+  ((pEsc){                                                                     \
+      .pos = {0, 0},                                                           \
+      .reset = 1,                                                              \
+      .clear = 1,                                                              \
+  })
 #ifndef OVERRIDE_DEFAULT_PRINTER
 #include <stdio.h>
 static void stdoutPrint(const char *c, unsigned int length, char flush) {
@@ -284,6 +307,17 @@ struct print_arg {
       in *= 10;
     }
   });
+  REGISTER_PRINTER(uint, {
+    int l = 1;
+    while (l <= in / 10)
+      l *= 10;
+    while (l) {
+      char c = in / l + '0';
+      PUTS(&c, 1);
+      in %= l;
+      l /= 10;
+    }
+  });
   REGISTER_PRINTER(int, {
     if (in < 0) {
       PUTS("-", 1);
@@ -374,6 +408,43 @@ struct print_arg {
       PUTS(">>", 2);
   });
 
+
+  REGISTER_PRINTER(pEsc, {
+    if (in.poset) {
+
+      PUTS("\033[", 2);
+      USETYPEPRINTER(uint, in.pos.row);
+      PUTS(";", 1);
+      USETYPEPRINTER(uint, in.pos.col);
+      PUTS("H", 1);
+    }
+    if (in.fgset) {
+      PUTS("\033[38;2;", 7);
+      USETYPEPRINTER(uint, in.fg.r);
+      PUTS(";", 1);
+      USETYPEPRINTER(uint, in.fg.g);
+      PUTS(";", 1);
+      USETYPEPRINTER(uint, in.fg.b);
+      PUTS("m", 1);
+    }
+
+    if (in.bgset) {
+      PUTS("\033[48;2;", 7);
+      USETYPEPRINTER(uint, in.bg.r);
+      PUTS(";", 1);
+      USETYPEPRINTER(uint, in.bg.g);
+      PUTS(";", 1);
+      USETYPEPRINTER(uint, in.bg.b);
+      PUTS("m", 1);
+    }
+    if (in.clear) {
+      PUTS("\033[2J", 4);
+      PUTS("\033[H", 3);
+    }
+    if (in.reset) {
+      PUTS("\033[0m", 4);
+    }
+  });
 // clang-format on
 // type assumption
 
@@ -397,6 +468,10 @@ MAKE_PRINT_ARG_TYPE(float);
 MAKE_PRINT_ARG_TYPE(double);
 #include "printer/genericName.h"
 MAKE_PRINT_ARG_TYPE(char);
+#include "printer/genericName.h"
+MAKE_PRINT_ARG_TYPE(uint);
+#include "printer/genericName.h"
+MAKE_PRINT_ARG_TYPE(pEsc);
 
 #define MAKE_PRINT_ARG(a)                                                      \
   ((struct print_arg){                                                         \
@@ -415,8 +490,10 @@ MAKE_PRINT_ARG_TYPE(fptr);
 MAKE_PRINT_ARG_TYPE(char);
 MAKE_PRINT_ARG_TYPE(size_t);
 MAKE_PRINT_ARG_TYPE(void_ptr);
+MAKE_PRINT_ARG_TYPE(uint);
 MAKE_PRINT_ARG_TYPE(char_ptr);
 MAKE_PRINT_ARG_TYPE(float);
+MAKE_PRINT_ARG_TYPE(pEsc);
 MAKE_PRINT_ARG_TYPE(double);
 
 #define MAKE_PRINT_ARG(a)                                                      \
@@ -493,8 +570,7 @@ void print_f(outputFunction put, fptr fmt, ...);
           "collisions: ${}\n"
           "==============================\n",
           (size_t)PrinterSingleton.data->metaSize,
-          (size_t)HMap_footprint(PrinterSingleton.data),
-          (size_t)count,
+          (size_t)HMap_footprint(PrinterSingleton.data), (size_t)count,
           (int)HMap_countCollisions(PrinterSingleton.data));
 }
 #endif // PRINTER_LIST_TYPENAMES
@@ -562,16 +638,16 @@ void print_f_helper(struct print_arg p, fptr typeName, outputFunction put,
   }
 }
 
-#define um_charArr(um) ((char *)(um.ptr))
 void print_f(outputFunction put, const fptr fmt, ...) {
+  const char *restrict cstr = fmt.ptr;
   va_list l;
   va_start(l, fmt);
   char check = 0;
   for (unsigned int i = 0; i < fmt.width; i++) {
-    switch (um_charArr(fmt)[i]) {
+    switch (cstr[i]) {
     case '$':
       if (check)
-        put(um_charArr(fmt) + i - 1, 1, 0);
+        put(cstr + i - 1, 1, 0);
       if (i + 1 == fmt.width)
         put("$", 1, 0);
       check = 1;
@@ -579,7 +655,7 @@ void print_f(outputFunction put, const fptr fmt, ...) {
     case '{':
       if (check) {
         unsigned int j;
-        for (j = i + 1; j < fmt.width && um_charArr(fmt)[j] != '}'; j++)
+        for (j = i + 1; j < fmt.width && cstr[j] != '}'; j++)
           ;
         fptr typeName = {
             .width = j - i - 1,
@@ -603,11 +679,11 @@ void print_f(outputFunction put, const fptr fmt, ...) {
       break;
     default:
       if (check)
-        put(um_charArr(fmt) + i - 1, 1, 0);
+        put(cstr + i - 1, 1, 0);
       size_t ne;
-      for (ne = 0; ne + i < fmt.width && um_charArr(fmt)[ne + i] != '$'; ne++)
+      for (ne = 0; ne + i < fmt.width && cstr[ne + i] != '$'; ne++)
         ;
-      put(um_charArr(fmt) + i, ne, 0);
+      put(cstr + i, ne, 0);
       i += (ne - 1);
       check = 0;
     }
@@ -615,5 +691,4 @@ void print_f(outputFunction put, const fptr fmt, ...) {
   va_end(l);
   put(NULL, 0, 1);
 }
-#undef um_charArr
 #endif

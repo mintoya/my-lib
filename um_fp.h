@@ -109,9 +109,14 @@ inline bool operator!=(const fptr &a, const fptr &b) { return !um_eq(a, b); }
 
 #ifndef __cplusplus
 
+#define fp_fromT(struct)                                                       \
+  ((fptr){                                                                     \
+      .ptr = (uint8_t *)&(struct),                                             \
+      .width = sizeof(struct),                                                 \
+  })
 #define fp_fromP(ref, size)                                                    \
   ((fptr){                                                                     \
-      .ptr = ref,                                                              \
+      .ptr = (uint8_t *)ref,                                                   \
       .width = size,                                                           \
   })
 #define is_comparr(x)                                                          \
