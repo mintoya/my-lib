@@ -6,10 +6,10 @@
 #include <stdlib.h>
 
 #include "allocator.h"
+#include "fptr.h"
 #include "hmap.h"
 #include "printer/macros.h"
 #include "printer/variadic.h"
-#include "um_fp.h"
 
 // temporary variables for compound literals
 #ifdef __cplusplus
@@ -39,6 +39,7 @@
 typedef void (*outputFunction)(const char *, unsigned int length, char flush);
 typedef void (*printerFunction)(outputFunction, const void *, fptr args);
 
+typedef unsigned int uint;
 typedef struct {
   struct {
     uint row, col;
@@ -486,15 +487,15 @@ template <typename T> constexpr const char *type_name_cstr() { return ""; }
   template <> constexpr const char *type_name_cstr<type>() { return #type; }
 
 MAKE_PRINT_ARG_TYPE(int);
+MAKE_PRINT_ARG_TYPE(uint);
 MAKE_PRINT_ARG_TYPE(fptr);
 MAKE_PRINT_ARG_TYPE(char);
-MAKE_PRINT_ARG_TYPE(size_t);
-MAKE_PRINT_ARG_TYPE(void_ptr);
-MAKE_PRINT_ARG_TYPE(uint);
-MAKE_PRINT_ARG_TYPE(char_ptr);
-MAKE_PRINT_ARG_TYPE(float);
 MAKE_PRINT_ARG_TYPE(pEsc);
+MAKE_PRINT_ARG_TYPE(float);
+MAKE_PRINT_ARG_TYPE(size_t);
 MAKE_PRINT_ARG_TYPE(double);
+MAKE_PRINT_ARG_TYPE(void_ptr);
+MAKE_PRINT_ARG_TYPE(char_ptr);
 
 #define MAKE_PRINT_ARG(a)                                                      \
   ((struct print_arg){                                                         \
@@ -639,15 +640,19 @@ void print_f_helper(struct print_arg p, fptr typeName, outputFunction put,
 }
 
 void print_f(outputFunction put, const fptr fmt, ...) {
-  const char *restrict cstr = fmt.ptr;
+#ifndef __cplusplus
+  const char *restrict ccstr = (char *)fmt.ptr;
+#else
+  const char *ccstr = (char *)fmt.ptr;
+#endif
   va_list l;
   va_start(l, fmt);
   char check = 0;
   for (unsigned int i = 0; i < fmt.width; i++) {
-    switch (cstr[i]) {
+    switch (ccstr[i]) {
     case '$':
       if (check)
-        put(cstr + i - 1, 1, 0);
+        put(ccstr + i - 1, 1, 0);
       if (i + 1 == fmt.width)
         put("$", 1, 0);
       check = 1;
@@ -655,7 +660,7 @@ void print_f(outputFunction put, const fptr fmt, ...) {
     case '{':
       if (check) {
         unsigned int j;
-        for (j = i + 1; j < fmt.width && cstr[j] != '}'; j++)
+        for (j = i + 1; j < fmt.width && ccstr[j] != '}'; j++)
           ;
         fptr typeName = {
             .width = j - i - 1,
@@ -679,11 +684,11 @@ void print_f(outputFunction put, const fptr fmt, ...) {
       break;
     default:
       if (check)
-        put(cstr + i - 1, 1, 0);
+        put(ccstr + i - 1, 1, 0);
       size_t ne;
-      for (ne = 0; ne + i < fmt.width && cstr[ne + i] != '$'; ne++)
+      for (ne = 0; ne + i < fmt.width && ccstr[ne + i] != '$'; ne++)
         ;
-      put(cstr + i, ne, 0);
+      put(ccstr + i, ne, 0);
       i += (ne - 1);
       check = 0;
     }

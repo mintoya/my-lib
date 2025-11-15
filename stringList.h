@@ -1,8 +1,8 @@
 #ifndef STRING_LIST_H
 #define STRING_LIST_H
 #include "allocator.h"
+#include "fptr.h"
 #include "my-list.h"
-#include "um_fp.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -162,11 +162,11 @@ ffptr stringList_getExt(stringList *l, unsigned int index) {
     return nullFFptr;
   stringMetaData thisS =
       mList_get(&(l->List_stringMetaData), stringMetaData, index);
-  return ((ffptr){
-      .ffptr.fpart.width = thisS.width,
-      .ffptr.fpart.ptr = (uint8_t *)List_getRef(&(l->List_char), thisS.index),
-      .ffptr.capacity = thisS._size,
-  });
+  ffptr res;
+  res.ffptr.fpart.width = thisS.width;
+  res.ffptr.fpart.ptr = (uint8_t *)List_getRef(&(l->List_char), thisS.index);
+  res.ffptr.capacity = thisS._size;
+  return res;
 }
 unsigned int stringList_search(stringList *l, fptr what) {
   stringMetaData *meta = (stringMetaData *)l->List_stringMetaData.head;

@@ -101,11 +101,6 @@ inline bool operator!=(const fptr &a, const fptr &b) { return !um_eq(a, b); }
       .width = sizeof(type),                                                   \
       .ptr = (uint8_t *)(type[1]){__VA_ARGS__},                                \
   })
-#define ffp_convert(val)                                                       \
-  ((fptr){                                                                     \
-      .width = val.width,                                                      \
-      .ptr = val.ptr,                                                          \
-  })
 
 #ifndef __cplusplus
 

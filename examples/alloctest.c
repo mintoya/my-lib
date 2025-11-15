@@ -1,10 +1,10 @@
-// #define PRINTER_LIST_TYPENAMES
+#define PRINTER_LIST_TYPENAMES
 #include "../allocator.h"
 #include "../arenaAllocator.h"
+#include "../fptr.h"
 #include "../hmap.h"
 #include "../macroList.h"
 #include "../print.h"
-#include "../um_fp.h"
 #include "../umap.h"
 #include "../wheels.h"
 #include <stddef.h>
@@ -54,13 +54,11 @@ int main(void) {
   println("umap footprint : ${}", UMap_footprint(um));
   println("allocated area : ${}", arena_footprint(local));
 
-  ffptr bufferTest = (ffptr){
-      .ptr = (uint8_t *)aAlloc(local, 50),
-      .width = 0,
-      .capacity = 50,
-  };
-  print_sn(bufferTest, "he${}lo world ${}", (char)'l', bufferTest.width);
-  println("${}", ffp_convert(bufferTest));
+  ffptr bufferTest = {
+      .ffptr = {.fpart = {.ptr = (uint8_t *)aAlloc(local, sizeof(char) * 10)},
+                .capacity = 10}};
+  print_sn(bufferTest, "he${}lo world ", (char)'l');
+  print("${}", bufferTest.fptr);
 
   return 0;
 }
