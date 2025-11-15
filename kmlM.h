@@ -1,9 +1,21 @@
 #ifndef KMLM_H
 #define KMLM_H
-#include "kml.h"
 #include "print.h"
 #include "um_fp.h"
 #include "umap.h"
+
+#define min(a, b) ((a < b) ? (a) : (b))
+#define max(a, b) ((a > b) ? (a) : (b))
+
+unsigned int kml_indexOf(um_fp string, char c);
+um_fp kml_until(char delim, um_fp string);
+um_fp kml_behind(char delim, um_fp string);
+um_fp kml_inside(char limits[2], um_fp string);
+um_fp kml_around(char limits[2], um_fp string);
+um_fp kml_after(um_fp main, um_fp slice);
+um_fp kml_removeSpacesPadding(um_fp in);
+um_fp findIndex(um_fp str, unsigned int index);
+um_fp findKey(um_fp str, um_fp key);
 
 #define fpChar(um_fp) ((char *)um_fp.ptr)
 UMap *parse(UMap *parent, UMapList *lparent, um_fp kml);
@@ -153,3 +165,193 @@ UMap *parse(UMap *parent, UMapList *lparent, um_fp kml) {
 }
 
 #endif // KMLM_H
+#ifdef KMLM_C
+// index after end if c not present
+unsigned int kml_indexOf(um_fp string, char c) {
+  int i;
+  char *ptr = (char *)string.ptr;
+  for (i = 0; i < string.width && ptr[i] != c; i++)
+    ;
+  return i;
+}
+um_fp kml_inside(char limits[2], um_fp string) {
+  if (!string.width)
+    return nullUmf;
+  char front = limits[0];
+  char back = limits[1];
+
+  int in_single = 0;
+  int in_double = 0;
+
+  for (int i = 0; i < string.width; i++) {
+    char c = ((char *)string.ptr)[i];
+
+    // toggle quote state
+    if (c == '"' && !in_single)
+      in_double = !in_double;
+    else if (c == '\'' && !in_double)
+      in_single = !in_single;
+
+    if (!in_single && !in_double && c == front) {
+      unsigned int counter = 1;
+      for (int ii = 1; ii + i < string.width; ii++) {
+        c = ((char *)string.ptr)[i + ii];
+
+        // toggle quote state inside the nested scan
+        if (c == '"' && !in_single)
+          in_double = !in_double;
+        else if (c == '\'' && !in_double)
+          in_single = !in_single;
+
+        if (!in_single && !in_double) {
+          if (c == front) {
+            counter++;
+          } else if (c == back) {
+            counter--;
+          }
+        }
+
+        if (!counter)
+          return (um_fp){.ptr = ((uint8_t *)string.ptr) + i + 1,
+                         .width = (size_t)ii - 1};
+        // if (i + ii == string.width - 1)
+        //   return (um_fp){.ptr = ((uint8_t *)string.ptr) + i + 1,
+        //                  .width = (size_t)ii - 1};
+        if (i + ii == string.width - 1)
+          return (um_fp){.ptr = ((uint8_t *)string.ptr) + i + 1,
+                         .width = (size_t)ii};
+      }
+    }
+  }
+  return nullUmf;
+}
+
+um_fp kml_around(char limits[2], um_fp string) {
+  if (!string.width)
+    return nullUmf;
+  char front = limits[0];
+  char back = limits[1];
+
+  int in_single = 0;
+  int in_double = 0;
+
+  for (int i = 0; i < string.width; i++) {
+    char c = ((char *)string.ptr)[i];
+    if (c == '"' && !in_single)
+      in_double = !in_double;
+    else if (c == '\'' && !in_double)
+      in_single = !in_single;
+    if (!in_single && !in_double && c == front) {
+      unsigned int counter = 1;
+      for (int ii = 1; ii + i < string.width; ii++) {
+        c = ((char *)string.ptr)[i + ii];
+
+        if (c == '"' && !in_single)
+          in_double = !in_double;
+        else if (c == '\'' && !in_double)
+          in_single = !in_single;
+
+        if (!in_single && !in_double) {
+          if (c == front) {
+            counter++;
+          } else if (c == back) {
+            counter--;
+          }
+        }
+
+        if (!counter)
+          return (um_fp){.ptr = ((uint8_t *)string.ptr) + i,
+                         .width = (size_t)ii + 1};
+        if (i + ii == string.width - 1)
+          return (um_fp){.ptr = ((uint8_t *)string.ptr) + i,
+                         .width = (size_t)ii + 1};
+      }
+    }
+  }
+  return nullUmf;
+}
+
+um_fp kml_until(char delim, um_fp string) {
+  int i = 0;
+  char *ptr = (char *)string.ptr;
+  while (i < string.width && ptr[i] != delim) {
+    i++;
+  }
+  string.width = i;
+  return string;
+}
+um_fp kml_behind(char delim, um_fp string) {
+  int i = 0;
+  while (i < string.width && ((char *)string.ptr)[i] != delim) {
+    i++;
+  }
+  string.width = min(i + 1, string.width);
+  return string;
+}
+um_fp kml_after(um_fp main, um_fp slice) {
+  if (!(main.ptr && main.width))
+    return nullUmf;
+  if (!(slice.ptr && slice.width))
+    return nullUmf;
+  char *mainStart = (char *)main.ptr;
+  char *mainEnd = mainStart + main.width;
+  char *sliceStart = (char *)slice.ptr;
+  char *sliceEnd = sliceStart + slice.width;
+
+  // assert(sliceStart >= mainStart && sliceEnd <= mainEnd);
+  if (!(sliceStart >= mainStart && sliceEnd <= mainEnd))
+    return nullUmf;
+
+  return (um_fp){.ptr = (uint8_t *)sliceEnd,
+                 .width = (size_t)(mainEnd - sliceEnd)};
+}
+#define stack_split(result, string, ...)                                       \
+  result = (um_fp *)alloca(                                                    \
+      sizeof(um_fp) *                                                          \
+      (sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1));     \
+  do {                                                                         \
+    uint8_t *last;                                                             \
+    unsigned int args[] = {__VA_ARGS__};                                       \
+    for (int i = 0; i < sizeof(args) / sizeof(unsigned int); i++) {            \
+      args[i] = (i == 0) ? (min(args[i], string.width))                        \
+                         : (min(string.width, max(args[i], args[i - 1])));     \
+      result[i] = (um_fp){                                                     \
+          .ptr = (i == 0) ? (string.ptr) : (last),                             \
+          .width = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),             \
+      };                                                                       \
+      last = ((uint8_t *)result[i].ptr) + result[i].width;                     \
+    }                                                                          \
+    result[sizeof(args) / sizeof(unsigned int)] = (um_fp){                     \
+        .ptr = last,                                                           \
+        .width = string.width - ((uint8_t *)last - (uint8_t *)string.ptr)};    \
+  } while (0);
+char isSkip(char c) {
+  switch (c) {
+  case ' ':
+  case '\n':
+  case '\0':
+  case '\t':
+    return 1;
+  default:
+    return 0;
+  }
+}
+um_fp kml_removeSpacesPadding(um_fp in) {
+  um_fp res = in;
+  int front = 0;
+  int back = in.width - 1;
+  while (front < in.width && isSkip(((char *)in.ptr)[front])) {
+    front++;
+  }
+  while (back > front && isSkip(((char *)in.ptr)[back])) {
+    back--;
+  }
+  um_fp *splits =
+      stack_split(splits, in, (unsigned int)front, (unsigned int)back + 1);
+
+  res = splits[1];
+  return res;
+}
+#undef min
+#undef max
+#endif
