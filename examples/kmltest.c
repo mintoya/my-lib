@@ -1,3 +1,4 @@
+#include <stdio.h>
 #define PRINTER_LIST_TYPENAMES
 #include "../allocator.h"
 #include "../kmlM.h"
@@ -13,47 +14,88 @@ __attribute__((constructor)) void setupList(void) {
   buffer = List_new(&defaultAllocator, sizeof(char));
 }
 
-void listPrinter(const char *c, unsigned int length, char flush) {
-  List_appendFromArr(buffer, c, length);
+void listPrinter(
+    const char *c,
+    void *arb,
+    unsigned int length,
+    char flush
+) {
+  (void)arb;
+  MList(char) list;
+  MList_DF(list, buffer);
+  MList_addArr(list, length, c);
 }
-
 static inline fptr um_flist(List *l) {
   return (um_fp){
       .width = List_headArea(l),
       .ptr = l->head,
   };
 }
-void formatPrinter(const char *c, unsigned int l, char flush) {
-  for (int i = 0; i < l; i++)
-    switch (c[i]) {
-    case ';':
-    case '}':
-    case '{':
-    case '[':
-    case ']':
-      fwrite(c + i, sizeof(char), 1, stdout);
-      fwrite("\n", sizeof(char), 1, stdout);
-      break;
-    default:
-      fwrite(c + i, sizeof(char), 1, stdout);
+void formattedOutputFunction(
+    const char *data,
+    void *arb,
+    unsigned int length,
+    char flush
+) {
+  static uint indentLevel = 0;
+
+  for (size_t index = 0; index < length; index++) {
+    char character = data[index];
+    {
+      switch (character) {
+      case '{':
+      case '[': {
+        putchar(character);
+        putchar('\n');
+        indentLevel++;
+        for (int i = 0; i < indentLevel; i++) {
+          putchar(' ');
+        }
+      } break;
+      case '}':
+      case ']': {
+        putchar('\033');
+        putchar('[');
+        putchar('1');
+        putchar('D');
+        putchar(character);
+        putchar('\n');
+        indentLevel--;
+        for (int i = 0; i < indentLevel; i++) {
+          putchar(' ');
+        }
+      } break;
+      case ';':
+      case ',': {
+        putchar(character);
+        putchar('\n');
+        for (int i = 0; i < indentLevel; i++) {
+          putchar(' ');
+        }
+      } break;
+      default:
+        putchar(character);
+      }
     }
+  }
+  if (flush)
+    indentLevel = 0;
 }
-outputFunction formatter = formatPrinter;
+
 int main() {
   UMap_scoped *test = UMap_new(&defaultAllocator);
   UMap_set(test, fp_from("a"), fp_from("b"));
   UMap_set(test, fp_from("b"), fp_from("c"));
   UMap_set(test, fp_from("c"), fp_from("a"));
-  UMapList_scoped *testList = UMapList_new(&defaultAllocator);
-  UMapList_setChild(testList, 0, test);
-  UMapList_append(testList, fp_from("c"));
-  UMapList_append(testList, fp_from("d"));
-  UMap_setChild(test, fp_from("innermap"), test);
-  UMap_setChild(test, fp_from("innermap"), test); // doubley nested
-  UMap_setList(test, fp_from("innerlist"), testList);
+  UMap_setChild(test, fp_from("object"), test);
+  UMapList_scoped *tlist = UMapList_new(&defaultAllocator);
+  UMapList_append(tlist, fp_from("one"));
+  UMapList_append(tlist, fp_from("two"));
+  UMapList_append(tlist, fp_from("three"));
+  UMap_setList(test, fp_from("list"), tlist);
 
-  UMapView viewp = ((UMapView){UMapList_get(testList, 0)});
-  print_wf(listPrinter, "${UMap}", *test);
+  print_wf(listPrinter, 0, "${UMap}", *test);
   UMap_scoped *output = parse(NULL, NULL, um_flist(buffer));
-  println("object output : ${UMap}", *output);
+  println("${UMap}", *output);
+  print_wf(formattedOutputFunction, 0, "${UMap}", *output);
 }

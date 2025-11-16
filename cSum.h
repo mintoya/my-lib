@@ -16,7 +16,8 @@
 // clang-format on
 
 #define CHECK_TYPE uint32_t
-static inline CHECK_TYPE cSum_CHECK_EXPR(CHECK_TYPE val, uint8_t data) {
+static inline CHECK_TYPE cSum_CHECK_EXPR(CHECK_TYPE val, uint8_t data)
+{
   uint16_t top = (val & 0xffff0000) >> 16;
   top += data;
   uint16_t bot = val & 0x0000ffff;
@@ -26,15 +27,18 @@ static inline CHECK_TYPE cSum_CHECK_EXPR(CHECK_TYPE val, uint8_t data) {
 }
 
 // start_bit .. data .. data .. checksum .. end_bit
-typedef struct {
+typedef struct
+{
   List *checkSumScratch;
 } dataChecker;
 
-typedef struct {
+typedef struct
+{
   um_fp data;
 } checkData;
 
-static dataChecker cSum_new() {
+static dataChecker cSum_new()
+{
   printf("new csum item with  %ix redundancy\n", cSum_REDUNDANCY_AMMOUNT);
   List *l = List_new(&defaultAllocator, sizeof(uint8_t));
   List_resize(l, 20);
@@ -42,14 +46,17 @@ static dataChecker cSum_new() {
 }
 static inline void cSum_free(dataChecker a) { List_free(a.checkSumScratch); }
 
-static inline unsigned int csum_expectedLength(int messageLength) {
+static inline unsigned int csum_expectedLength(int messageLength)
+{
   return sizeof(CSUM_START_BIT) + sizeof(CSUM_END_BIT) + sizeof(CHECK_TYPE) +
          (messageLength * cSum_REDUNDANCY_AMMOUNT);
 }
 
-static checkData cSum_toSum(dataChecker d, um_fp data) {
+static checkData cSum_toSum(dataChecker d, um_fp data)
+{
   CHECK_TYPE sum = 0;
-  for (unsigned int i = 0; i < data.width; i++) {
+  for (unsigned int i = 0; i < data.width; i++)
+  {
     sum = cSum_CHECK_EXPR(sum, ((uint8_t *)data.ptr)[i]);
   }
   d.checkSumScratch->length = 0;
@@ -77,16 +84,19 @@ static checkData cSum_toSum(dataChecker d, um_fp data) {
                    }};
   return res;
 }
-static um_fp cSum_fromSum(checkData data) {
+static um_fp cSum_fromSum(checkData data)
+{
   // char *ptr1, *ptr2;
   uint8_t *ptrs[cSum_REDUNDANCY_AMMOUNT];
   CHECK_TYPE check;
   CHECK_TYPE checkResult = 0;
   ptrs[0] = (uint8_t *)data.data.ptr;
-  if (ptrs[0][0] != CSUM_START_BIT) {
+  if (ptrs[0][0] != CSUM_START_BIT)
+  {
     return nullUmf;
   }
-  if (ptrs[0][data.data.width - 1] != CSUM_END_BIT) {
+  if (ptrs[0][data.data.width - 1] != CSUM_END_BIT)
+  {
     return nullUmf;
   }
   unsigned int dataLength = data.data.width;
@@ -106,14 +116,16 @@ static um_fp cSum_fromSum(checkData data) {
     ptrs[i] += dataLength * i;
   // ptr2 += dataLength;
 
-  for (unsigned int i = 0; i < dataLength; i++) {
+  for (unsigned int i = 0; i < dataLength; i++)
+  {
     uint8_t c = ptrs[0][i];
     for (unsigned int ii = 0; ii < cSum_REDUNDANCY_AMMOUNT; ii++)
       if (ptrs[ii][i] != c)
         return nullFptr;
     checkResult = cSum_CHECK_EXPR(checkResult, c);
   }
-  if (checkResult != check) {
+  if (checkResult != check)
+  {
     return nullUmf;
   }
   return (um_fp){

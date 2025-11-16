@@ -1,0 +1,8 @@
+---
+Language: C
+BasedOnStyle: LLVM
+AlignAfterOpenBracket: BlockIndent 
+BinPackParameters: false
+AllowAllParametersOfDeclarationOnNextLine: false
+ColumnLimit: 0
+...

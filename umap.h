@@ -6,6 +6,7 @@
 #include "my-list.h"
 #include "print.h"
 #include "stringList.h"
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -18,12 +19,8 @@ typedef struct {
   stringList *vals;
   List *metadata;
 } UMapList;
-typedef struct {
-  fptr raw;
-} UMapView;
-typedef struct {
-  fptr raw;
-} UMapListView;
+typedef fptr UMapView;
+typedef fptr UMapListView;
 typedef enum {
   NORMAL = 0, // raw data
   LIST,       // umap with integer indexes
@@ -57,9 +54,13 @@ unsigned int UMapView_binarySearch(UMapView map, fptr key);
 UMap *UMap_new(const My_allocator *);
 UMapList *UMapList_new(const My_allocator *);
 
-fptr UMap_getValAtKey(UMap *map, fptr key);
+typedef struct {
+  UMap_innertype type;
+  fptr result;
+} UMap_both;
+UMap_both UMap_getValAtKey(UMap *map, fptr key);
 static inline fptr UMap_get(UMap *map, fptr key) {
-  return UMap_getValAtKey(map, key);
+  return UMap_getValAtKey(map, key).result;
 }
 unsigned int UMap_set(UMap *map, fptr key, fptr val);
 UMap *UMap_remake(UMap *map);
@@ -93,7 +94,6 @@ static inline void UMapList_free(UMapList *map) {
  */
 UMapView UMap_toBuf(UMap *map);
 UMapListView UMapList_toBuf(UMapList *map);
-UMap UMapList_fromBuf(UMapListView mapRasterized);
 
 fptr UMapView_getKeyAtIndex(UMapView map, unsigned int index);
 fptr UMapView_getValAtIndex(UMapView map, unsigned int index);
@@ -107,6 +107,7 @@ List UMapView_getMeta(UMapView map);
 fptr UMapView_getKeyAtIndex(UMapView map, unsigned int index);
 fptr UMapView_getValAtIndex(UMapView map, unsigned int index);
 fptr UMapView_getValAtKey(UMapView map, fptr key);
+UMap_innertype UMapView_getTypeAtKey(UMapView map, fptr key);
 void UMapView_free(UMapView umv);
 void UMapListView_free(UMapListView umv);
 
@@ -125,6 +126,49 @@ static inline void UMapList_cleanup_handler(UMapList **um) {
     *um = NULL;
   }
 }
+// struct UMap_getArg {
+//   union {
+//     fptr key;
+//     uint index;
+//   } arg;
+//   unsigned char isindex : 1;
+//   unsigned char exists : 1;
+// };
+// #define UMap_getL
+// static UMap_both UMap_getL_f(UMap *map, uint nargs, ...) {
+//   va_list l;
+//   va_start(l, nargs);
+//   UMap_both res;
+//   uint i = 0;
+//
+//   do {
+//     if (!i) {
+//       res = UMap_getValAtKey(map, va_arg(l, um_fp));
+//     } else {
+//       switch (res.type) {
+//       case LIST: {
+//         uint index = va_arg(l, uint);
+//         UMapListView lv = res.result;
+//         res.result = UMapListView_getVal(lv, index);
+//         List mets = UMapListView_getMeta(lv);
+//         res.type = mList_get((&mets), UMap_innertype, index);
+//       } break;
+//       case MAP: {
+//         fptr key = va_arg(l, fptr);
+//         UMapView mv = res.result;
+//         res.type = UMapView_getTypeAtKey(mv, key);
+//         res.result = UMapView_getValAtKey(mv, key);
+//       } break;
+//       default:
+//         return (UMap_both){NORMAL, nullFptr};
+//       }
+//     }
+//     i++;
+//   } while (i < nargs && res.result.ptr);
+//
+//   va_end(l);
+//   return res;
+// }
 
 #define UMap_scoped [[gnu::cleanup(UMap_cleanup_handler)]] UMap
 #define UMapList_scoped [[gnu::cleanup(UMapList_cleanup_handler)]] UMapList
@@ -144,15 +188,15 @@ REGISTER_PRINTER(UMapView, {
     switch (e) {
     case NORMAL: {
       USETYPEPRINTER(fptr, val);
+      PUTS(";", 1);
     } break;
     case LIST: {
-      USENAMEDPRINTER("UMapListView", ((UMapListView){val}));
+      USENAMEDPRINTER("UMapListView", val);
     } break;
     case MAP: {
-      USENAMEDPRINTER("UMapView", ((UMapView){val}));
+      USENAMEDPRINTER("UMapView", val);
     } break;
     }
-    PUTS(";", 1);
   });
   PUTS("}", 1);
 });
@@ -169,10 +213,10 @@ REGISTER_PRINTER(UMapListView, {
       USETYPEPRINTER(fptr, val);
     } break;
     case LIST: {
-      USETYPEPRINTER(UMapListView, ((UMapListView){val}));
+      USETYPEPRINTER(UMapListView, val);
     } break;
     case MAP: {
-      USETYPEPRINTER(UMapView, ((UMapView){val}));
+      USETYPEPRINTER(UMapView, val);
     } break;
     }
     PUTS(",", 1);
@@ -193,15 +237,15 @@ REGISTER_PRINTER(UMap, {
     switch (e) {
     case NORMAL: {
       USETYPEPRINTER(fptr, val);
+      PUTS(";", 1);
     } break;
     case LIST: {
-      USETYPEPRINTER(UMapListView, ((UMapListView){val}));
+      USETYPEPRINTER(UMapListView, val);
     } break;
     case MAP: {
-      USETYPEPRINTER(UMapView, ((UMapView){val}));
+      USETYPEPRINTER(UMapView, val);
     } break;
     }
-    PUTS(";", 1);
   });
   PUTS("}", 1);
 });
@@ -261,13 +305,14 @@ UMapList *UMapList_new(const My_allocator *allocator) {
   return res;
 }
 
-fptr UMap_getValAtKey(UMap *map, fptr key) {
+UMap_both UMap_getValAtKey(UMap *map, fptr key) {
   unsigned int index = UMap_binarySearch(map, key);
-  fptr res = nullFptr;
+  UMap_both res = (UMap_both){NORMAL, nullFptr};
   fptr temp = UMap_getKeyAtIndex(map, index);
   int cmp = fptr_cmp(key, temp);
   if (!cmp) {
-    res = stringList_get(map->vals, index);
+    res.result = stringList_get(map->vals, index);
+    res.type = mList_get(map->metadata, UMap_innertype, index);
   }
   return res;
 }
@@ -357,7 +402,7 @@ UMapView UMap_toBuf(UMap *map) {
   stringListView_free(kb);
   stringListView_free(vb);
 
-  return (UMapView){.raw = res};
+  return res;
 }
 // memory layout:
 //  { valsSize|metaSize|vals|meta }
@@ -382,23 +427,23 @@ UMapListView UMapList_toBuf(UMapList *map) {
   advance(ptr, meta.ptr, meta.width);
 
   stringListView_free(vb);
-  return (UMapListView){.raw = res};
+  return res;
 }
 #undef advance
 
 List UMapView_getMeta(UMapView map) {
   List res;
   res.width = sizeof(UMap_innertype);
-  size_t *sizes = ((size_t *)map.raw.ptr);
+  size_t *sizes = ((size_t *)map.ptr);
   res.length = sizes[2] / sizeof(UMap_innertype);
   res.size = res.length;
-  res.head = map.raw.ptr + sizeof(size_t) * 3 + sizes[0] + sizes[1];
+  res.head = map.ptr + sizeof(size_t) * 3 + sizes[0] + sizes[1];
   return res;
 }
 stringListView UMapView_getVals(UMapView map) {
   stringListView res;
-  size_t *sizes = ((size_t *)map.raw.ptr);
-  uint8_t *place = map.raw.ptr + sizeof(size_t) * 3 + sizes[0];
+  size_t *sizes = ((size_t *)map.ptr);
+  uint8_t *place = map.ptr + sizeof(size_t) * 3 + sizes[0];
   res.raw = (fptr){
       .width = sizes[1],
       .ptr = place,
@@ -407,8 +452,8 @@ stringListView UMapView_getVals(UMapView map) {
 }
 stringListView UMapView_getKeys(UMapView map) {
   stringListView res;
-  size_t size = *(size_t *)map.raw.ptr;
-  uint8_t *place = map.raw.ptr + sizeof(size_t) * 3;
+  size_t size = *(size_t *)map.ptr;
+  uint8_t *place = map.ptr + sizeof(size_t) * 3;
   res.raw = (fptr){
       .width = size,
       .ptr = place,
@@ -435,11 +480,21 @@ fptr UMapView_getValAtKey(UMapView map, fptr key) {
   }
   return res;
 }
+UMap_innertype UMapView_getTypeAtKey(UMapView map, fptr key) {
+  unsigned int index = UMapView_binarySearch(map, key);
+  UMap_innertype res = NORMAL;
+  int cmp = fptr_cmp(key, UMapView_getKeyAtIndex(map, index));
+  if (!cmp) {
+    List mets = UMapView_getMeta(map);
+    res = mList_get(&mets, UMap_innertype, index);
+  }
+  return res;
+}
 
 unsigned int UMap_setChild(UMap *map, fptr key, UMap *ref) {
   if (!key.width)
     return -1;
-  fptr um = UMap_toBuf(ref).raw;
+  fptr um = UMap_toBuf(ref);
   unsigned int index = UMap_set(map, key, um);
   mList_set(map->metadata, UMap_innertype, MAP, index);
   free(um.ptr);
@@ -447,14 +502,14 @@ unsigned int UMap_setChild(UMap *map, fptr key, UMap *ref) {
 }
 
 unsigned int UMapList_setChild(UMapList *map, unsigned int key, UMap *ref) {
-  fptr um = UMap_toBuf(ref).raw;
+  fptr um = UMap_toBuf(ref);
   unsigned int index = UMapList_set(map, key, um);
   mList_set(map->metadata, UMap_innertype, MAP, index);
   free(um.ptr);
   return index;
 }
 unsigned int UMapList_setList(UMapList *map, unsigned int key, UMapList *ref) {
-  fptr um = UMapList_toBuf(ref).raw;
+  fptr um = UMapList_toBuf(ref);
   unsigned int index = UMapList_set(map, key, um);
   mList_set(map->metadata, UMap_innertype, LIST, index);
   free(um.ptr);
@@ -463,7 +518,7 @@ unsigned int UMapList_setList(UMapList *map, unsigned int key, UMapList *ref) {
 unsigned int UMap_setList(UMap *map, fptr key, UMapList *ref) {
   if (!key.width)
     return -1;
-  fptr um = UMapList_toBuf(ref).raw;
+  fptr um = UMapList_toBuf(ref);
   unsigned int index = UMap_set(map, key, um);
   mList_set(map->metadata, UMap_innertype, LIST, index);
   free(um.ptr);
@@ -484,8 +539,8 @@ UMap *UMap_remake(UMap *map) {
 //  { valsSize|metaSize|vals|meta }
 stringListView UMapListView_getVals(UMapListView map) {
   stringListView res;
-  size_t *sizes = ((size_t *)map.raw.ptr);
-  uint8_t *place = map.raw.ptr + sizeof(size_t) * 2;
+  size_t *sizes = ((size_t *)map.ptr);
+  uint8_t *place = map.ptr + sizeof(size_t) * 2;
   res.raw = (fptr){
       .width = sizes[0],
       .ptr = place,
@@ -496,16 +551,16 @@ stringListView UMapListView_getVals(UMapListView map) {
 List UMapListView_getMeta(UMapListView map) {
   List res;
   res.width = sizeof(UMap_innertype);
-  size_t *sizes = ((size_t *)map.raw.ptr);
+  size_t *sizes = ((size_t *)map.ptr);
   res.length = sizes[1] / sizeof(UMap_innertype);
   res.size = res.length;
-  res.head = map.raw.ptr + sizeof(size_t) * 2 + sizes[0];
+  res.head = map.ptr + sizeof(size_t) * 2 + sizes[0];
   return res;
 }
 fptr UMapListView_getVal(UMapListView map, unsigned int index) {
   return stringListView_get(UMapListView_getVals(map), index);
 }
 
-void UMapView_free(UMapView umv) { free(umv.raw.ptr); }
-void UMapListView_free(UMapListView umv) { free(umv.raw.ptr); }
+void UMapView_free(UMapView umv) { free(umv.ptr); }
+void UMapListView_free(UMapListView umv) { free(umv.ptr); }
 #endif // UMAP_C
