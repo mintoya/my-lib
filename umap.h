@@ -113,129 +113,99 @@ void UMapListView_free(UMapListView umv);
 stringListView UMapListView_getVals(UMapListView map);
 List UMapListView_getMeta(UMapListView map);
 fptr UMapListView_getVal(UMapListView map, unsigned int index);
-
-REGISTER_SPECIAL_PRINTER("UMap", UMap, {
-  List *metaList = in.metadata;
-  stringList *keys = in.keys;
-  stringList *vals = in.vals;
-  PUTS("{", 1);
-  for (int i = 0; i < metaList->length; i++) {
-    UMap_innertype type = mList_get(metaList, UMap_innertype, i);
-    USETYPEPRINTER(fptr, stringList_get(keys, i));
-    PUTS(":", 1);
-    fptr val = stringList_get(vals, i);
-    switch (type) {
-    case NORMAL:
-      USETYPEPRINTER(fptr, val);
-      PUTS(";", 1);
-
-      break;
-    case LIST:
-      USENAMEDPRINTER("UMapListView", ((UMapListView){.raw = val}))
-      break;
-    case MAP:
-      USENAMEDPRINTER("UMapView", ((UMapListView){.raw = val}))
-      break;
-    }
-  }
-
-  PUTS("}", 1);
-});
-REGISTER_SPECIAL_PRINTER("UMapView", UMapView, {
-  List metaList = UMapView_getMeta(in);
-  stringListView keys = UMapView_getKeys(in);
-  stringListView vals = UMapView_getVals(in);
-  UMap_innertype *meta = (UMap_innertype *)metaList.head;
-  PUTS("{", 1);
-  for (int i = 0; i < metaList.length; i++) {
-    UMap_innertype type = meta[i];
-    USETYPEPRINTER(fptr, stringListView_get(keys, i));
-    PUTS(":", 1);
-    fptr val = stringListView_get(vals, i);
-    switch (type) {
-    case NORMAL:
-      USETYPEPRINTER(fptr, val);
-      PUTS(";", 1);
-
-      break;
-    case LIST:
-      USENAMEDPRINTER("UMapListView", ((UMapListView){.raw = val}))
-      break;
-    case MAP:
-      USENAMEDPRINTER("UMapView", ((UMapListView){.raw = val}))
-      break;
-    }
-  }
-
-  PUTS("}", 1);
-})
-REGISTER_SPECIAL_PRINTER("UMapList", UMapList, {
-  stringList *slv = in.vals;
-  List *metaList = in.metadata;
-  UMap_innertype *meta = (UMap_innertype *)metaList->head;
-  USETYPEPRINTER(fptr, fp_from("["));
-  for (int i = 0; i < metaList->length; i++) {
-    UMap_innertype type = meta[i];
-    fptr val = stringList_get(slv, i);
-    switch (type) {
-    case NORMAL:
-      USETYPEPRINTER(fptr, val);
-      break;
-    case LIST:
-      USENAMEDPRINTER("UMapListView", ((UMapListView){.raw = val}))
-      break;
-    case MAP:
-      USENAMEDPRINTER("UMapView", ((UMapListView){.raw = val}))
-      break;
-    }
-    if (i + 1 != metaList->length)
-      USETYPEPRINTER(fptr, fp_from(","));
-  }
-  USETYPEPRINTER(fptr, fp_from("]"));
-})
-REGISTER_SPECIAL_PRINTER("UMapListView", UMapListView, {
-  stringListView slv = UMapListView_getVals(in);
-  List metaList = UMapListView_getMeta(in);
-  UMap_innertype *meta = (UMap_innertype *)metaList.head;
-  USETYPEPRINTER(fptr, fp_from("["));
-  for (int i = 0; i < metaList.length; i++) {
-    UMap_innertype type = meta[i];
-    fptr val = stringListView_get(slv, i);
-    switch (type) {
-    case NORMAL:
-      USETYPEPRINTER(fptr, val);
-      break;
-    case LIST:
-      USENAMEDPRINTER("UMapListView", ((UMapListView){.raw = val}))
-      break;
-    case MAP:
-      USENAMEDPRINTER("UMapView", ((UMapListView){.raw = val}))
-      break;
-    }
-    if (i + 1 != metaList.length)
-      USETYPEPRINTER(fptr, fp_from(","));
-  }
-  USETYPEPRINTER(fptr, fp_from("]"));
-})
-
-REGISTER_SPECIAL_PRINTER("UMap*", UMap *, { USENAMEDPRINTER("UMap", *in); });
-REGISTER_SPECIAL_PRINTER("UMapList*", UMapList *,
-                         { USENAMEDPRINTER("UMapList", *in); });
-// made to mimic the setup the "kml" parser  supports
-
 static inline void UMap_cleanup_handler(UMap **um) {
-  if (um && *um)
+  if (um && *um) {
     UMap_free(*um);
-  *um = NULL;
+    *um = NULL;
+  }
 }
 static inline void UMapList_cleanup_handler(UMapList **um) {
-  if (um && *um)
+  if (um && *um) {
     UMapList_free(*um);
-  *um = NULL;
+    *um = NULL;
+  }
 }
 
 #define UMap_scoped [[gnu::cleanup(UMap_cleanup_handler)]] UMap
 #define UMapList_scoped [[gnu::cleanup(UMapList_cleanup_handler)]] UMapList
+
+#include "macroList.h"
+REGISTER_PRINTER(UMapView, {
+  stringListView keys = UMapView_getKeys(in);
+  stringListView vals = UMapView_getVals(in);
+  List metalist = UMapView_getMeta(in);
+  MList(UMap_innertype) meta;
+  MList_DF(meta, (&metalist));
+  PUTS("{", 1);
+  MList_foreach(meta, i, e, {
+    USETYPEPRINTER(fptr, stringListView_get(keys, i));
+    fptr val = stringListView_get(vals, i);
+    PUTS(":", 1);
+    switch (e) {
+    case NORMAL: {
+      USETYPEPRINTER(fptr, val);
+    } break;
+    case LIST: {
+      USENAMEDPRINTER("UMapListView", ((UMapListView){val}));
+    } break;
+    case MAP: {
+      USENAMEDPRINTER("UMapView", ((UMapView){val}));
+    } break;
+    }
+    PUTS(";", 1);
+  });
+  PUTS("}", 1);
+});
+REGISTER_PRINTER(UMapListView, {
+  stringListView vals = UMapListView_getVals(in);
+  List metalist = UMapListView_getMeta(in);
+  MList(UMap_innertype) meta;
+  MList_DF(meta, (&metalist));
+  PUTS("[", 1);
+  MList_foreach(meta, i, e, {
+    fptr val = stringListView_get(vals, i);
+    switch (e) {
+    case NORMAL: {
+      USETYPEPRINTER(fptr, val);
+    } break;
+    case LIST: {
+      USETYPEPRINTER(UMapListView, ((UMapListView){val}));
+    } break;
+    case MAP: {
+      USETYPEPRINTER(UMapView, ((UMapView){val}));
+    } break;
+    }
+    PUTS(",", 1);
+  });
+  PUTS("]", 1);
+});
+REGISTER_PRINTER(UMap, {
+  stringList *keys = in.keys;
+  stringList *vals = in.vals;
+  List *metaList = in.metadata;
+  MList(UMap_innertype) meta;
+  MList_DF(meta, metaList);
+  PUTS("{", 1);
+  MList_foreach(meta, i, e, {
+    USETYPEPRINTER(fptr, stringList_get(keys, i));
+    fptr val = stringList_get(vals, i);
+    PUTS(":", 1);
+    switch (e) {
+    case NORMAL: {
+      USETYPEPRINTER(fptr, val);
+    } break;
+    case LIST: {
+      USETYPEPRINTER(UMapListView, ((UMapListView){val}));
+    } break;
+    case MAP: {
+      USETYPEPRINTER(UMapView, ((UMapView){val}));
+    } break;
+    }
+    PUTS(";", 1);
+  });
+  PUTS("}", 1);
+});
+// printers
 
 #endif // UMAP_H
 #ifdef UMAP_C
@@ -283,7 +253,7 @@ UMap *UMap_new(const My_allocator *allocator) {
   return res;
 }
 UMapList *UMapList_new(const My_allocator *allocator) {
-  UMapList *res = (UMapList *)malloc(sizeof(UMapList));
+  UMapList *res = (UMapList *)aAlloc(allocator, sizeof(UMapList));
   *res = (UMapList){
       .vals = stringList_new(allocator),
       .metadata = List_new(allocator, sizeof(UMap_innertype)),

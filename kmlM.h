@@ -1,26 +1,26 @@
 #ifndef KMLM_H
 #define KMLM_H
+#include "fptr.h"
 #include "print.h"
-#include "um_fp.h"
 #include "umap.h"
 
 #define min(a, b) ((a < b) ? (a) : (b))
 #define max(a, b) ((a > b) ? (a) : (b))
 
-unsigned int kml_indexOf(um_fp string, char c);
-um_fp kml_until(char delim, um_fp string);
-um_fp kml_behind(char delim, um_fp string);
-um_fp kml_inside(char limits[2], um_fp string);
-um_fp kml_around(char limits[2], um_fp string);
-um_fp kml_after(um_fp main, um_fp slice);
-um_fp kml_removeSpacesPadding(um_fp in);
-um_fp findIndex(um_fp str, unsigned int index);
-um_fp findKey(um_fp str, um_fp key);
+unsigned int kml_indexOf(fptr string, char c);
+fptr kml_until(char delim, fptr string);
+fptr kml_behind(char delim, fptr string);
+fptr kml_inside(char limits[2], fptr string);
+fptr kml_around(char limits[2], fptr string);
+fptr kml_after(fptr main, um_fp slice);
+fptr kml_removeSpacesPadding(fptr in);
+fptr findIndex(fptr str, unsigned int index);
+fptr findKey(fptr str, um_fp key);
 
-#define fpChar(um_fp) ((char *)um_fp.ptr)
-UMap *parse(UMap *parent, UMapList *lparent, um_fp kml);
+#define fpChar(fptr) ((char *)fptr.ptr)
+UMap *parse(UMap *parent, UMapList *lparent, fptr kml);
 
-UMapList *parseList(UMapList *lparent, um_fp kml) {
+UMapList *parseList(UMapList *lparent, fptr kml) {
   if (!kml.width) {
     if (!(lparent)) {
       return UMapList_new(&defaultAllocator);
@@ -32,7 +32,7 @@ UMapList *parseList(UMapList *lparent, um_fp kml) {
     lparent = UMapList_new(&defaultAllocator);
   }
   kml = kml_removeSpacesPadding(kml);
-  um_fp val, pval;
+  fptr val, pval;
   switch (fpChar(kml)[0]) {
   case '[': {
     val = kml_around("[]", kml);
@@ -57,9 +57,9 @@ UMapList *parseList(UMapList *lparent, um_fp kml) {
   case '"': {
     kml.ptr++;
     kml.width--;
-    pval = (um_fp){
-        .ptr = kml.ptr,
+    pval = (fptr){
         .width = kml_indexOf(kml, '"'),
+        .ptr = kml.ptr,
     };
     val = pval;
     if (pval.width == kml.width) {
@@ -78,7 +78,7 @@ UMapList *parseList(UMapList *lparent, um_fp kml) {
     UMapList_append(lparent, pval);
   }
   }
-  um_fp next = kml_after(kml, val);
+  fptr next = kml_after(kml, val);
   next = kml_removeSpacesPadding(next);
   if (next.width && fpChar(next)[0] == ',') {
     next.width--;
@@ -87,7 +87,7 @@ UMapList *parseList(UMapList *lparent, um_fp kml) {
   next = kml_removeSpacesPadding(next);
   return parseList(lparent, next);
 }
-UMap *parse(UMap *parent, UMapList *lparent, um_fp kml) {
+UMap *parse(UMap *parent, UMapList *lparent, fptr kml) {
   kml = kml_removeSpacesPadding(kml);
   if (!kml.width) {
     if (!(parent || lparent)) {
@@ -114,8 +114,8 @@ UMap *parse(UMap *parent, UMapList *lparent, um_fp kml) {
   if (kml_indexOf(kml, ':') == kml.width) {
     return parent ? parent : NULL;
   }
-  um_fp key = kml_until(':', kml);
-  um_fp val = kml_after(kml, kml_behind(':', kml)), pval;
+  fptr key = kml_until(':', kml);
+  fptr val = kml_after(kml, kml_behind(':', kml)), pval;
 
   val = kml_removeSpacesPadding(val);
   key = kml_removeSpacesPadding(key);
@@ -166,6 +166,7 @@ UMap *parse(UMap *parent, UMapList *lparent, um_fp kml) {
 
 #endif // KMLM_H
 #ifdef KMLM_C
+
 // index after end if c not present
 unsigned int kml_indexOf(um_fp string, char c) {
   int i;
@@ -212,14 +213,18 @@ um_fp kml_inside(char limits[2], um_fp string) {
         }
 
         if (!counter)
-          return (um_fp){.ptr = ((uint8_t *)string.ptr) + i + 1,
-                         .width = (size_t)ii - 1};
+          return (um_fp){
+            .width = (size_t)ii - 1,
+            .ptr = ((uint8_t *)string.ptr) + i + 1,
+          };
         // if (i + ii == string.width - 1)
         //   return (um_fp){.ptr = ((uint8_t *)string.ptr) + i + 1,
         //                  .width = (size_t)ii - 1};
         if (i + ii == string.width - 1)
-          return (um_fp){.ptr = ((uint8_t *)string.ptr) + i + 1,
-                         .width = (size_t)ii};
+          return (um_fp){
+           .width = (size_t)ii,
+            .ptr = ((uint8_t *)string.ptr) + i + 1,
+          };
       }
     }
   }
@@ -260,11 +265,15 @@ um_fp kml_around(char limits[2], um_fp string) {
         }
 
         if (!counter)
-          return (um_fp){.ptr = ((uint8_t *)string.ptr) + i,
-                         .width = (size_t)ii + 1};
+          return (um_fp){
+            .width = (size_t)ii + 1,
+            .ptr = ((uint8_t *)string.ptr) + i,
+          };
         if (i + ii == string.width - 1)
-          return (um_fp){.ptr = ((uint8_t *)string.ptr) + i,
-                         .width = (size_t)ii + 1};
+          return (um_fp){
+                         .width = (size_t)ii + 1,
+            .ptr = ((uint8_t *)string.ptr) + i,
+          };
       }
     }
   }
@@ -302,8 +311,10 @@ um_fp kml_after(um_fp main, um_fp slice) {
   if (!(sliceStart >= mainStart && sliceEnd <= mainEnd))
     return nullUmf;
 
-  return (um_fp){.ptr = (uint8_t *)sliceEnd,
-                 .width = (size_t)(mainEnd - sliceEnd)};
+  return (um_fp){
+                 .width = (size_t)(mainEnd - sliceEnd),
+    .ptr = (uint8_t *)sliceEnd,
+  };
 }
 #define stack_split(result, string, ...)                                       \
   result = (um_fp *)alloca(                                                    \
@@ -316,14 +327,15 @@ um_fp kml_after(um_fp main, um_fp slice) {
       args[i] = (i == 0) ? (min(args[i], string.width))                        \
                          : (min(string.width, max(args[i], args[i - 1])));     \
       result[i] = (um_fp){                                                     \
-          .ptr = (i == 0) ? (string.ptr) : (last),                             \
           .width = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),             \
+          .ptr = (i == 0) ? (string.ptr) : (last),                             \
       };                                                                       \
       last = ((uint8_t *)result[i].ptr) + result[i].width;                     \
     }                                                                          \
     result[sizeof(args) / sizeof(unsigned int)] = (um_fp){                     \
+        .width = string.width - ((uint8_t *)last - (uint8_t *)string.ptr),     \
         .ptr = last,                                                           \
-        .width = string.width - ((uint8_t *)last - (uint8_t *)string.ptr)};    \
+    };                                                                         \
   } while (0);
 char isSkip(char c) {
   switch (c) {

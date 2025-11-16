@@ -352,8 +352,8 @@ struct print_arg {
 
       PRINTERARGSEACH({
         UM_SWITCH(arg,{
-          UM_CASE("c0",{cut0s = 1;});
-          UM_CASE("length",{useLength = 1;});
+          UM_CASE(fp_from("c0"),{cut0s = 1;});
+          UM_CASE(fp_from("length"),{useLength = 1;});
           UM_DEFAULT();
         });
       });

@@ -1,8 +1,8 @@
 #ifndef MY_CSUM_H
 #define MY_CSUM_H
 #include "allocator.h"
+#include "fptr.h"
 #include "my-list.h"
-#include "um_fp.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,21 +14,6 @@
   #define cSum_REDUNDANCY_AMMOUNT ((unsigned int)4) // cant be 0
 #endif
 // clang-format on
-
-// #define CHECK_TYPE uint32_t
-// static inline uint32_t cSum_CHECK_EXPR(uint32_t crc, uint8_t data) {
-//     crc ^= (uint32_t)data << 24;
-//
-//     for (int i = 0; i < 8; i++) {
-//         if (crc & 0x80000000u) {
-//             crc = (crc << 1) ^ 0x10210000u;  // polynomial aligned to top
-//         } else {
-//             crc <<= 1;
-//         }
-//     }
-//
-//     return crc;
-// }
 
 #define CHECK_TYPE uint32_t
 static inline CHECK_TYPE cSum_CHECK_EXPR(CHECK_TYPE val, uint8_t data) {
@@ -51,7 +36,7 @@ typedef struct {
 
 static dataChecker cSum_new() {
   printf("new csum item with  %ix redundancy\n", cSum_REDUNDANCY_AMMOUNT);
-  List *l = List_new(&defaultAllocator ,sizeof(uint8_t));
+  List *l = List_new(&defaultAllocator, sizeof(uint8_t));
   List_resize(l, 20);
   return (dataChecker){.checkSumScratch = l};
 }
@@ -125,13 +110,16 @@ static um_fp cSum_fromSum(checkData data) {
     uint8_t c = ptrs[0][i];
     for (unsigned int ii = 0; ii < cSum_REDUNDANCY_AMMOUNT; ii++)
       if (ptrs[ii][i] != c)
-        return nullUmf;
+        return nullFptr;
     checkResult = cSum_CHECK_EXPR(checkResult, c);
   }
   if (checkResult != check) {
     return nullUmf;
   }
-  return (um_fp){.ptr = ptrs[0], .width = dataLength};
+  return (um_fp){
+      .width = dataLength,
+      .ptr = ptrs[0],
+  };
 }
 #undef CHECK_EXPR
 #undef CHECK_TYPE

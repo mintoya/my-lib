@@ -19,7 +19,6 @@
       .elements = (typeof(list.elements))name.head,                            \
   };
 #define MList_heapList(list) __MacroListRef__##list
-#define MList_dnfList(list) __MacroListTempRef##list
 
 #define MList_castT(type, list)                                                \
   ((MList_t(type)){.length = list.length, .elements = list.elements})
@@ -72,9 +71,8 @@
 #define MList_capacity(list) MList_heapList(list)->size
 
 // list is already made
-#define MList_DF(list, type, Listptr)                                          \
+#define MList_DF(list, Listptr)                                                \
   List *MList_heapList(list) = Listptr;                                        \
-  MList(type) list;                                                            \
   list = MList_deconvert((*MList_heapList(list)), list);
 // list is already declared
 #define MList_DFInit(list, allocatorptr, Listptr)                              \

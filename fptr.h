@@ -25,8 +25,7 @@ typedef union {
 typedef fptr um_fp;
 
 // #include <string.h>
-[[gnu::pure]] static inline int fptr_cmp(const fptr a, const fptr b)
-    [[unsequenced]] {
+[[gnu::pure]] static inline int fptr_cmp(const fptr a, const fptr b) {
   int wd = a.width - b.width;
   if (wd) {
     return wd;
@@ -58,8 +57,63 @@ typedef fptr um_fp;
 }
 static int (*um_fp_cmp)(const fptr, const fptr) = fptr_cmp;
 
-static char fptr_eq(fptr a, fptr b) { return !um_fp_cmp(a, b); }
+#include <string.h>
+static inline void fpmemset(uint8_t *ptr, const fptr element, size_t ammount) {
+  size_t set = 0;
+  while (set < ammount) {
+    if (!set) {
+      memcpy(ptr, element.ptr, element.width);
+      set++;
+    } else {
+      size_t toset = set < (ammount - set) ? set : ammount - set;
+      memcpy(ptr + set * element.width, ptr, element.width * toset);
+      set *= 2;
+    }
+  }
+}
+
+static char fptr_eq(fptr a, fptr b) { return !fptr_eq(a, b); }
 static char (*um_eq)(fptr, fptr) = fptr_eq;
+
+#ifdef __cplusplus
+inline bool operator==(const fptr &a, const fptr &b) { return fptr_eq(a, b); }
+inline bool operator!=(const fptr &a, const fptr &b) { return !fptr_eq(a, b); }
+#endif
+
+#define UM_DEFAULT(...) {__VA_ARGS__}
+#define UM_CASE(fp, ...)                                                       \
+  if (fptr_eq(fp, __temp)) {                                                   \
+    __VA_ARGS__                                                                \
+  } else
+#define UM_SWITCH(fp, ...)                                                     \
+  do {                                                                         \
+    fptr __temp = fp;                                                          \
+    __VA_ARGS__                                                                \
+  } while (0)
+#define lmemset(arr, arrlen, ...)                                              \
+  do {                                                                         \
+    typeof(__VA_ARGS__) __temp = (__VA_ARGS__);                                \
+    fptr __tempFp = ((fptr){                                                   \
+        .width = sizeof(__temp),                                               \
+        .ptr = ((uint8_t *)&(__temp)),                                         \
+    });                                                                        \
+    fpmemset(((uint8_t *)(arr)), (__tempFp), (arrlen));                        \
+  } while (0)
+#define nullFptr ((fptr){0})
+#define nullUmf nullFptr
+#define nullFFptr ((ffptr){0})
+
+#define um_block(var)                                                          \
+  ((fptr){                                                                     \
+      .width = sizeof(var),                                                    \
+      .ptr = (uint8_t *)(typeof(var)[1]){var},                                 \
+  })
+#define um_blockT(type, ...)                                                   \
+  ((fptr){                                                                     \
+      .width = sizeof(type),                                                   \
+      .ptr = (uint8_t *)(type[1]){__VA_ARGS__},                                \
+  })
+
 #define structEq(a, b)                                                         \
   (fptr_eq(                                                                    \
       (fptr){                                                                  \
@@ -70,37 +124,6 @@ static char (*um_eq)(fptr, fptr) = fptr_eq;
           .width = sizeof(b),                                                  \
           .ptr = (uint8_t *)(&(b)),                                            \
       }))
-
-#define UM_DEFAULT(...) {__VA_ARGS__}
-#define UM_CASE(fp, ...)                                                       \
-  if (um_eq(fp_from(fp), __temp)) {                                            \
-    __VA_ARGS__                                                                \
-  } else
-#define UM_SWITCH(fp, ...)                                                     \
-  do {                                                                         \
-    fptr __temp = fp;                                                          \
-    __VA_ARGS__                                                                \
-  } while (0)
-
-#ifdef __cplusplus
-inline bool operator==(const fptr &a, const fptr &b) { return um_eq(a, b); }
-inline bool operator!=(const fptr &a, const fptr &b) { return !um_eq(a, b); }
-#endif
-
-#define nullFptr ((fptr){0})
-#define nullUmf nullFptr
-#define nullFFptr ((ffptr){0})
-
-#define um_block(var)                                                          \
-  ((fptr){                                                                     \
-      .width = sizeof(typeof(var)),                                            \
-      .ptr = (uint8_t *)(typeof(var)[1]){var},                                 \
-  })
-#define um_blockT(type, ...)                                                   \
-  ((fptr){                                                                     \
-      .width = sizeof(type),                                                   \
-      .ptr = (uint8_t *)(type[1]){__VA_ARGS__},                                \
-  })
 
 #ifndef __cplusplus
 
@@ -133,9 +156,6 @@ template <typename T> inline fptr fp_from(T &val) {
       .ptr = reinterpret_cast<uint8_t *>(&val),
   };
 }
-// inline fptr fp_from(std::string &s) {
-//   return {reinterpret_cast<uint8_t *>(s.data()), s.size()};
-// }
 inline fptr fp_from(fptr u) { return u; }
 inline fptr fp_from(const std::string &s) {
   return {

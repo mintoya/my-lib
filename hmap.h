@@ -1,8 +1,8 @@
 #ifndef HMAP_H
 #define HMAP_H
 #include "allocator.h"
-#include "stringList.h"
 #include "fptr.h"
+#include "stringList.h"
 #include <stdint.h>
 #include <stdlib.h>
 typedef struct {
@@ -24,36 +24,33 @@ static inline size_t HMap_footprint(HMap *hm) {
   return res;
 }
 
-#define HMap_innerEmpty                                                        \
-  ((HMap_innertype){.index = 0, .next = 0, .hasindex = 0, .hasnext = 0})
+#define HMap_innerEmpty ((HMap_innertype){0})
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
 // #TODO
-// redeculously faster
 // #include "komihash/komihash.h"
 // [[gnu::pure]] static inline unsigned int HMap_hash(fptr str) {
 //   return komihash(str.ptr, str.width, 6767);
 // }
 
 static const intmax_t HMap_h = (0x67676141420);
-[[gnu::pure]] static inline intmax_t HMap_hash(const fptr str)
-    [[gnu::unsequenced]] {
+[[gnu::pure]] static inline intmax_t HMap_hash(const fptr str) {
   intmax_t res = HMap_h;
 
   const size_t width = str.width;
   const uint8_t *ptr = str.ptr;
   const intmax_t *starta = (intmax_t *)ptr;
-  size_t top = width / sizeof(intmax_t);
-  size_t resta = top * sizeof(intmax_t);
+  const size_t top = width / sizeof(intmax_t);
+  const size_t resta = top * sizeof(intmax_t);
 
   // for (size_t i = 0; i < top; i++)
   //   res ^= (res << 7) + starta[i];
   for (size_t i = 0; i < top; i++) {
     intmax_t chunk;
     memcpy(&chunk, ptr + i * sizeof(intmax_t), sizeof(intmax_t));
-    res ^= (res << 7) + chunk;
+    res ^= (res << 10) + chunk;
   }
   for (size_t i = resta; i < width; i++)
     res ^= (res << 3) + ptr[i];
@@ -63,16 +60,15 @@ static const intmax_t HMap_h = (0x67676141420);
 static inline HMap *HMap_new(const My_allocator *allocator, size_t metaSize) {
 
   HMap *res = (HMap *)aAlloc(allocator, sizeof(HMap));
-  // clang-format off
   *res = (HMap){
-    .metaSize = metaSize,
-    .metadata = (HMap_innertype*)aAlloc(allocator,metaSize*sizeof(HMap_innertype)),
-    .links = List_new(allocator,sizeof(HMap_innertype)),
-    .KVs = stringList_new(allocator),
+      .metaSize = metaSize,
+      .metadata = (HMap_innertype *)aAlloc(allocator,
+                                           metaSize * sizeof(HMap_innertype)),
+      .links = List_new(allocator, sizeof(HMap_innertype)),
+      .KVs = stringList_new(allocator),
   };
-  List_resize(res->links, metaSize/10);
-  // clang-format on
-  memset(res->metadata, 0, sizeof(HMap_innertype) * metaSize);
+  List_resize(res->links, metaSize / 4);
+  lmemset(res->metadata, metaSize, HMap_innerEmpty);
   return res;
 }
 unsigned int HMap_set(HMap *, fptr key, fptr val);
@@ -86,9 +82,10 @@ static inline void HMap_free(HMap *hm) {
 }
 
 static inline void HMap_cleanup_handler(HMap **hm) {
-  if (hm && *hm)
+  if (hm && *hm) {
     HMap_free(*hm);
-  *hm = NULL;
+    *hm = NULL;
+  }
 }
 static inline void HMap_remake(HMap *hm) {
   stringList *l = stringList_remake(hm->KVs);

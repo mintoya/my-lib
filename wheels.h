@@ -15,6 +15,11 @@
 #include "stateMachine.h"
 #endif
 
+#ifdef KMLM_H
+#define KMLM_C
+#include "kmlM.h"
+#endif
+
 #ifdef UMAP_H
 #ifdef CHECKINCLUDES
 #pragma message("umap_h")

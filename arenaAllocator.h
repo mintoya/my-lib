@@ -33,9 +33,10 @@ static size_t arena_footprint(My_allocator *arena) {
   return res;
 }
 static void arena_cleanup_handler(My_allocator **arenaPtr) {
-  if (arenaPtr && *arenaPtr)
+  if (arenaPtr && *arenaPtr) {
     arena_cleanup(*arenaPtr);
-  *arenaPtr = NULL;
+    *arenaPtr = NULL;
+  }
 }
 #define Arena_scoped [[gnu::cleanup(arena_cleanup_handler)]] My_allocator
 #endif // ARENA_ALLOCATOR_H

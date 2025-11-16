@@ -1,9 +1,9 @@
-CC = gcc
+CC = g++
 DIR = build
 # CFLAGS = -w -O3
 CFLAGS = -fsanitize=address -g -O0 -w
 
-OBJECTS = ./examples/alloctest.c
+OBJECTS = ./examples/kmltest.c
 
 UNAME_S := $(shell uname -s 2>/dev/null)
 
@@ -42,7 +42,3 @@ profile: make
 	@echo "perf report to view"
 	@sleep 2
 	perf record ./$(DIR)/$(EXECUTABLE)
-a: $(OBJECTS)
-	$(CC) -o $(DIR)/$(EXECUTABLE) $(OBJECTS) $(CFLAGS)
-main.o: main.c
-	$(CC) -c main.c $(CFLAGS)
