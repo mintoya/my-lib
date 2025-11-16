@@ -31,8 +31,7 @@
   list = MList_deconvert((*MList_heapList(list)), list);
 
 #define MList_push(list, ...)                              \
-  do                                                       \
-  {                                                        \
+  do {                                                     \
     MList_heapList(list)->length = list.length;            \
     typeof(*(list.elements)) __val = __VA_ARGS__;          \
     List_append(MList_heapList(list), &__val);             \
@@ -47,8 +46,7 @@
   })
 
 #define MList_insert(list, index, ...)                        \
-  do                                                          \
-  {                                                           \
+  do {                                                        \
     MList_heapList(list)->length = list.length;               \
     typeof(*(list.elements)) __val = __VA_ARGS__;             \
     List_insert(MList_heapList(list), index, (void *)&__val); \
@@ -56,17 +54,14 @@
   } while (0)
 
 #define MList_foreach(list, index, element, ...)               \
-  do                                                           \
-  {                                                            \
-    for (size_t index = 0; index < list.length; index++)       \
-    {                                                          \
+  do {                                                         \
+    for (size_t index = 0; index < list.length; index++) {     \
       typeof(list.elements[0]) element = list.elements[index]; \
       __VA_ARGS__                                              \
     }                                                          \
   } while (0)
 #define MList_addArr(list, size, ...)                                  \
-  do                                                                   \
-  {                                                                    \
+  do {                                                                 \
     MList_heapList(list)->length = list.length;                        \
     typeof(list.elements) __temp = (typeof(list.elements))__VA_ARGS__; \
     void *__ref = (void *)__temp;                                      \

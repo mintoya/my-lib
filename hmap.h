@@ -5,22 +5,19 @@
 #include "stringList.h"
 #include <stdint.h>
 #include <stdlib.h>
-typedef struct
-{
+typedef struct {
   size_t index;
   size_t next;
   unsigned char hasindex : 1;
   unsigned char hasnext : 1;
 } HMap_innertype;
-typedef struct
-{
+typedef struct {
   size_t metaSize;
   HMap_innertype *metadata;
   List *links;
   stringList *KVs;
 } HMap;
-static inline size_t HMap_footprint(HMap *hm)
-{
+static inline size_t HMap_footprint(HMap *hm) {
   size_t res = stringList_footprint(hm->KVs) +
                hm->metaSize * sizeof(HMap_innertype) +
                List_fullHeadArea(hm->links);
@@ -39,8 +36,7 @@ static inline size_t HMap_footprint(HMap *hm)
 // }
 
 static const intmax_t HMap_h = (0x67676141420);
-[[gnu::pure]] static inline intmax_t HMap_hash(const fptr str)
-{
+[[gnu::pure]] static inline intmax_t HMap_hash(const fptr str) {
   intmax_t res = HMap_h;
 
   const size_t width = str.width;
@@ -51,8 +47,7 @@ static const intmax_t HMap_h = (0x67676141420);
 
   // for (size_t i = 0; i < top; i++)
   //   res ^= (res << 7) + starta[i];
-  for (size_t i = 0; i < top; i++)
-  {
+  for (size_t i = 0; i < top; i++) {
     intmax_t chunk;
     memcpy(&chunk, ptr + i * sizeof(intmax_t), sizeof(intmax_t));
     res ^= (res << 10) + chunk;
@@ -62,14 +57,12 @@ static const intmax_t HMap_h = (0x67676141420);
 
   return res;
 }
-static inline HMap *HMap_new(const My_allocator *allocator, size_t metaSize)
-{
+static inline HMap *HMap_new(const My_allocator *allocator, size_t metaSize) {
 
   HMap *res = (HMap *)aAlloc(allocator, sizeof(HMap));
   *res = (HMap){
       .metaSize = metaSize,
-      .metadata = (HMap_innertype *)aAlloc(allocator,
-                                           metaSize * sizeof(HMap_innertype)),
+      .metadata = (HMap_innertype *)aAlloc(allocator, metaSize * sizeof(HMap_innertype)),
       .links = List_new(allocator, sizeof(HMap_innertype)),
       .KVs = stringList_new(allocator),
   };
@@ -79,8 +72,7 @@ static inline HMap *HMap_new(const My_allocator *allocator, size_t metaSize)
 }
 unsigned int HMap_set(HMap *, fptr key, fptr val);
 fptr HMap_get(HMap *, fptr);
-static inline void HMap_free(HMap *hm)
-{
+static inline void HMap_free(HMap *hm) {
   const My_allocator *allocator = hm->links->allocator;
   List_free(hm->links);
   stringList_free(hm->KVs);
@@ -88,30 +80,24 @@ static inline void HMap_free(HMap *hm)
   aFree(allocator, hm);
 }
 
-static inline void HMap_cleanup_handler(HMap **hm)
-{
-  if (hm && *hm)
-  {
+static inline void HMap_cleanup_handler(HMap **hm) {
+  if (hm && *hm) {
     HMap_free(*hm);
     *hm = NULL;
   }
 }
-static inline void HMap_remake(HMap *hm)
-{
+static inline void HMap_remake(HMap *hm) {
   stringList *l = stringList_remake(hm->KVs);
   stringList_free(hm->KVs);
   hm->KVs = l;
 }
-static inline stringList *HMap_getkeys(HMap *map)
-{
+static inline stringList *HMap_getkeys(HMap *map) {
   stringList *keys = stringList_new(map->KVs->List_stringMetaData.allocator);
 
-  for (size_t i = 0; i < map->metaSize; i++)
-  {
+  for (size_t i = 0; i < map->metaSize; i++) {
     HMap_innertype *h = &map->metadata[i];
 
-    while (h->hasindex)
-    {
+    while (h->hasindex) {
       stringList_append(keys, stringList_get(map->KVs, h->index));
 
       if (!h->hasnext)
@@ -125,13 +111,11 @@ static inline stringList *HMap_getkeys(HMap *map)
 
   return keys;
 }
-static inline size_t HMap_countCollisions(HMap *map)
-{
+static inline size_t HMap_countCollisions(HMap *map) {
   return (map->links->length);
 }
 
-struct HMap_both
-{
+struct HMap_both {
   fptr key;
   fptr val;
 };
@@ -141,53 +125,41 @@ struct HMap_both HMap_getBoth(HMap *map, fptr key);
 #endif // HMAP_H
 
 #ifdef HMAP_C
-unsigned int HMap_setForce(HMap *map, HMap_innertype *handle, fptr key, fptr val)
-{
-  if (!handle->hasindex)
-  {
+unsigned int HMap_setForce(HMap *map, HMap_innertype *handle, fptr key, fptr val) {
+  if (!handle->hasindex) {
     handle->index = stringList_append(map->KVs, key);
     handle->hasindex = 1;
     stringList_append(map->KVs, val);
     return handle->index;
-  }
-  else if (!fptr_cmp(stringList_get(map->KVs, handle->index), key))
-  {
+  } else if (!fptr_cmp(stringList_get(map->KVs, handle->index), key)) {
     stringList_set(map->KVs, val, handle->index + 1);
     return handle->index;
-  }
-  else
-  {
+  } else {
     // collisoin
     size_t next_index;
-    if (!handle->hasnext)
-    {
+    if (!handle->hasnext) {
       handle->hasnext = 1;
       handle->next = map->links->length;
       next_index = handle->next;
       mList_add(map->links, HMap_innertype, HMap_innerEmpty);
-    }
-    else
-    {
+    } else {
       next_index = handle->next;
     }
     return HMap_setForce(
-        map, (HMap_innertype *)List_getRef(map->links, next_index), key, val);
+        map, (HMap_innertype *)List_getRef(map->links, next_index), key, val
+    );
   }
 }
-unsigned int HMap_set(HMap *map, fptr key, fptr val)
-{
+unsigned int HMap_set(HMap *map, fptr key, fptr val) {
   unsigned int hash = HMap_hash(key);
   HMap_innertype *ht = map->metadata + (hash % map->metaSize);
   return HMap_setForce(map, ht, key, val);
 }
-fptr HMap_get(HMap *map, fptr key)
-{
+fptr HMap_get(HMap *map, fptr key) {
   unsigned int hash = HMap_hash(key);
   HMap_innertype *ht = map->metadata + (hash % map->metaSize);
-  while (1)
-  {
-    if (!fptr_cmp(key, stringList_get(map->KVs, ht->index)))
-    {
+  while (1) {
+    if (!fptr_cmp(key, stringList_get(map->KVs, ht->index))) {
       return stringList_get(map->KVs, ht->index + 1);
     }
     if (!ht->hasnext)
@@ -195,14 +167,11 @@ fptr HMap_get(HMap *map, fptr key)
     ht = (HMap_innertype *)List_getRef(map->links, ht->next);
   }
 }
-struct HMap_both HMap_getBoth(HMap *map, fptr key)
-{
+struct HMap_both HMap_getBoth(HMap *map, fptr key) {
   unsigned int hash = HMap_hash(key);
   HMap_innertype *ht = map->metadata + (hash % map->metaSize);
-  while (1)
-  {
-    if (!fptr_cmp(key, stringList_get(map->KVs, ht->index)))
-    {
+  while (1) {
+    if (!fptr_cmp(key, stringList_get(map->KVs, ht->index))) {
       return (struct HMap_both){
           .key = stringList_get(map->KVs, ht->index),
           .val = stringList_get(map->KVs, ht->index + 1),

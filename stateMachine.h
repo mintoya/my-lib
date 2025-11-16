@@ -3,15 +3,12 @@
 // basic state machine
 
 typedef void *(*statefn)();
-static statefn statemachine_iterate(statefn initial)
-{
+static statefn statemachine_iterate(statefn initial) {
   return (statefn)initial;
 }
-static void statemachine_loop(statefn initial)
-{
+static void statemachine_loop(statefn initial) {
   statefn state = initial;
-  while (state)
-  {
+  while (state) {
     state = (statefn)state();
   }
 }

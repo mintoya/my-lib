@@ -370,8 +370,8 @@ unsigned int UMapList_append(UMapList *map, fptr val) {
   return map->metadata->length - 1;
 };
 
-#define advance(dst, src, length)                                              \
-  memcpy(dst, src, length);                                                    \
+#define advance(dst, src, length) \
+  memcpy(dst, src, length);       \
   dst += length / sizeof(uint8_t);
 // memory layout:
 //  { keysSize|valsSize|metaSize|keys|vals|meta }

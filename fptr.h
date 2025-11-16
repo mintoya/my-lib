@@ -4,8 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef struct
-{
+typedef struct {
   size_t width;
   uint8_t *ptr;
 } fptr;
@@ -81,7 +80,9 @@ static char (*um_eq)(fptr, fptr) = fptr_eq;
 inline bool operator == (const fptr &a, const fptr &b) { return fptr_eq(a, b); }
 inline bool operator != (const fptr &a, const fptr &b) { return !fptr_eq(a, b); }
 #endif
-
+#ifdef __cplusplus
+#define typeof(x) std::decay_t<decltype(x)>
+#endif
 #define UM_DEFAULT(...) {__VA_ARGS__}
 #define UM_CASE(fp, ...)     \
   if (fptr_eq(fp, __temp)) { \
