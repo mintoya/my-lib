@@ -14,12 +14,7 @@ __attribute__((constructor)) void setupList(void) {
   buffer = List_new(&defaultAllocator, sizeof(char));
 }
 
-void listPrinter(
-    const char *c,
-    void *arb,
-    unsigned int length,
-    char flush
-) {
+void listPrinter(const char *c, void *arb, unsigned int length, char flush) {
   (void)arb;
   MList(char) list;
   MList_DF(list, buffer);
@@ -31,12 +26,8 @@ static inline fptr um_flist(List *l) {
       .ptr = l->head,
   };
 }
-void formattedOutputFunction(
-    const char *data,
-    void *arb,
-    unsigned int length,
-    char flush
-) {
+void formattedOutputFunction(const char *data, void *arb, unsigned int length,
+                             char flush) {
   static uint indentLevel = 0;
 
   for (size_t index = 0; index < length; index++) {
@@ -96,6 +87,6 @@ int main() {
 
   print_wf(listPrinter, 0, "${UMap}", *test);
   UMap_scoped *output = parse(NULL, NULL, um_flist(buffer));
-  println("${UMap}", *output);
+  UMapView elementsEl = UMap_get(output, fp_from("elements"));
   print_wf(formattedOutputFunction, 0, "${UMap}", *output);
 }

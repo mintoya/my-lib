@@ -13,7 +13,7 @@ fptr kml_behind(char delim, fptr string);
 fptr kml_inside(char limits[2], fptr string);
 fptr kml_around(char limits[2], fptr string);
 fptr kml_after(fptr main, um_fp slice);
-fptr kml_removeSpacesPadding(fptr in);
+fptr kml_trimPadding(fptr in);
 fptr findIndex(fptr str, unsigned int index);
 fptr findKey(fptr str, um_fp key);
 
@@ -31,7 +31,7 @@ UMapList *parseList(UMapList *lparent, fptr kml) {
   if (!(lparent)) {
     lparent = UMapList_new(&defaultAllocator);
   }
-  kml = kml_removeSpacesPadding(kml);
+  kml = kml_trimPadding(kml);
   fptr val, pval;
   switch (fpChar(kml)[0]) {
   case '[': {
@@ -79,16 +79,16 @@ UMapList *parseList(UMapList *lparent, fptr kml) {
   }
   }
   fptr next = kml_after(kml, val);
-  next = kml_removeSpacesPadding(next);
+  next = kml_trimPadding(next);
   if (next.width && fpChar(next)[0] == ',') {
     next.width--;
     next.ptr++;
   }
-  next = kml_removeSpacesPadding(next);
+  next = kml_trimPadding(next);
   return parseList(lparent, next);
 }
 UMap *parse(UMap *parent, UMapList *lparent, fptr kml) {
-  kml = kml_removeSpacesPadding(kml);
+  kml = kml_trimPadding(kml);
   if (!kml.width) {
     if (!(parent || lparent)) {
       return UMap_new(&defaultAllocator);
@@ -102,7 +102,7 @@ UMap *parse(UMap *parent, UMapList *lparent, fptr kml) {
   if (fpChar(kml)[0] == '{') {
     kml = kml_inside("{}", kml);
   }
-  kml = kml_removeSpacesPadding(kml);
+  kml = kml_trimPadding(kml);
   if (!kml.width) {
     if (!(parent || lparent)) {
       return UMap_new(&defaultAllocator);
@@ -117,8 +117,8 @@ UMap *parse(UMap *parent, UMapList *lparent, fptr kml) {
   fptr key = kml_until(':', kml);
   fptr val = kml_after(kml, kml_behind(':', kml)), pval;
 
-  val = kml_removeSpacesPadding(val);
-  key = kml_removeSpacesPadding(key);
+  val = kml_trimPadding(val);
+  key = kml_trimPadding(key);
 
   switch (fpChar(val)[0]) {
   case '[': {
@@ -130,7 +130,7 @@ UMap *parse(UMap *parent, UMapList *lparent, fptr kml) {
         UMapList_appendList(lparent, newmap);
       }
       if (parent) {
-        UMap_setList(parent, key, newmap);
+        UMap_setList(parent, kml_trimPadding(key), newmap);
       }
     }
   } break;
@@ -143,7 +143,7 @@ UMap *parse(UMap *parent, UMapList *lparent, fptr kml) {
         UMapList_appendChild(lparent, newmap);
       }
       if (parent) {
-        UMap_setChild(parent, key, newmap);
+        UMap_setChild(parent, kml_trimPadding(key), newmap);
       }
     }
   } break;
@@ -153,12 +153,12 @@ UMap *parse(UMap *parent, UMapList *lparent, fptr kml) {
     pval = kml_until('"', val);
     val = pval;
     val.width++;
-    UMap_set(parent, key, pval);
+    UMap_set(parent, kml_trimPadding(key), pval);
   } break;
   default: {
     val = kml_behind(';', val);
     pval = kml_until(';', val);
-    UMap_set(parent, key, pval);
+    UMap_set(parent, kml_trimPadding(key), pval);
   }
   }
   return parse(parent, lparent, kml_after(kml, val));
@@ -316,32 +316,32 @@ um_fp kml_after(um_fp main, um_fp slice) {
       .ptr = (uint8_t *)sliceEnd,
   };
 }
-#define stack_split(result, string, ...)                                   \
-  result = (um_fp *)alloca(                                                \
-      sizeof(um_fp) *                                                      \
-      (sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1)   \
-  );                                                                       \
-  do {                                                                     \
-    uint8_t *last;                                                         \
-    unsigned int args[] = {__VA_ARGS__};                                   \
-    for (int i = 0; i < sizeof(args) / sizeof(unsigned int); i++) {        \
-      args[i] = (i == 0) ? (min(args[i], string.width))                    \
-                         : (min(string.width, max(args[i], args[i - 1]))); \
-      result[i] = (um_fp){                                                 \
-          .width = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),         \
-          .ptr = (i == 0) ? (string.ptr) : (last),                         \
-      };                                                                   \
-      last = ((uint8_t *)result[i].ptr) + result[i].width;                 \
-    }                                                                      \
-    result[sizeof(args) / sizeof(unsigned int)] = (um_fp){                 \
-        .width = string.width - ((uint8_t *)last - (uint8_t *)string.ptr), \
-        .ptr = last,                                                       \
-    };                                                                     \
+#define stack_split(result, string, ...)                                       \
+  result = (um_fp *)alloca(                                                    \
+      sizeof(um_fp) *                                                          \
+      (sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1));     \
+  do {                                                                         \
+    uint8_t *last;                                                             \
+    unsigned int args[] = {__VA_ARGS__};                                       \
+    for (int i = 0; i < sizeof(args) / sizeof(unsigned int); i++) {            \
+      args[i] = (i == 0) ? (min(args[i], string.width))                        \
+                         : (min(string.width, max(args[i], args[i - 1])));     \
+      result[i] = (um_fp){                                                     \
+          .width = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),             \
+          .ptr = (i == 0) ? (string.ptr) : (last),                             \
+      };                                                                       \
+      last = ((uint8_t *)result[i].ptr) + result[i].width;                     \
+    }                                                                          \
+    result[sizeof(args) / sizeof(unsigned int)] = (um_fp){                     \
+        .width = string.width - ((uint8_t *)last - (uint8_t *)string.ptr),     \
+        .ptr = last,                                                           \
+    };                                                                         \
   } while (0);
 char isSkip(char c) {
   switch (c) {
   case ' ':
   case '\n':
+  case '\r':
   case '\0':
   case '\t':
     return 1;
@@ -349,7 +349,7 @@ char isSkip(char c) {
     return 0;
   }
 }
-um_fp kml_removeSpacesPadding(um_fp in) {
+um_fp kml_trimPadding(um_fp in) {
   um_fp res = in;
   int front = 0;
   int back = in.width - 1;

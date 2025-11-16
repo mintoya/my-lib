@@ -185,6 +185,7 @@ template<size_t N> inline fptr fp_from(const char (&s)[N]) {
 #define isSkip(char) ( \
     char == ' ' ||     \
     char == '\n' ||    \
+    char == '\r' ||    \
     char == '\t'       \
 )
 static fptr fptr_trim(fptr in) {

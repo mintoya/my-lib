@@ -34,8 +34,8 @@ void stringList_insert(stringList *l, fptr, unsigned int index);
 void stringList_set(stringList *l, fptr, unsigned int index);
 unsigned int stringList_append(stringList *l, fptr);
 
-#define advance(dst, src, length) \
-  memcpy(dst, src, length);       \
+#define advance(dst, src, length)                                              \
+  memcpy(dst, src, length);                                                    \
   dst += length / sizeof(uint8_t);
 // memory layot:
 //  { size_t:keycount | metadata buffer | data buffer }
@@ -50,7 +50,8 @@ static inline stringListView stringList_tobuf(stringList *l) {
 
   uint8_t *use = res.ptr;
   advance(use, &metalength, sizeof(size_t));
-  advance(use, l->List_stringMetaData.head, List_headArea(&l->List_stringMetaData));
+  advance(use, l->List_stringMetaData.head,
+          List_headArea(&l->List_stringMetaData));
   advance(use, l->List_char.head, List_headArea(&l->List_char));
 
   return ((stringListView){.raw = res});
@@ -58,8 +59,8 @@ static inline stringListView stringList_tobuf(stringList *l) {
 
 void stringListView_free(stringListView slv);
 #undef advance
-#define advance(dst, src, length) \
-  memcpy(dst, src, length);       \
+#define advance(dst, src, length)                                              \
+  memcpy(dst, src, length);                                                    \
   src += length / sizeof(uint8_t);
 static inline stringList *stringList_fromBuf(stringListView um) {
   uint8_t *ptr = um.raw.ptr;
@@ -72,9 +73,11 @@ static inline stringList *stringList_fromBuf(stringListView um) {
       .width = sizeof(stringMetaData),
       .length = (unsigned int)metalength,
       .size = (unsigned int)metalength,
-      .head = (uint8_t *)aAlloc((&defaultAllocator), sizeof(stringMetaData) * metalength),
+      .head = (uint8_t *)aAlloc((&defaultAllocator),
+                                sizeof(stringMetaData) * metalength),
   };
-  advance(l->List_stringMetaData.head, ptr, List_headArea(&(l->List_stringMetaData)));
+  advance(l->List_stringMetaData.head, ptr,
+          List_headArea(&(l->List_stringMetaData)));
   unsigned int charlength = (unsigned int)(um.raw.ptr + um.raw.width - ptr);
   l->List_char = (List){
       .width = sizeof(char),
@@ -98,7 +101,7 @@ unsigned int stringList_search(stringList *l, fptr key);
 // new sl with unused space removed
 stringList *stringList_remake(stringList *);
 void stringList_free(stringList *l);
-static inline unsigned int stringList_length(stringList *l) {
+[[gnu::pure]] static inline unsigned int stringList_length(stringList *l) {
   return l->List_stringMetaData.length;
 }
 static inline void stringList_cleanup_handler(stringList **sl) {
@@ -107,7 +110,7 @@ static inline void stringList_cleanup_handler(stringList **sl) {
   *sl = NULL;
 }
 
-#define stringList_scoped \
+#define stringList_scoped                                                      \
   stringList [[gnu::cleanup(stringList_cleanup_handler)]]
 
 #endif // STRING_LIST_H
