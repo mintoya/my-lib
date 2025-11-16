@@ -10,14 +10,12 @@ typedef struct
   uint8_t *ptr;
 } fptr;
 
-struct fatter_pointer
-{
+struct fatter_pointer {
   fptr fpart;
   size_t capacity;
 };
 
-typedef union
-{
+typedef union {
   struct
   {
     fptr fpart;
@@ -29,15 +27,12 @@ typedef union
 typedef fptr um_fp;
 
 // #include <string.h>
-[[gnu::pure]] static inline int fptr_cmp(const fptr a, const fptr b)
-{
+[[gnu::pure]] static inline int fptr_cmp(const fptr a, const fptr b) {
   int wd = a.width - b.width;
-  if (wd)
-  {
+  if (wd) {
     return wd;
   }
-  if (!a.width)
-  {
+  if (!a.width) {
     return 0;
   }
   // return
@@ -65,18 +60,13 @@ typedef fptr um_fp;
 static int (*um_fp_cmp)(const fptr, const fptr) = fptr_cmp;
 
 #include <string.h>
-static inline void fpmemset(uint8_t *ptr, const fptr element, size_t ammount)
-{
+static inline void fpmemset(uint8_t *ptr, const fptr element, size_t ammount) {
   size_t set = 0;
-  while (set < ammount)
-  {
-    if (!set)
-    {
+  while (set < ammount) {
+    if (!set) {
       memcpy(ptr, element.ptr, element.width);
       set++;
-    }
-    else
-    {
+    } else {
       size_t toset = set < (ammount - set) ? set : ammount - set;
       memcpy(ptr + set * element.width, ptr, element.width * toset);
       set *= 2;
@@ -93,21 +83,17 @@ inline bool operator != (const fptr &a, const fptr &b) { return !fptr_eq(a, b); 
 #endif
 
 #define UM_DEFAULT(...) {__VA_ARGS__}
-#define UM_CASE(fp, ...)   \
-  if (fptr_eq(fp, __temp)) \
-  {                        \
-    __VA_ARGS__            \
-  }                        \
-  else
+#define UM_CASE(fp, ...)     \
+  if (fptr_eq(fp, __temp)) { \
+    __VA_ARGS__              \
+  } else
 #define UM_SWITCH(fp, ...) \
-  do                       \
-  {                        \
+  do {                     \
     fptr __temp = fp;      \
     __VA_ARGS__            \
   } while (0)
 #define lmemset(arr, arrlen, ...)                       \
-  do                                                    \
-  {                                                     \
+  do {                                                  \
     typeof(__VA_ARGS__) __temp = (__VA_ARGS__);         \
     fptr __tempFp = ((fptr){                            \
         .width = sizeof(__temp),                        \
@@ -139,7 +125,8 @@ inline bool operator != (const fptr &a, const fptr &b) { return !fptr_eq(a, b); 
       (fptr){                       \
           .width = sizeof(b),       \
           .ptr = (uint8_t *)(&(b)), \
-      }))
+      }                             \
+  ))
 
 #ifndef __cplusplus
 
@@ -166,30 +153,26 @@ inline bool operator != (const fptr &a, const fptr &b) { return !fptr_eq(a, b); 
 #include <cstdint>
 #include <cstring>
 #include <string>
-template<typename T> inline fptr fp_from(T &val)
-{
+template<typename T> inline fptr fp_from(T &val) {
   return {
       .width = sizeof(T),
       .ptr = reinterpret_cast<uint8_t *>(&val),
   };
 }
 inline fptr fp_from(fptr u) { return u; }
-inline fptr fp_from(const std::string &s)
-{
+inline fptr fp_from(const std::string &s) {
   return {
       .width = s.size(),
       .ptr = const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(s.data())),
   };
 }
-inline fptr fp_from(const char *s)
-{
+inline fptr fp_from(const char *s) {
   return {
       .width = std::strlen(s),
       .ptr = const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(s)),
   };
 }
-template<size_t N> inline fptr fp_from(const char (&s)[N])
-{
+template<size_t N> inline fptr fp_from(const char (&s)[N]) {
   return {
       .width = N - 1,
       .ptr = const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(s)),
