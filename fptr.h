@@ -182,4 +182,40 @@ template<size_t N> inline fptr fp_from(const char (&s)[N]) {
 
 #endif
 
+#define isSkip(char) ( \
+    char == ' ' ||     \
+    char == '\n' ||    \
+    char == '\t'       \
+)
+static fptr fptr_trim(fptr in) {
+  for (; isSkip(*in.ptr);) {
+    in.ptr++;
+    in.width--;
+  }
+  for (; isSkip(*(in.ptr + in.width - 1));) {
+    in.width--;
+  }
+  return in;
+}
+#undef isSkip
+#define isDigit(char) (char <= '9' && char >= '0')
+static unsigned int fptr_toUint(const fptr in) {
+  fptr copy = fptr_trim(in);
+  unsigned int res = 0;
+  for (size_t place = 0; place < copy.width && isDigit(copy.ptr[place]); place++) {
+    res *= 10;
+    res += copy.ptr[place] - '0';
+  }
+  return res;
+}
+#undef isDigit
+static int fptr_toInt(const fptr in) {
+  fptr number = fptr_trim(in);
+  if (!number.width)
+    return 0;
+  char negetive = number.ptr[0] == '-';
+  number.width -= negetive;
+  number.ptr += negetive;
+  return (negetive ? -1 : 1) * fptr_toUint(number);
+}
 #endif // UM_FP_H
