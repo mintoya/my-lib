@@ -77,8 +77,8 @@ static char fptr_eq(fptr a, fptr b) { return !fptr_eq(a, b); }
 static char (*um_eq)(fptr, fptr) = fptr_eq;
 
 #ifdef __cplusplus
-inline bool operator == (const fptr &a, const fptr &b) { return fptr_eq(a, b); }
-inline bool operator != (const fptr &a, const fptr &b) { return !fptr_eq(a, b); }
+inline bool operator==(const fptr &a, const fptr &b) { return fptr_eq(a, b); }
+inline bool operator!=(const fptr &a, const fptr &b) { return !fptr_eq(a, b); }
 #endif
 #ifdef __cplusplus
 #define typeof(x) std::decay_t<decltype(x)>
@@ -154,7 +154,8 @@ inline bool operator != (const fptr &a, const fptr &b) { return !fptr_eq(a, b); 
 #include <cstdint>
 #include <cstring>
 #include <string>
-template<typename T> inline fptr fp_from(T &val) {
+template <typename T>
+inline fptr fp_from(T &val) {
   return {
       .width = sizeof(T),
       .ptr = reinterpret_cast<uint8_t *>(&val),
@@ -173,7 +174,8 @@ inline fptr fp_from(const char *s) {
       .ptr = const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(s)),
   };
 }
-template<size_t N> inline fptr fp_from(const char (&s)[N]) {
+template <size_t N>
+inline fptr fp_from(const char (&s)[N]) {
   return {
       .width = N - 1,
       .ptr = const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(s)),

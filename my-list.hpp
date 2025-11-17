@@ -2,7 +2,8 @@
 #include "allocator.h"
 #include "my-list.h"
 
-template <typename T> struct listPlus {
+template <typename T>
+struct listPlus {
   List *ptr;
   bool dofree : 1;
 
@@ -13,8 +14,7 @@ template <typename T> struct listPlus {
 
   listPlus(List *p) { ptr = p; }
 
-  listPlus(T *arr, unsigned int length,
-           const My_allocator *allocator = &defaultAllocator) {
+  listPlus(T *arr, unsigned int length, const My_allocator *allocator = &defaultAllocator) {
     ptr = List_new(allocator, sizeof(T));
     List_fromArr(ptr, arr, length);
   }
@@ -54,7 +54,8 @@ template <typename T> struct listPlus {
   inline void clear() { ptr->length = 0; }
   inline unsigned int length() const { return ptr->length; }
   inline unsigned int capacity() const { return ptr->size; }
-  template <typename FN> void foreach (FN &&function) {
+  template <typename FN>
+  void foreach (FN &&function) {
     for (int i = 0; i < length(); i++) {
       function(i, get(i));
     }

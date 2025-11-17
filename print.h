@@ -76,7 +76,12 @@ typedef pEsc printerEscape;
   })
 #ifndef OVERRIDE_DEFAULT_PRINTER
 #include <stdio.h>
-static void stdoutPrint(const char *c, void *, unsigned int length, char flush) {
+static void stdoutPrint(
+    const char *c,
+    void *,
+    unsigned int length,
+    char flush
+) {
   static struct
   {
     char buf[2048];
@@ -104,6 +109,7 @@ extern outputFunction defaultPrinter;
 #else
 #define tlocal _Thread_local
 #endif
+#include <assert.h>
 static void snPrint(
     const char *c,
     void *buffer,
@@ -130,6 +136,7 @@ static void asPrint(
     char flush
 ) {
   (void)flush;
+  assert(!!listptr);
   List *list = *(List **)listptr;
   if (!list)
     list = List_new(&defaultAllocator, sizeof(char));
@@ -495,10 +502,12 @@ MAKE_PRINT_ARG_TYPE(pEsc);
   })
 
 #else
-template<typename T> constexpr const char *type_name_cstr() { return ""; }
+template <typename T>
+constexpr const char *type_name_cstr() { return ""; }
 
 #define MAKE_PRINT_ARG_TYPE(type) \
-  template<> constexpr const char *type_name_cstr<type>() { return #type; }
+  template <>                     \
+  constexpr const char *type_name_cstr<type>() { return #type; }
 
 MAKE_PRINT_ARG_TYPE(int);
 MAKE_PRINT_ARG_TYPE(uint);

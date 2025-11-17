@@ -126,8 +126,7 @@ void *arena_alloc(const My_allocator *ref, size_t size) {
   return res;
 }
 ArenaBlock *arenablock_new(size_t blockSize) {
-  ArenaBlock *res = (ArenaBlock *)aAlloc((&defaultAllocator),
-                                         (sizeof(ArenaBlock) + blockSize));
+  ArenaBlock *res = (ArenaBlock *)aAlloc((&defaultAllocator), (sizeof(ArenaBlock) + blockSize));
   if (!res)
     exit(ENOMEM);
   *res = (ArenaBlock){

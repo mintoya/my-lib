@@ -25,7 +25,7 @@ int main() {
   print_as(bufferList, "${UMap}", *test);
   UMap_scoped *output = parse(
       NULL, NULL,
-      ((fptr){ List_headArea(bufferList), bufferList->head })
+      ((fptr){List_headArea(bufferList), bufferList->head})
   );
   UMapView elementsEl = UMap_get(output, fp_from("elements"));
   print_wf(kmlFormatPrinter, "${UMap}", *output);
