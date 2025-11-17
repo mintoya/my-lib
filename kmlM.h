@@ -164,6 +164,56 @@ UMap *parse(UMap *parent, UMapList *lparent, fptr kml) {
   return parse(parent, lparent, kml_after(kml, val));
 }
 
+static void kmlFormatPrinter(
+    const char *data,
+    void *arb,
+    unsigned int length,
+    char flush
+) {
+  static uint indentLevel = 0;
+
+  for (size_t index = 0; index < length; index++) {
+    char character = data[index];
+    {
+      switch (character) {
+      case '{':
+      case '[': {
+        putchar(character);
+        putchar('\n');
+        indentLevel++;
+        for (int i = 0; i < indentLevel; i++) {
+          putchar(' ');
+        }
+      } break;
+      case '}':
+      case ']': {
+        putchar('\033');
+        putchar('[');
+        putchar('1');
+        putchar('D');
+        putchar(character);
+        putchar('\n');
+        indentLevel--;
+        for (int i = 0; i < indentLevel; i++) {
+          putchar(' ');
+        }
+      } break;
+      case ';':
+      case ',': {
+        putchar(character);
+        putchar('\n');
+        for (int i = 0; i < indentLevel; i++) {
+          putchar(' ');
+        }
+      } break;
+      default:
+        putchar(character);
+      }
+    }
+  }
+  if (flush)
+    indentLevel = 0;
+}
 #endif // KMLM_H
 #ifdef KMLM_C
 
@@ -316,27 +366,6 @@ um_fp kml_after(um_fp main, um_fp slice) {
       .ptr = (uint8_t *)sliceEnd,
   };
 }
-#define stack_split(result, string, ...)                                       \
-  result = (um_fp *)alloca(                                                    \
-      sizeof(um_fp) *                                                          \
-      (sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1));     \
-  do {                                                                         \
-    uint8_t *last;                                                             \
-    unsigned int args[] = {__VA_ARGS__};                                       \
-    for (int i = 0; i < sizeof(args) / sizeof(unsigned int); i++) {            \
-      args[i] = (i == 0) ? (min(args[i], string.width))                        \
-                         : (min(string.width, max(args[i], args[i - 1])));     \
-      result[i] = (um_fp){                                                     \
-          .width = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),             \
-          .ptr = (i == 0) ? (string.ptr) : (last),                             \
-      };                                                                       \
-      last = ((uint8_t *)result[i].ptr) + result[i].width;                     \
-    }                                                                          \
-    result[sizeof(args) / sizeof(unsigned int)] = (um_fp){                     \
-        .width = string.width - ((uint8_t *)last - (uint8_t *)string.ptr),     \
-        .ptr = last,                                                           \
-    };                                                                         \
-  } while (0);
 char isSkip(char c) {
   switch (c) {
   case ' ':
@@ -359,8 +388,8 @@ um_fp kml_trimPadding(um_fp in) {
   while (back > front && isSkip(((char *)in.ptr)[back])) {
     back--;
   }
-  um_fp *splits =
-      stack_split(splits, in, (unsigned int)front, (unsigned int)back + 1);
+  fptr *splits =
+      fptr_stack_split(splits, in, (unsigned int)front, (unsigned int)back + 1);
 
   res = splits[1];
   return res;

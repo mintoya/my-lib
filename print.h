@@ -36,9 +36,44 @@
 #define REF(type, value) ((type[1]){value})
 #endif
 
-typedef void (*outputFunction)(const char *, void *, unsigned int, char);
-typedef void (*printerFunction)(outputFunction, const void *, fptr args, void *);
+typedef void (*outputFunction)(
+    const char *,
+    void *,
+    unsigned int,
+    char
+);
+typedef void (*printerFunction)(
+    outputFunction,
+    const void *,
+    fptr args,
+    void *
+);
+// helper escape type
+typedef unsigned int uint;
+typedef struct {
+  struct {
+    uint row, col;
+  } pos;
+  struct {
+    uint8_t r, g, b;
+  } fg;
+  struct {
+    uint8_t r, g, b;
+  } bg;
+  unsigned char poset : 1; // set position
+  unsigned char bgset : 1; // enable bg
+  unsigned char fgset : 1; // enable fg
+  unsigned char clear : 1; // clear screen
+  unsigned char reset : 1; // reset effects
+} pEsc;
 
+typedef pEsc printerEscape;
+#define pEscRst      \
+  ((pEsc){           \
+      .pos = {0, 0}, \
+      .reset = 1,    \
+      .clear = 1,    \
+  })
 #ifndef OVERRIDE_DEFAULT_PRINTER
 #include <stdio.h>
 static void stdoutPrint(const char *c, void *, unsigned int length, char flush) {
@@ -69,50 +104,39 @@ extern outputFunction defaultPrinter;
 #else
 #define tlocal _Thread_local
 #endif
-static void snPrint(const char *c, void *buffer, unsigned int length, char flush) {
+static void snPrint(
+    const char *c,
+    void *buffer,
+    unsigned int length,
+    char flush
+) {
   (void)flush;
   ffptr snBuff = *(ffptr *)buffer;
 
   size_t start = snBuff.fptr.width;
   size_t end1 = snBuff.fptr.width + length;
   size_t end2 = snBuff.ffptr.capacity;
-  size_t end = end1 < end2 ? end1 : end2;
+  const size_t end = end1 < end2 ? end1 : end2;
 
   for (; start < end; start++)
     snBuff.fptr.ptr[start] = c[start - snBuff.fptr.width];
   snBuff.fptr.width = end;
+  *(ffptr *)buffer = snBuff;
 }
-static outputFunction snPrinter = snPrint;
+static void asPrint(
+    const char *c,
+    void *listptr,
+    unsigned int length,
+    char flush
+) {
+  (void)flush;
+  List *list = *(List **)listptr;
+  if (!list)
+    list = List_new(&defaultAllocator, sizeof(char));
+  List_appendFromArr(list, c, length);
+  *(List **)listptr = list;
+}
 
-// helper escape type
-typedef unsigned int uint;
-typedef struct
-{
-  struct
-  {
-    uint row, col;
-  } pos;
-  struct
-  {
-    uint8_t r, g, b;
-  } fg;
-  struct
-  {
-    uint8_t r, g, b;
-  } bg;
-  unsigned char poset : 1; // set position
-  unsigned char bgset : 1; // enable bg
-  unsigned char fgset : 1; // enable fg
-  unsigned char clear : 1; // clear screen
-  unsigned char reset : 1; // reset effects
-} pEsc;
-typedef pEsc printerEscape;
-#define pEscRst      \
-  ((pEsc){           \
-      .pos = {0, 0}, \
-      .reset = 1,    \
-      .clear = 1,    \
-  })
 //
 static tlocal struct
 {
@@ -249,6 +273,7 @@ struct print_arg {
 // MAKE_PRINT_ARG_TYPE(size_t);
 // does the same in cpp
 
+  typedef char *char_ptr;
   REGISTER_PRINTER(fptr, {
     if (in.ptr) { PUTS((char *)in.ptr, in.width); } else { PUTS("__NULLUMF__", 11); }
   });
@@ -269,10 +294,30 @@ struct print_arg {
       shift -= 4;
     }
   });
-  typedef char *char_ptr;
   REGISTER_PRINTER(char_ptr, { while(*in){ PUTS(in,1); in++; } });
   REGISTER_PRINTER(char, {PUTS(&in,1);});
 
+  REGISTER_PRINTER(size_t, {
+    int l = 1;
+    while (l <= in / 10)
+      l *= 10;
+    while (l) {
+      char c = in / l + '0';
+      PUTS(&c, 1);
+      in %= l;
+      l /= 10;
+    }
+  });
+  REGISTER_PRINTER(uint, {
+      USETYPEPRINTER(size_t, in);
+  });
+  REGISTER_PRINTER(int, {
+    if (in < 0) {
+      PUTS("-", 1);
+      in = -in;
+    }
+    USETYPEPRINTER(uint, in);
+  });
   REGISTER_PRINTER(float, {
     if (in < 0) {
       PUTS("-", 1);
@@ -317,45 +362,8 @@ struct print_arg {
       in *= 10;
     }
   });
-  REGISTER_PRINTER(uint, {
-    int l = 1;
-    while (l <= in / 10)
-      l *= 10;
-    while (l) {
-      char c = in / l + '0';
-      PUTS(&c, 1);
-      in %= l;
-      l /= 10;
-    }
-  });
-  REGISTER_PRINTER(int, {
-    if (in < 0) {
-      PUTS("-", 1);
-      in = -in;
-    }
-    int l = 1;
-    while (l <= in / 10)
-      l *= 10;
-    while (l) {
-      char c = in / l + '0';
-      PUTS(&c, 1);
-      in %= l;
-      l /= 10;
-    }
-  });
-  REGISTER_PRINTER(size_t, {
-    int l = 1;
-    while (l <= in / 10)
-      l *= 10;
-    while (l) {
-      char c = in / l + '0';
-      PUTS(&c, 1);
-      in %= l;
-      l /= 10;
-    }
-  });
   REGISTER_SPECIAL_PRINTER("fptr<void>", fptr, {
-      const char *hex_chars = "0123456789abcdef";
+      const char hex_chars[] = "0123456789abcdef";
       char cut0s = 0;
       char useLength = 0;
 
@@ -380,8 +388,7 @@ struct print_arg {
           unsigned char top = byte >> 4;
           unsigned char bottom = byte & 0x0F;
 
-          // Count trailing zeros
-          if (top == 0 && bottom == 0) {
+          if (!top && !bottom) {
               zero_count += 2;
           } else if (top == 0) {
               zero_count += 1;
@@ -392,17 +399,16 @@ struct print_arg {
               if (zero_count) {
                   if (cut0s) {
                       PUTS("(", 1);
-                      USETYPEPRINTER(int, zero_count);
+                      USETYPEPRINTER(uint, zero_count);
                       PUTS(")", 1);
                   } else {
-                      for (int i = 0; i < zero_count; i++) PUTS("0", 1);
+                      for (uint i = 0; i < zero_count; i++) PUTS("0", 1);
                   }
                   zero_count = 0;
               }
-              if (top) PUTS(&hex_chars[top], 1);
-              if (bottom) PUTS(&hex_chars[bottom], 1);
+              if (top) PUTS(hex_chars + top, 1);
+              if (bottom) PUTS(hex_chars + bottom, 1);
           }
-
           in.width--;
       }
       if (zero_count) {
@@ -417,7 +423,6 @@ struct print_arg {
 
       PUTS(">>", 2);
   });
-
 
   REGISTER_PRINTER(pEsc, {
     if (in.poset) {
@@ -518,14 +523,20 @@ void print_f_helper(struct print_arg p, fptr typeName, outputFunction put, fptr 
 
 void print_f(outputFunction put, void *arb, fptr fmt, ...);
 
-#define print_wf(print, arb, fmt, ...) \
-  print_f(print, arb, fp_from("" fmt) __VA_OPT__(, APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)), EMPTY_PRINT_ARG)
-#define print(fmt, ...) print_wf(defaultPrinter, 0, fmt, __VA_ARGS__)
-#define println(fmt, ...) print_wf(defaultPrinter, 0, fmt "\n", __VA_ARGS__)
+#define print_wfO(printerfn, arb, fmt, ...)                                               \
+  print_f(                                                                                \
+      printerfn, arb, fp_from("" fmt) __VA_OPT__(, APPLY_N(MAKE_PRINT_ARG, __VA_ARGS__)), \
+      EMPTY_PRINT_ARG                                                                     \
+  )
 
-#include <assert.h>
-#define print_sn(charUm, fmt, ...) \
-  print_wf(snPrinter, &(charUm), fmt, __VA_ARGS__);
+#define print_wf(print, fmt, ...) print_wfO(print, NULL, fmt, __VA_ARGS__)
+#define print(fmt, ...) print_wf(defaultPrinter, fmt, __VA_ARGS__)
+#define println(fmt, ...) print(fmt "\n", __VA_ARGS__)
+
+#define print_sn(ffptr, fmt, ...) \
+  print_wfO(snPrint, (&(ffptr)), fmt, __VA_ARGS__);
+#define print_as(listptr, fmt, ...) \
+  print_wfO(asPrint, (&(listptr)), fmt, __VA_ARGS__)
 
 #undef tlocal
 #ifdef PRINTER_LIST_TYPENAMES

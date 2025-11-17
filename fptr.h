@@ -181,7 +181,34 @@ template<size_t N> inline fptr fp_from(const char (&s)[N]) {
 }
 
 #endif
-
+#define fptr_stack_split(result, string, ...)                                          \
+  result = (fptr[sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1]){}; \
+  do {                                                                                 \
+    uint8_t *last;                                                                     \
+    unsigned int args[] = {__VA_ARGS__};                                               \
+    for (int i = 0; i < sizeof(args) / sizeof(unsigned int); i++) {                    \
+      args[i] = (i == 0)                                                               \
+                    ? ((args[i] < string.width)                                        \
+                           ? args[i]                                                   \
+                           : string.width)                                             \
+                    : ((string.width < ((args[i] > args[i - 1])                        \
+                                            ? args[i]                                  \
+                                            : args[i - 1]))                            \
+                           ? string.width                                              \
+                           : ((args[i] > args[i - 1])                                  \
+                                  ? args[i]                                            \
+                                  : args[i - 1]));                                     \
+      result[i] = (fptr){                                                              \
+          .width = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),                     \
+          .ptr = (i == 0) ? (string.ptr) : (last),                                     \
+      };                                                                               \
+      last = ((uint8_t *)result[i].ptr) + result[i].width;                             \
+    }                                                                                  \
+    result[sizeof(args) / sizeof(unsigned int)] = (fptr){                              \
+        .width = string.width - ((uint8_t *)last - (uint8_t *)string.ptr),             \
+        .ptr = last,                                                                   \
+    };                                                                                 \
+  } while (0)
 #define isSkip(char) ( \
     char == ' ' ||     \
     char == '\n' ||    \

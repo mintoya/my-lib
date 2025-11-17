@@ -1,3 +1,4 @@
+#include <alloca.h>
 #include <stdio.h>
 #define PRINTER_LIST_TYPENAMES
 #include "../allocator.h"
@@ -7,71 +8,6 @@
 #include "../print.h"
 #include "../umap.h"
 #include "../wheels.h"
-List *buffer = NULL;
-
-__attribute__((destructor)) void freeList(void) { List_free(buffer); }
-__attribute__((constructor)) void setupList(void) {
-  buffer = List_new(&defaultAllocator, sizeof(char));
-}
-
-void listPrinter(const char *c, void *arb, unsigned int length, char flush) {
-  (void)arb;
-  MList(char) list;
-  MList_DF(list, buffer);
-  MList_addArr(list, length, c);
-}
-static inline fptr um_flist(List *l) {
-  return (um_fp){
-      .width = List_headArea(l),
-      .ptr = l->head,
-  };
-}
-void formattedOutputFunction(const char *data, void *arb, unsigned int length,
-                             char flush) {
-  static uint indentLevel = 0;
-
-  for (size_t index = 0; index < length; index++) {
-    char character = data[index];
-    {
-      switch (character) {
-      case '{':
-      case '[': {
-        putchar(character);
-        putchar('\n');
-        indentLevel++;
-        for (int i = 0; i < indentLevel; i++) {
-          putchar(' ');
-        }
-      } break;
-      case '}':
-      case ']': {
-        putchar('\033');
-        putchar('[');
-        putchar('1');
-        putchar('D');
-        putchar(character);
-        putchar('\n');
-        indentLevel--;
-        for (int i = 0; i < indentLevel; i++) {
-          putchar(' ');
-        }
-      } break;
-      case ';':
-      case ',': {
-        putchar(character);
-        putchar('\n');
-        for (int i = 0; i < indentLevel; i++) {
-          putchar(' ');
-        }
-      } break;
-      default:
-        putchar(character);
-      }
-    }
-  }
-  if (flush)
-    indentLevel = 0;
-}
 
 int main() {
   UMap_scoped *test = UMap_new(&defaultAllocator);
@@ -85,8 +21,21 @@ int main() {
   UMapList_append(tlist, fp_from("three"));
   UMap_setList(test, fp_from("list"), tlist);
 
-  print_wf(listPrinter, 0, "${UMap}", *test);
-  UMap_scoped *output = parse(NULL, NULL, um_flist(buffer));
+  List_scoped *bufferList = NULL;
+  print_as(bufferList, "${UMap}", *test);
+  UMap_scoped *output = parse(
+      NULL, NULL,
+      ((fptr){ List_headArea(bufferList), bufferList->head })
+  );
   UMapView elementsEl = UMap_get(output, fp_from("elements"));
-  print_wf(formattedOutputFunction, 0, "${UMap}", *output);
+  print_wf(kmlFormatPrinter, "${UMap}", *output);
+
+  ffptr pbuffer = (ffptr){
+      .ffptr = {
+          .fpart.ptr = alloca(100),
+          .capacity = 100,
+      }
+  };
+  print_sn(pbuffer, "hello world");
+  println("output: ${}", pbuffer.fptr);
 }
