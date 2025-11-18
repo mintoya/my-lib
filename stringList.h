@@ -10,8 +10,7 @@
 
 typedef struct {
   unsigned int index;
-  size_t width;
-  size_t _size;
+  unsigned int width;
 } stringMetaData;
 
 typedef struct {
@@ -108,38 +107,17 @@ static inline void stringList_cleanup_handler(stringList **sl) {
 }
 
 #define stringList_scoped \
-  stringList [[gnu::cleanup(stringList_cleanup_handler)]]
+  [[gnu::cleanup(stringList_cleanup_handler)]] stringList
 
 #endif // STRING_LIST_H
 
 #ifdef STRING_LIST_C
 #include <string.h>
 
-#ifndef STRING_LIST_minSize
-#define STRING_LIST_minSize 10
-#endif
-
 stringList *stringList_new(const My_allocator *allocator) {
   stringList *res = (stringList *)aAlloc(allocator, sizeof(stringList));
-  // clang-format off
-  *res = (stringList) {
-    .List_char = {
-      .width = sizeof(char),
-      .length = 0,
-      .size = 1,
-      .head = (uint8_t*)aAlloc(allocator,sizeof(char)),
-      .allocator = allocator,
-    },
-    .List_stringMetaData = {
-      .width = sizeof(stringMetaData),
-      .length = 0,
-      .size = 1,
-      .head = (uint8_t*)aAlloc(allocator,sizeof(stringMetaData)),
-      .allocator = allocator,
-    },
-
-  };
-  // clang-format on
+  List_makeNew(allocator, &(res->List_char), 1);
+  List_makeNew(allocator, &(res->List_stringMetaData), sizeof(stringMetaData));
   return res;
 }
 #define max(a, b) ((a < b) ? (b) : (a))
@@ -153,17 +131,6 @@ fptr stringList_get(stringList *l, unsigned int index) {
       .width = thisS.width,
       .ptr = (uint8_t *)(List_getRef(&(l->List_char), thisS.index)),
   });
-}
-ffptr stringList_getExt(stringList *l, unsigned int index) {
-  if (index >= l->List_stringMetaData.length)
-    return nullFFptr;
-  stringMetaData thisS =
-      mList_get(&(l->List_stringMetaData), stringMetaData, index);
-  ffptr res;
-  res.ffptr.fpart.width = thisS.width;
-  res.ffptr.fpart.ptr = (uint8_t *)List_getRef(&(l->List_char), thisS.index);
-  res.ffptr.capacity = thisS._size;
-  return res;
 }
 unsigned int stringList_search(stringList *l, fptr what) {
   stringMetaData *meta = (stringMetaData *)l->List_stringMetaData.head;
@@ -189,36 +156,29 @@ stringList *stringList_remake(stringList *origional) {
   return res;
 }
 unsigned int stringList_append(stringList *l, fptr value) {
-  unsigned int trueSize = max(value.width, STRING_LIST_minSize);
   stringMetaData thisS = {
       .index = l->List_char.length,
       .width = value.width,
-      ._size = trueSize,
   };
   mList_add(&(l->List_stringMetaData), stringMetaData, thisS);
   List_appendFromArr(&(l->List_char), value.ptr, value.width);
-  List_pad(&(l->List_char), trueSize - value.width);
   return l->List_stringMetaData.length - 1;
 }
 void stringList_insert(stringList *l, fptr value, unsigned int index) {
-  unsigned int trueSize = max(value.width, STRING_LIST_minSize);
   stringMetaData thisS = {
       .index = l->List_char.length,
       .width = value.width,
-      ._size = trueSize,
   };
   mList_insert(&(l->List_stringMetaData), stringMetaData, thisS, index);
   List_appendFromArr(&(l->List_char), value.ptr, value.width);
-  List_pad(&(l->List_char), trueSize - value.width);
 }
 void stringList_set(stringList *l, fptr value, unsigned int index) {
   stringMetaData thisS =
       mList_get(&(l->List_stringMetaData), stringMetaData, index);
-  if (thisS._size < value.width) {
+  if (thisS.width < value.width) {
     stringMetaData *ref =
         (stringMetaData *)List_getRef(&(l->List_stringMetaData), index);
     ref->width = value.width;
-    ref->_size = value.width;
     ref->index = l->List_char.length;
     List_appendFromArr(&(l->List_char), value.ptr, value.width);
   } else {

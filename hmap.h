@@ -6,13 +6,13 @@
 #include <stdint.h>
 #include <stdlib.h>
 typedef struct {
-  size_t index;
-  size_t next;
+  unsigned int index;
+  unsigned int next;
   unsigned char hasindex : 1;
   unsigned char hasnext : 1;
 } HMap_innertype;
 typedef struct {
-  size_t metaSize;
+  unsigned int metaSize;
   HMap_innertype *metadata;
   List *links;
   stringList *KVs;
@@ -57,7 +57,7 @@ static const intmax_t HMap_h = (0x67676141420);
 
   return res;
 }
-static inline HMap *HMap_new(const My_allocator *allocator, size_t metaSize) {
+static inline HMap *HMap_new(const My_allocator *allocator, unsigned int metaSize) {
 
   HMap *res = (HMap *)aAlloc(allocator, sizeof(HMap));
   *res = (HMap){
