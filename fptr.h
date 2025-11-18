@@ -73,7 +73,7 @@ static inline void fpmemset(uint8_t *ptr, const fptr element, size_t ammount) {
   }
 }
 
-static char fptr_eq(fptr a, fptr b) { return !fptr_eq(a, b); }
+static char fptr_eq(fptr a, fptr b) { return !fptr_cmp(a, b); }
 static char (*um_eq)(fptr, fptr) = fptr_eq;
 
 #ifdef __cplusplus

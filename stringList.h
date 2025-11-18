@@ -39,13 +39,13 @@ unsigned int stringList_append(stringList *l, fptr);
   dst += length / sizeof(uint8_t);
 // memory layot:
 //  { size_t:keycount | metadata buffer | data buffer }
-static inline stringListView stringList_tobuf(stringList *l) {
+static inline stringListView stringList_tobuf(My_allocator *allocator, stringList *l) {
   size_t area = List_headArea(&(l->List_stringMetaData)) +
                 List_headArea(&(l->List_char)) + sizeof(size_t);
   size_t metalength = l->List_stringMetaData.length;
   fptr res = {
       .width = area,
-      .ptr = (uint8_t *)aAlloc(l->List_char.allocator, area),
+      .ptr = (uint8_t *)aAlloc(allocator, area),
   };
 
   uint8_t *use = res.ptr;
@@ -56,7 +56,7 @@ static inline stringListView stringList_tobuf(stringList *l) {
   return ((stringListView){.raw = res});
 }
 
-void stringListView_free(stringListView slv);
+void stringListView_free(My_allocator *allocator, stringListView slv);
 #undef advance
 #define advance(dst, src, length) \
   memcpy(dst, src, length);       \
@@ -258,7 +258,7 @@ fptr stringListView_get(stringListView slv, unsigned int index) {
   };
   return stringList_get(&temp, index);
 }
-void stringListView_free(stringListView slv) { free(slv.raw.ptr); }
+void stringListView_free(My_allocator *allocator, stringListView slv) { aFree(allocator, slv.raw.ptr); }
 void stringList_free(stringList *l) {
   const My_allocator *allocator = l->List_char.allocator;
   aFree(allocator, l->List_char.head);

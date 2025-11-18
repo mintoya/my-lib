@@ -92,8 +92,8 @@ static inline void UMapList_free(UMapList *map) {
  * not modifiable
  * freeing keyReg itself deletes this
  */
-UMapView UMap_toBuf(UMap *map);
-UMapListView UMapList_toBuf(UMapList *map);
+UMapView UMap_toBuf(My_allocator *allocator, UMap *map);
+UMapListView UMapList_toBuf(My_allocator *allocator, UMapList *map);
 
 fptr UMapView_getKeyAtIndex(UMapView map, unsigned int index);
 fptr UMapView_getValAtIndex(UMapView map, unsigned int index);
@@ -375,9 +375,10 @@ unsigned int UMapList_append(UMapList *map, fptr val) {
   dst += length / sizeof(uint8_t);
 // memory layout:
 //  { keysSize|valsSize|metaSize|keys|vals|meta }
-UMapView UMap_toBuf(UMap *map) {
-  stringListView kb = stringList_tobuf(map->keys);
-  stringListView vb = stringList_tobuf(map->vals);
+
+UMapView UMap_toBuf(My_allocator *allocator, UMap *map) {
+  stringListView kb = stringList_tobuf(allocator, map->keys);
+  stringListView vb = stringList_tobuf(allocator, map->vals);
   fptr keys = kb.raw;
   fptr vals = vb.raw;
   fptr meta = (fptr){
@@ -387,7 +388,7 @@ UMapView UMap_toBuf(UMap *map) {
   size_t finalWidth = keys.width + vals.width + meta.width + 3 * sizeof(size_t);
   fptr res = (fptr){
       .width = finalWidth,
-      .ptr = (uint8_t *)malloc(finalWidth),
+      .ptr = (uint8_t *)aAlloc(allocator, finalWidth),
   };
   uint8_t *ptr = res.ptr;
 
@@ -399,15 +400,15 @@ UMapView UMap_toBuf(UMap *map) {
   advance(ptr, vals.ptr, vals.width);
   advance(ptr, meta.ptr, meta.width);
 
-  stringListView_free(kb);
-  stringListView_free(vb);
+  stringListView_free(allocator, kb);
+  stringListView_free(allocator, vb);
 
   return res;
 }
 // memory layout:
 //  { valsSize|metaSize|vals|meta }
-UMapListView UMapList_toBuf(UMapList *map) {
-  stringListView vb = stringList_tobuf(map->vals);
+UMapListView UMapList_toBuf(My_allocator *allocator, UMapList *map) {
+  stringListView vb = stringList_tobuf(allocator, map->vals);
   fptr vals = vb.raw;
   fptr meta = (fptr){
       .width = List_headArea(map->metadata),
@@ -416,7 +417,7 @@ UMapListView UMapList_toBuf(UMapList *map) {
   size_t finalWidth = vals.width + meta.width + 3 * sizeof(size_t);
   fptr res = (fptr){
       .width = finalWidth,
-      .ptr = (uint8_t *)malloc(finalWidth),
+      .ptr = (uint8_t *)aAlloc(allocator, finalWidth),
   };
   uint8_t *ptr = res.ptr;
 
@@ -426,7 +427,7 @@ UMapListView UMapList_toBuf(UMapList *map) {
   advance(ptr, vals.ptr, vals.width);
   advance(ptr, meta.ptr, meta.width);
 
-  stringListView_free(vb);
+  stringListView_free(allocator, vb);
   return res;
 }
 #undef advance
@@ -494,34 +495,34 @@ UMap_innertype UMapView_getTypeAtKey(UMapView map, fptr key) {
 unsigned int UMap_setChild(UMap *map, fptr key, UMap *ref) {
   if (!key.width)
     return -1;
-  fptr um = UMap_toBuf(ref);
+  fptr um = UMap_toBuf(&defaultAllocator, ref);
   unsigned int index = UMap_set(map, key, um);
   mList_set(map->metadata, UMap_innertype, MAP, index);
-  free(um.ptr);
+  aFree(&defaultAllocator, um.ptr);
   return index;
 }
 
 unsigned int UMapList_setChild(UMapList *map, unsigned int key, UMap *ref) {
-  fptr um = UMap_toBuf(ref);
+  fptr um = UMap_toBuf(&defaultAllocator, ref);
   unsigned int index = UMapList_set(map, key, um);
   mList_set(map->metadata, UMap_innertype, MAP, index);
-  free(um.ptr);
+  aFree(&defaultAllocator, um.ptr);
   return index;
 }
 unsigned int UMapList_setList(UMapList *map, unsigned int key, UMapList *ref) {
-  fptr um = UMapList_toBuf(ref);
+  fptr um = UMapList_toBuf(&defaultAllocator, ref);
   unsigned int index = UMapList_set(map, key, um);
   mList_set(map->metadata, UMap_innertype, LIST, index);
-  free(um.ptr);
+  aFree(&defaultAllocator, um.ptr);
   return index;
 }
 unsigned int UMap_setList(UMap *map, fptr key, UMapList *ref) {
   if (!key.width)
     return -1;
-  fptr um = UMapList_toBuf(ref);
+  fptr um = UMapList_toBuf(&defaultAllocator, ref);
   unsigned int index = UMap_set(map, key, um);
   mList_set(map->metadata, UMap_innertype, LIST, index);
-  free(um.ptr);
+  aFree(&defaultAllocator, um.ptr);
   return index;
 }
 

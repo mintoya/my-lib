@@ -370,7 +370,7 @@ struct print_arg {
     }
   });
   REGISTER_SPECIAL_PRINTER("fptr<void>", fptr, {
-      const char hex_chars[] = "0123456789abcdef";
+      const char hex_chars[17] = "0123456789abcdef";
       char cut0s = 0;
       char useLength = 0;
 
@@ -467,65 +467,62 @@ struct print_arg {
       PUTS("\033[0m", 4);
     }
   });
-// clang-format on
 // type assumption
-
 #ifndef __cplusplus
-
-#include "printer/genericName.h"
-#define MAKE_PRINT_ARG_TYPE(type) MAKE_NEW_TYPE(type)
-
-MAKE_PRINT_ARG_TYPE(int);
-#include "printer/genericName.h"
-MAKE_PRINT_ARG_TYPE(fptr);
-#include "printer/genericName.h"
-MAKE_PRINT_ARG_TYPE(size_t);
-#include "printer/genericName.h"
-MAKE_PRINT_ARG_TYPE(void_ptr);
-#include "printer/genericName.h"
-MAKE_PRINT_ARG_TYPE(char_ptr);
-#include "printer/genericName.h"
-MAKE_PRINT_ARG_TYPE(float);
-#include "printer/genericName.h"
-MAKE_PRINT_ARG_TYPE(double);
-#include "printer/genericName.h"
-MAKE_PRINT_ARG_TYPE(char);
-#include "printer/genericName.h"
-MAKE_PRINT_ARG_TYPE(uint);
-#include "printer/genericName.h"
-MAKE_PRINT_ARG_TYPE(pEsc);
-
-#define MAKE_PRINT_ARG(a)               \
-  ((struct print_arg){                  \
-      .ref = REF(typeof(a), a),         \
-      .name = fp_from(GENERIC_NAME(a)), \
-  })
-
-#else
-template <typename T>
-constexpr const char *type_name_cstr() { return ""; }
-
-#define MAKE_PRINT_ARG_TYPE(type) \
-  template <>                     \
-  constexpr const char *type_name_cstr<type>() { return #type; }
-
-MAKE_PRINT_ARG_TYPE(int);
-MAKE_PRINT_ARG_TYPE(uint);
-MAKE_PRINT_ARG_TYPE(fptr);
-MAKE_PRINT_ARG_TYPE(char);
-MAKE_PRINT_ARG_TYPE(pEsc);
-MAKE_PRINT_ARG_TYPE(float);
-MAKE_PRINT_ARG_TYPE(size_t);
-MAKE_PRINT_ARG_TYPE(double);
-MAKE_PRINT_ARG_TYPE(void_ptr);
-MAKE_PRINT_ARG_TYPE(char_ptr);
-
-#define MAKE_PRINT_ARG(a)                                          \
-  ((struct print_arg){                                             \
-      .ref = REF(typeof(a), a),                                    \
-      .name = fp_from(type_name_cstr<std::decay_t<decltype(a)>>()) \
-  })
+  #include "printer/genericName.h"
+  #define MAKE_PRINT_ARG_TYPE(type) MAKE_NEW_TYPE(type)
+  MAKE_PRINT_ARG_TYPE(int);
+  #include "printer/genericName.h"
+  MAKE_PRINT_ARG_TYPE(fptr);
+  #include "printer/genericName.h"
+  MAKE_PRINT_ARG_TYPE(size_t);
+  #include "printer/genericName.h"
+  MAKE_PRINT_ARG_TYPE(void_ptr);
+  #include "printer/genericName.h"
+  MAKE_PRINT_ARG_TYPE(char_ptr);
+  #include "printer/genericName.h"
+  MAKE_PRINT_ARG_TYPE(float);
+  #include "printer/genericName.h"
+  MAKE_PRINT_ARG_TYPE(double);
+  #include "printer/genericName.h"
+  MAKE_PRINT_ARG_TYPE(char);
+  #include "printer/genericName.h"
+  MAKE_PRINT_ARG_TYPE(uint);
+  #include "printer/genericName.h"
+  MAKE_PRINT_ARG_TYPE(pEsc);
+   
+  #define MAKE_PRINT_ARG(a)               \
+    ((struct print_arg){                  \
+        .ref = REF(typeof(a), a),         \
+        .name = fp_from(GENERIC_NAME(a)), \
+    })
+  
+  #else
+  template <typename T>
+  constexpr const char *type_name_cstr() { return ""; }
+  
+  #define MAKE_PRINT_ARG_TYPE(type) \
+    template <>                     \
+    constexpr const char *type_name_cstr<type>() { return #type; }
+  
+  MAKE_PRINT_ARG_TYPE(int);
+  MAKE_PRINT_ARG_TYPE(uint);
+  MAKE_PRINT_ARG_TYPE(fptr);
+  MAKE_PRINT_ARG_TYPE(char);
+  MAKE_PRINT_ARG_TYPE(pEsc);
+  MAKE_PRINT_ARG_TYPE(float);
+  MAKE_PRINT_ARG_TYPE(size_t);
+  MAKE_PRINT_ARG_TYPE(double);
+  MAKE_PRINT_ARG_TYPE(void_ptr);
+  MAKE_PRINT_ARG_TYPE(char_ptr);
+  
+  #define MAKE_PRINT_ARG(a)                                          \
+    ((struct print_arg){                                             \
+       .ref = REF(typeof(a), a),                                    \
+       .name = fp_from(type_name_cstr<std::decay_t<decltype(a)>>()) \
+   })
 #endif
+// clang-format on
 #define EMPTY_PRINT_ARG ((struct print_arg){.ref = NULL, .name = nullUmf})
 
 void print_f_helper(struct print_arg p, fptr typeName, outputFunction put, fptr args, void *arb);
