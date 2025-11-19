@@ -2,7 +2,7 @@
 #define BOXER_H
 #include "allocator.h"
 #include "fptr.h"
-typedef enum {
+typedef enum : uint8_t {
   KNOWN, // size known
   FPTR,  // size embedded
 } boxertype;
