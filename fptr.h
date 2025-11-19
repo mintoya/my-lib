@@ -12,6 +12,7 @@ typedef struct {
   size_t width;
   uint8_t ptr[];
 } bFptr;
+#define fptr_fromB(bfptr) ((fptr){.width = (bfptr).width, .ptr = (uint8_t *)(bfptr).ptr})
 
 struct fatter_pointer {
   fptr fpart;

@@ -57,12 +57,11 @@ static inline stringList_Solid stringList_fromView(stringListView slv) {
   bFptr *meta, *buff;
 
   unBox(&stringListBoxer, (void *[2]){&(meta), &(buff)}, slv.raw);
-  res = (stringList_Solid){
+  return (stringList_Solid){
       .metaSize = (unsigned int)(meta->width / sizeof(stringMetaData)),
       .Arr_stringMetaData = (stringMetaData *)meta->ptr,
       .Arr_char = (uint8_t *)buff->ptr,
   };
-  return res;
 }
 static inline int stringListView_length(stringListView slv) {
   // meta is first

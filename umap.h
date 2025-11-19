@@ -21,7 +21,7 @@ typedef struct {
 } UMapList;
 typedef fptr UMapView;
 typedef fptr UMapListView;
-typedef enum : uint8_t {
+typedef enum {
   NORMAL = 0, // raw data
   LIST,       // umap with integer indexes
   MAP,        // umap with misc indexes
@@ -92,6 +92,8 @@ static inline void UMapList_free(UMapList *map) {
  * not modifiable
  * freeing keyReg itself deletes this
  */
+UMapView UMap_toBuf(const My_allocator *allocator, UMap *map);
+UMapListView UMapList_toBuf(const My_allocator *allocator, UMapList *map);
 
 fptr UMapView_getKeyAtIndex(UMapView map, unsigned int index);
 fptr UMapView_getValAtIndex(UMapView map, unsigned int index);
@@ -109,63 +111,6 @@ UMap_innertype UMapView_getTypeAtKey(UMapView map, fptr key);
 void UMapView_free(UMapView umv);
 void UMapListView_free(UMapListView umv);
 
-#define advance(dst, src, length) \
-  memcpy(dst, src, length);       \
-  dst += length / sizeof(uint8_t);
-
-static inline UMapView UMap_toBuf(const My_allocator *allocator, UMap *map) {
-  stringListView kb = stringList_toView(allocator, map->keys);
-  stringListView vb = stringList_toView(allocator, map->vals);
-  fptr keys = kb.raw;
-  fptr vals = vb.raw;
-  fptr meta = (fptr){
-      .width = List_headArea(map->metadata),
-      .ptr = map->metadata->head,
-  };
-  size_t finalWidth = keys.width + vals.width + meta.width + 3 * sizeof(size_t);
-  fptr res = (fptr){
-      .width = finalWidth,
-      .ptr = (uint8_t *)aAlloc(allocator, finalWidth),
-  };
-  uint8_t *ptr = res.ptr;
-
-  advance(ptr, &(keys.width), sizeof(size_t));
-  advance(ptr, &(vals.width), sizeof(size_t));
-  advance(ptr, &(meta.width), sizeof(size_t));
-
-  advance(ptr, keys.ptr, keys.width);
-  advance(ptr, vals.ptr, vals.width);
-  advance(ptr, meta.ptr, meta.width);
-
-  stringListView_free(allocator, kb);
-  stringListView_free(allocator, vb);
-
-  return res;
-}
-static inline UMapListView UMapList_toBuf(const My_allocator *allocator, UMapList *map) {
-  stringListView vb = stringList_toView(allocator, map->vals);
-  fptr vals = vb.raw;
-  fptr meta = (fptr){
-      .width = List_headArea(map->metadata),
-      .ptr = map->metadata->head,
-  };
-  size_t finalWidth = vals.width + meta.width + 3 * sizeof(size_t);
-  fptr res = (fptr){
-      .width = finalWidth,
-      .ptr = (uint8_t *)aAlloc(allocator, finalWidth),
-  };
-  uint8_t *ptr = res.ptr;
-
-  advance(ptr, &(vals.width), sizeof(size_t));
-  advance(ptr, &(meta.width), sizeof(size_t));
-
-  advance(ptr, vals.ptr, vals.width);
-  advance(ptr, meta.ptr, meta.width);
-
-  stringListView_free(allocator, vb);
-  return res;
-}
-#undef advance
 stringListView UMapListView_getVals(UMapListView map);
 List UMapListView_getMeta(UMapListView map);
 fptr UMapListView_getVal(UMapListView map, unsigned int index);
@@ -424,6 +369,66 @@ unsigned int UMapList_append(UMapList *map, fptr val) {
   mList_add(map->metadata, UMap_innertype, NORMAL);
   return map->metadata->length - 1;
 };
+
+#define advance(dst, src, length) \
+  memcpy(dst, src, length);       \
+  dst += length / sizeof(uint8_t);
+// memory layout:
+//  { keysSize|valsSize|metaSize|keys|vals|meta }
+
+UMapView UMap_toBuf(const My_allocator *allocator, UMap *map) {
+  stringListView kb = stringList_toView(allocator, map->keys);
+  stringListView vb = stringList_toView(allocator, map->vals);
+  fptr keys = kb.raw;
+  fptr vals = vb.raw;
+  fptr meta = (fptr){
+      .width = List_headArea(map->metadata),
+      .ptr = map->metadata->head,
+  };
+  size_t finalWidth = keys.width + vals.width + meta.width + 3 * sizeof(size_t);
+  fptr res = (fptr){
+      .width = finalWidth,
+      .ptr = (uint8_t *)aAlloc(allocator, finalWidth),
+  };
+  uint8_t *ptr = res.ptr;
+
+  advance(ptr, &(keys.width), sizeof(size_t));
+  advance(ptr, &(vals.width), sizeof(size_t));
+  advance(ptr, &(meta.width), sizeof(size_t));
+
+  advance(ptr, keys.ptr, keys.width);
+  advance(ptr, vals.ptr, vals.width);
+  advance(ptr, meta.ptr, meta.width);
+
+  stringListView_free(allocator, kb);
+  stringListView_free(allocator, vb);
+
+  return res;
+}
+UMapListView UMapList_toBuf(const My_allocator *allocator, UMapList *map) {
+  stringListView vb = stringList_toView(allocator, map->vals);
+  fptr vals = vb.raw;
+  fptr meta = (fptr){
+      .width = List_headArea(map->metadata),
+      .ptr = map->metadata->head,
+  };
+  size_t finalWidth = vals.width + meta.width + 3 * sizeof(size_t);
+  fptr res = (fptr){
+      .width = finalWidth,
+      .ptr = (uint8_t *)aAlloc(allocator, finalWidth),
+  };
+  uint8_t *ptr = res.ptr;
+
+  advance(ptr, &(vals.width), sizeof(size_t));
+  advance(ptr, &(meta.width), sizeof(size_t));
+
+  advance(ptr, vals.ptr, vals.width);
+  advance(ptr, meta.ptr, meta.width);
+
+  stringListView_free(allocator, vb);
+  return res;
+}
+#undef advance
 
 List UMapView_getMeta(UMapView map) {
   List res;
