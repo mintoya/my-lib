@@ -92,8 +92,8 @@ static inline void UMapList_free(UMapList *map) {
  * not modifiable
  * freeing keyReg itself deletes this
  */
-UMapView UMap_toBuf(My_allocator *allocator, UMap *map);
-UMapListView UMapList_toBuf(My_allocator *allocator, UMapList *map);
+UMapView UMap_toBuf(const My_allocator *allocator, UMap *map);
+UMapListView UMapList_toBuf(const My_allocator *allocator, UMapList *map);
 
 fptr UMapView_getKeyAtIndex(UMapView map, unsigned int index);
 fptr UMapView_getValAtIndex(UMapView map, unsigned int index);
@@ -269,7 +269,7 @@ unsigned int UMap_linearSearch(UMap *map, fptr key) {
 }
 unsigned int UMapView_binarySearch(UMapView map, fptr key) {
   stringListView keys = UMapView_getKeys(map);
-  unsigned int length = stringListView_MetaList(keys).length;
+  unsigned int length = stringListView_length(keys);
   unsigned int region = length;
   unsigned int front = 0;
 
@@ -376,9 +376,9 @@ unsigned int UMapList_append(UMapList *map, fptr val) {
 // memory layout:
 //  { keysSize|valsSize|metaSize|keys|vals|meta }
 
-UMapView UMap_toBuf(My_allocator *allocator, UMap *map) {
-  stringListView kb = stringList_tobuf(allocator, map->keys);
-  stringListView vb = stringList_tobuf(allocator, map->vals);
+UMapView UMap_toBuf(const My_allocator *allocator, UMap *map) {
+  stringListView kb = stringList_toView(allocator, map->keys);
+  stringListView vb = stringList_toView(allocator, map->vals);
   fptr keys = kb.raw;
   fptr vals = vb.raw;
   fptr meta = (fptr){
@@ -405,10 +405,8 @@ UMapView UMap_toBuf(My_allocator *allocator, UMap *map) {
 
   return res;
 }
-// memory layout:
-//  { valsSize|metaSize|vals|meta }
-UMapListView UMapList_toBuf(My_allocator *allocator, UMapList *map) {
-  stringListView vb = stringList_tobuf(allocator, map->vals);
+UMapListView UMapList_toBuf(const My_allocator *allocator, UMapList *map) {
+  stringListView vb = stringList_toView(allocator, map->vals);
   fptr vals = vb.raw;
   fptr meta = (fptr){
       .width = List_headArea(map->metadata),
@@ -463,12 +461,10 @@ stringListView UMapView_getKeys(UMapView map) {
 }
 fptr UMapView_getKeyAtIndex(UMapView map, unsigned int index) {
   stringListView sl = UMapView_getKeys(map);
-  List meta = stringListView_MetaList(sl);
   return stringListView_get(sl, index);
 };
 fptr UMapView_getValAtIndex(UMapView map, unsigned int index) {
   stringListView sl = UMapView_getVals(map);
-  List meta = stringListView_MetaList(sl);
   return stringListView_get(sl, index);
 };
 

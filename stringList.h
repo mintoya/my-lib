@@ -1,6 +1,7 @@
 #ifndef STRING_LIST_H
 #define STRING_LIST_H
 #include "allocator.h"
+#include "boxer.h"
 #include "fptr.h"
 #include "my-list.h"
 #include <stddef.h>
@@ -38,59 +39,45 @@ unsigned int stringList_append(stringList *l, fptr);
   dst += length / sizeof(uint8_t);
 // memory layot:
 //  { size_t:keycount | metadata buffer | data buffer }
-static inline stringListView stringList_tobuf(My_allocator *allocator, stringList *l) {
-  size_t area = List_headArea(&(l->List_stringMetaData)) +
-                List_headArea(&(l->List_char)) + sizeof(size_t);
-  size_t metalength = l->List_stringMetaData.length;
-  fptr res = {
-      .width = area,
-      .ptr = (uint8_t *)aAlloc(allocator, area),
+typedef struct {
+  unsigned int metaSize;
+  stringMetaData *Arr_stringMetaData;
+  uint8_t *Arr_char;
+} stringList_Solid;
+Boxer stringListBoxer = {2, {{.type = FPTR}, {.type = FPTR}}};
+static inline stringListView stringList_toView(const My_allocator *allocator, stringList *sl) {
+  fptr meta = (fptr){List_headArea(&(sl->List_stringMetaData)), sl->List_stringMetaData.head};
+  fptr buff = (fptr){List_headArea(&(sl->List_char)), sl->List_char.head};
+  fptr res = enBox(allocator, &stringListBoxer, (void *[2]){&(meta), &(buff)});
+
+  return (stringListView){res};
+}
+static inline stringList_Solid stringList_fromView(stringListView slv) {
+  stringList_Solid res;
+  bFptr *meta, *buff;
+
+  unBox(&stringListBoxer, (void *[2]){&(meta), &(buff)}, slv.raw);
+  res = (stringList_Solid){
+      .metaSize = (unsigned int)(meta->width / sizeof(stringMetaData)),
+      .Arr_stringMetaData = (stringMetaData *)meta->ptr,
+      .Arr_char = (uint8_t *)buff->ptr,
   };
-
-  uint8_t *use = res.ptr;
-  advance(use, &metalength, sizeof(size_t));
-  advance(use, l->List_stringMetaData.head, List_headArea(&l->List_stringMetaData));
-  advance(use, l->List_char.head, List_headArea(&l->List_char));
-
-  return ((stringListView){.raw = res});
+  return res;
+}
+static inline int stringListView_length(stringListView slv) {
+  // meta is first
+  size_t size = *(size_t *)slv.raw.ptr;
+  return size / sizeof(stringMetaData);
+}
+static inline fptr stringListView_get(stringListView slv, unsigned int index) {
+  stringList_Solid sls = stringList_fromView(slv);
+  if (index > sls.metaSize)
+    return nullFptr;
+  stringMetaData thisS = sls.Arr_stringMetaData[index];
+  return ((fptr){thisS.width, (uint8_t *)(sls.Arr_char + thisS.index)});
 }
 
-void stringListView_free(My_allocator *allocator, stringListView slv);
-#undef advance
-#define advance(dst, src, length) \
-  memcpy(dst, src, length);       \
-  src += length / sizeof(uint8_t);
-static inline stringList *stringList_fromBuf(stringListView um) {
-  uint8_t *ptr = um.raw.ptr;
-  size_t metalength;
-  advance(&metalength, ptr, sizeof(size_t));
-
-  stringList *l = (stringList *)aAlloc((&defaultAllocator), sizeof(stringList));
-
-  l->List_stringMetaData = (List){
-      .width = sizeof(stringMetaData),
-      .length = (unsigned int)metalength,
-      .size = (unsigned int)metalength,
-      .head = (uint8_t *)aAlloc((&defaultAllocator), sizeof(stringMetaData) * metalength),
-  };
-  advance(l->List_stringMetaData.head, ptr, List_headArea(&(l->List_stringMetaData)));
-  unsigned int charlength = (unsigned int)(um.raw.ptr + um.raw.width - ptr);
-  l->List_char = (List){
-      .width = sizeof(char),
-      .length = charlength,
-      .size = charlength,
-      .head = (uint8_t *)aAlloc((&defaultAllocator), sizeof(char) * charlength),
-  };
-
-  advance(l->List_char.head, ptr, charlength);
-
-  return l;
-}
-#undef advance
-
-List stringListView_MetaList(stringListView slv);
-List stringListView_CharList(stringListView slv);
-fptr stringListView_get(stringListView slv, unsigned int index);
+void stringListView_free(const My_allocator *allocator, stringListView slv);
 
 // returns length if not found
 unsigned int stringList_search(stringList *l, fptr key);
@@ -189,36 +176,7 @@ void stringList_set(stringList *l, fptr value, unsigned int index) {
   }
 }
 
-List stringListView_MetaList(stringListView slv) {
-  size_t length = *(size_t *)slv.raw.ptr;
-  List res = {
-      .width = sizeof(stringMetaData),
-      .length = (unsigned int)length,
-      .size = (unsigned int)length,
-      .head = slv.raw.ptr + sizeof(size_t),
-  };
-  return res;
-}
-List stringListView_CharList(stringListView slv) {
-  size_t flength = *(size_t *)slv.raw.ptr;
-  size_t length =
-      slv.raw.width - (sizeof(size_t) + flength * sizeof(stringMetaData));
-  List res = {
-      .width = sizeof(char),
-      .length = (unsigned int)length,
-      .size = (unsigned int)length,
-      .head = slv.raw.ptr + sizeof(size_t) + flength * sizeof(stringMetaData),
-  };
-  return res;
-}
-fptr stringListView_get(stringListView slv, unsigned int index) {
-  stringList temp = (stringList){
-      .List_char = stringListView_CharList(slv),
-      .List_stringMetaData = stringListView_MetaList(slv),
-  };
-  return stringList_get(&temp, index);
-}
-void stringListView_free(My_allocator *allocator, stringListView slv) { aFree(allocator, slv.raw.ptr); }
+void stringListView_free(const My_allocator *allocator, stringListView slv) { aFree(allocator, slv.raw.ptr); }
 void stringList_free(stringList *l) {
   const My_allocator *allocator = l->List_char.allocator;
   aFree(allocator, l->List_char.head);

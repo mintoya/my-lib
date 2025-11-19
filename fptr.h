@@ -8,6 +8,10 @@ typedef struct {
   size_t width;
   uint8_t *ptr;
 } fptr;
+typedef struct {
+  size_t width;
+  uint8_t ptr[];
+} bFptr;
 
 struct fatter_pointer {
   fptr fpart;

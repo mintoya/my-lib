@@ -19,6 +19,7 @@ typedef struct List {
 } List;
 
 List *List_new(const My_allocator *, size_t bytes);
+void List_makeNew(const My_allocator *, List *s, size_t bytes);
 // valid bytes list owns
 [[gnu::pure]] static inline size_t List_headArea(const List *l) {
   return (l->width * l->length);
@@ -109,8 +110,7 @@ static inline void List_cleanup_handler(List **l) {
 
 #ifdef MY_LIST_C
 
-List *List_new(const My_allocator *allocator, size_t bytes) {
-  List *l = (List *)aAlloc(allocator, sizeof(List));
+void List_makeNew(const My_allocator *allocator, List *l, size_t bytes) {
   *l = (List){
       .width = bytes,
       .length = 0,
@@ -118,6 +118,10 @@ List *List_new(const My_allocator *allocator, size_t bytes) {
       .head = (uint8_t *)aAlloc(allocator, bytes),
       .allocator = allocator,
   };
+}
+List *List_new(const My_allocator *allocator, size_t bytes) {
+  List *l = (List *)aAlloc(allocator, sizeof(List));
+  List_makeNew(allocator, l, bytes);
   return l;
 }
 void List_free(List *l) {
