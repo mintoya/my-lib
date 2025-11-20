@@ -2,6 +2,7 @@
 #define OMAP_H
 #include "allocator.h"
 #include "fptr.h"
+#include "stdarg.h"
 #include "stringList.h"
 
 typedef enum : uint8_t {
@@ -33,7 +34,7 @@ static inline fptr OMap_getKey(const OMap *map, unsigned int index) { return str
 static inline fptr OMap_getVal(const OMap *map, unsigned int index) { return stringList_get(map->KVs, index * 2 + 1); }
 static inline int OMap_length(const OMap *map) { return stringList_length(map->KVs) / 2; }
 
-OMap_V OMap_get(OMap *map, fptr key);
+OMap_V OMap_get(const OMap *map, fptr key);
 OMap_both OMap_getBoth(const OMap *map, fptr key);
 typedef fptr OMapView;
 unsigned int OMap_set(OMap *map, fptr key, fptr val);
@@ -54,6 +55,62 @@ static inline OMap_ObjArg OMOJA(void *v, OMap_Meta m) {
   res.ptr.ptr = v;
   res.kind = m;
   return res;
+}
+static fptr OMapfptr_inside(um_fp string) {
+  char limits[2] = {'[', ']'};
+  if (!string.width)
+    return nullUmf;
+  char front = limits[0];
+  char back = limits[1];
+
+  int in_single = 0;
+  int in_double = 0;
+
+  for (int i = 0; i < string.width; i++) {
+    char c = ((char *)string.ptr)[i];
+
+    // toggle quote state
+    if (c == '"' && !in_single)
+      in_double = !in_double;
+    else if (c == '\'' && !in_double)
+      in_single = !in_single;
+
+    if (!in_single && !in_double && c == front) {
+      unsigned int counter = 1;
+      for (int ii = 1; ii + i < string.width; ii++) {
+        c = ((char *)string.ptr)[i + ii];
+
+        // toggle quote state inside the nested scan
+        if (c == '"' && !in_single)
+          in_double = !in_double;
+        else if (c == '\'' && !in_double)
+          in_single = !in_single;
+
+        if (!in_single && !in_double) {
+          if (c == front) {
+            counter++;
+          } else if (c == back) {
+            counter--;
+          }
+        }
+
+        if (!counter)
+          return (um_fp){
+              .width = (size_t)ii - 1,
+              .ptr = ((uint8_t *)string.ptr) + i + 1,
+          };
+        // if (i + ii == string.width - 1)
+        //   return (um_fp){.ptr = ((uint8_t *)string.ptr) + i + 1,
+        //                  .width = (size_t)ii - 1};
+        if (i + ii == string.width - 1)
+          return (um_fp){
+              .width = (size_t)ii,
+              .ptr = ((uint8_t *)string.ptr) + i + 1,
+          };
+      }
+    }
+  }
+  return nullUmf;
 }
 
 static inline void OMap_setObj(OMap *map, fptr key, OMap_ObjArg val) {
@@ -196,6 +253,41 @@ static inline void OMap_cleanupHandler(OMap **om) {
     *om = NULL;
   }
 }
+static inline OMap_V OMap_getL(const OMap *map, fptr firstkey, ...) {
+  va_list vl;
+  if (!firstkey.ptr)
+    return (OMap_V){nullFptr, RAW};
+
+  va_start(vl, firstkey);
+  OMap_V place = OMap_get(map, firstkey);
+
+  fptr key = va_arg(vl, fptr);
+  while (place.t != RAW && key.ptr) {
+    switch (place.t) {
+    case OMAP: {
+      OMap_both t = OMapView_get(place.v, key);
+      place.v = t.v;
+      place.t = t.t;
+    } break;
+    case SLIST: {
+      fptr numver = OMapfptr_inside(key);
+      if (!numver.ptr) {
+        va_end(vl);
+        return (OMap_V){nullFptr, RAW};
+      }
+      place = StringlistView_getObj((stringListView){place.v}, fptr_toUint(numver));
+    } break;
+    default:
+      break;
+    }
+
+    key = va_arg(vl, fptr); 
+  }
+
+  va_end(vl);
+  return place;
+}
+
 #define OMap_scoped [[gnu::cleanup(OMap_cleanupHandler)]] OMap
 
 //
@@ -229,7 +321,7 @@ unsigned int OMap_binarySearch(const OMap *map, fptr key) {
   }
   return res;
 }
-OMap_V OMap_get(OMap *map, fptr key) {
+OMap_V OMap_get(const OMap *map, fptr key) {
   unsigned int index = OMap_binarySearch(map, key);
   if (index < OMap_length(map)) {
     fptr vall = OMap_getVal(map, index);

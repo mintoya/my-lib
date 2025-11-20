@@ -28,6 +28,8 @@ int main(void) {
   print_wf(kmlFormatPrinter, "${OMap}", *omap);
   // OMap_free(omap);
   // println("${OMapView}", oView);
+
+  println("getting list.[0].a : ${}", OMap_getL(omap, fp_from("list"), fp_from("[0]"), fp_from("a")).v);
   println("arena size: ${}", arena_footprint(local));
   return EXIT_SUCCESS;
 }
