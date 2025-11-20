@@ -1,8 +1,7 @@
 #ifndef KMLM_H
 #define KMLM_H
 #include "fptr.h"
-#include "print.h"
-#include "umap.h"
+#include "omap.h"
 
 #define min(a, b) ((a < b) ? (a) : (b))
 #define max(a, b) ((a > b) ? (a) : (b))
@@ -18,18 +17,18 @@ fptr findIndex(fptr str, unsigned int index);
 fptr findKey(fptr str, um_fp key);
 
 #define fpChar(fptr) ((char *)fptr.ptr)
-UMap *parse(UMap *parent, UMapList *lparent, fptr kml);
+OMap *parse(OMap *parent, stringList *lparent, fptr kml);
 
-UMapList *parseList(UMapList *lparent, fptr kml) {
+stringList *parseList(stringList *lparent, fptr kml) {
   if (!kml.width) {
     if (!(lparent)) {
-      return UMapList_new(&defaultAllocator);
+      return stringList_new(&defaultAllocator);
     } else {
       return lparent ? lparent : NULL;
     }
   }
   if (!(lparent)) {
-    lparent = UMapList_new(&defaultAllocator);
+    lparent = stringList_new(&defaultAllocator);
   }
   kml = kml_trimPadding(kml);
   fptr val, pval;
@@ -37,20 +36,20 @@ UMapList *parseList(UMapList *lparent, fptr kml) {
   case '[': {
     val = kml_around("[]", kml);
     pval = kml_inside("[]", kml);
-    UMapList_scoped *newmap = parseList(NULL, pval);
+    stringList_scoped *newmap = parseList(NULL, pval);
     if (newmap) {
       if (lparent) {
-        UMapList_appendList(lparent, newmap);
+        StringList_appendObj(lparent, (OMap_ObjArg){.ptr.sptr = newmap, SLIST});
       }
     }
   } break;
   case '{': {
     val = kml_around("{}", kml);
     pval = kml_inside("{}", kml);
-    UMap_scoped *newmap = parse(NULL, NULL, pval);
+    OMap_scoped *newmap = parse(NULL, NULL, pval);
     if (newmap) {
       if (lparent) {
-        UMapList_appendChild(lparent, newmap);
+        StringList_appendObj(lparent, (OMap_ObjArg){.ptr.optr = newmap, OMAP});
       }
     }
   } break;
@@ -70,12 +69,12 @@ UMapList *parseList(UMapList *lparent, fptr kml) {
     }
     kml.ptr--;
     kml.width++;
-    UMapList_append(lparent, pval);
+    StringList_appendObj(lparent, (OMap_ObjArg){.ptr.fptr = &pval, RAW});
   } break;
   default: {
     val = kml_behind(',', kml);
     pval = kml_until(',', kml);
-    UMapList_append(lparent, pval);
+    StringList_appendObj(lparent, (OMap_ObjArg){.ptr.fptr = &pval, RAW});
   }
   }
   fptr next = kml_after(kml, val);
@@ -87,17 +86,17 @@ UMapList *parseList(UMapList *lparent, fptr kml) {
   next = kml_trimPadding(next);
   return parseList(lparent, next);
 }
-UMap *parse(UMap *parent, UMapList *lparent, fptr kml) {
+OMap *parse(OMap *parent, stringList *lparent, fptr kml) {
   kml = kml_trimPadding(kml);
   if (!kml.width) {
     if (!(parent || lparent)) {
-      return UMap_new(&defaultAllocator);
+      return OMap_new(&defaultAllocator);
     } else {
       return parent ? parent : NULL;
     }
   }
   if (!(parent || lparent)) {
-    parent = UMap_new(&defaultAllocator);
+    parent = OMap_new(&defaultAllocator);
   }
   if (fpChar(kml)[0] == '{') {
     kml = kml_inside("{}", kml);
@@ -105,7 +104,7 @@ UMap *parse(UMap *parent, UMapList *lparent, fptr kml) {
   kml = kml_trimPadding(kml);
   if (!kml.width) {
     if (!(parent || lparent)) {
-      return UMap_new(&defaultAllocator);
+      return OMap_new(&defaultAllocator);
     } else {
       return parent ? parent : NULL;
     }
@@ -124,26 +123,26 @@ UMap *parse(UMap *parent, UMapList *lparent, fptr kml) {
   case '[': {
     val = kml_around("[]", val);
     pval = kml_inside("[]", val);
-    UMapList_scoped *newmap = parseList(NULL, pval);
+    stringList_scoped *newmap = parseList(NULL, pval);
     if (newmap) {
       if (lparent) {
-        UMapList_appendList(lparent, newmap);
+        StringList_appendObj(lparent, (OMap_ObjArg){.ptr.sptr = newmap, SLIST});
       }
       if (parent) {
-        UMap_setList(parent, kml_trimPadding(key), newmap);
+        OMap_setObj(parent, kml_trimPadding(key), (OMap_ObjArg){.ptr.sptr = newmap, SLIST});
       }
     }
   } break;
   case '{': {
     val = kml_around("{}", val);
     pval = kml_inside("{}", val);
-    UMap_scoped *newmap = parse(NULL, NULL, pval);
+    OMap_scoped *newmap = parse(NULL, NULL, pval);
     if (newmap) {
       if (lparent) {
-        UMapList_appendChild(lparent, newmap);
+        StringList_appendObj(lparent, (OMap_ObjArg){.ptr.optr = newmap, OMAP});
       }
       if (parent) {
-        UMap_setChild(parent, kml_trimPadding(key), newmap);
+        OMap_setObj(parent, kml_trimPadding(key), (OMap_ObjArg){.ptr.optr = newmap, OMAP});
       }
     }
   } break;
@@ -153,12 +152,12 @@ UMap *parse(UMap *parent, UMapList *lparent, fptr kml) {
     pval = kml_until('"', val);
     val = pval;
     val.width++;
-    UMap_set(parent, kml_trimPadding(key), pval);
+    OMap_set(parent, kml_trimPadding(key), pval);
   } break;
   default: {
     val = kml_behind(';', val);
     pval = kml_until(';', val);
-    UMap_set(parent, kml_trimPadding(key), pval);
+    OMap_set(parent, kml_trimPadding(key), pval);
   }
   }
   return parse(parent, lparent, kml_after(kml, val));

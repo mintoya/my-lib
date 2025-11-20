@@ -3,8 +3,6 @@
 #include "allocator.h"
 #include "fptr.h"
 #include "stringList.h"
-#include "umap.h"
-#include <string.h>
 
 typedef enum : uint8_t {
   RAW = 0,
@@ -21,9 +19,10 @@ typedef struct {
   OMap_Meta t;
 } OMap_V;
 
-const OMap_Meta OMap_Meta_RAW = (OMap_Meta){RAW};
-const OMap_Meta OMap_Meta_SLIST = (OMap_Meta){SLIST};
-const OMap_Meta OMap_Meta_OMAP = (OMap_Meta){OMAP};
+#define OMap_Meta_RAW ((OMap_Meta){0})
+#define OMap_Meta_SLIST ((OMap_Meta){SLIST})
+#define OMap_Meta_OMAP ((OMap_Meta){OMAP})
+
 typedef struct {
   stringList *KVs;
 } OMap;
@@ -38,26 +37,35 @@ OMap_V OMap_get(OMap *map, fptr key);
 OMap_both OMap_getBoth(const OMap *map, fptr key);
 typedef fptr OMapView;
 unsigned int OMap_set(OMap *map, fptr key, fptr val);
-// takes fptr*,OMap*,stringList*
 unsigned int OMap_setKind(OMap *map, fptr key, fptr val, OMap_Meta kind);
-static inline void OMap_setObj(OMap *map, fptr key, void *val, OMap_Meta kind) {
+// takes fptr*,OMap*,stringList*
+typedef struct {
+  union {
+    fptr *fptr;
+    OMap *optr;
+    stringList *sptr;
+  } ptr;
+  OMap_Meta kind;
+
+} OMap_ObjArg;
+static inline void OMap_setObj(OMap *map, fptr key, OMap_ObjArg val) {
   fptr fval;
-  switch (kind) {
+  switch (val.kind) {
   case OMAP:
     fval =
-        OMap_toView(&defaultAllocator, (OMap *)val);
+        OMap_toView(&defaultAllocator, val.ptr.optr);
     break;
   case RAW:
-    fval = *(fptr *)val;
+    fval = *(val.ptr.fptr);
     break;
   case SLIST:
-    fval = stringList_toView(&defaultAllocator, (stringList *)val).raw;
+    fval = stringList_toView(&defaultAllocator, val.ptr.sptr).raw;
     break;
   }
 
-  unsigned int index = OMap_setKind(map, key, fval, kind);
+  unsigned int index = OMap_setKind(map, key, fval, val.kind);
 
-  switch (kind) {
+  switch (val.kind) {
   case RAW:
     break;
   default:
@@ -65,30 +73,29 @@ static inline void OMap_setObj(OMap *map, fptr key, void *val, OMap_Meta kind) {
     break;
   }
 }
-// takes fptr*,OMap*,stringList*
-static inline void StringList_setObj(stringList *list, unsigned int key, void *val, OMap_Meta kind) {
+static inline void StringList_setObj(stringList *list, unsigned int key, OMap_ObjArg val) {
   fptr fval;
-  switch (kind) {
+  switch (val.kind) {
   case OMAP:
     fval =
-        OMap_toView(&defaultAllocator, (OMap *)val);
+        OMap_toView(&defaultAllocator, val.ptr.optr);
     break;
   case RAW:
-    fval = *(fptr *)val;
+    fval = *val.ptr.fptr;
     break;
   case SLIST:
-    fval = stringList_toView(&defaultAllocator, (stringList *)val).raw;
+    fval = stringList_toView(&defaultAllocator, val.ptr.sptr).raw;
     break;
   }
   fptr both;
   both.width = sizeof(OMap_Meta) + fval.width;
   uint8_t *dataBuffer = (uint8_t *)aAlloc(&defaultAllocator, both.width);
   both.ptr = dataBuffer;
-  *(OMap_Meta *)dataBuffer = kind;
+  *(OMap_Meta *)dataBuffer = val.kind;
   memcpy(dataBuffer + sizeof(OMap_Meta), fval.ptr, fval.width);
   stringList_set(list, both, key);
   aFree(&defaultAllocator, both.ptr);
-  switch (kind) {
+  switch (val.kind) {
   case RAW:
     break;
   default:
@@ -124,29 +131,29 @@ static inline OMap_V StringlistView_getObj(stringListView list, unsigned int key
   };
   return res;
 }
-static inline void StringList_appendObj(stringList *list, void *val, OMap_Meta kind) {
+static inline void StringList_appendObj(stringList *list, OMap_ObjArg val) {
   fptr fval;
-  switch (kind) {
+  switch (val.kind) {
   case OMAP:
     fval =
-        OMap_toView(&defaultAllocator, (OMap *)val);
+        OMap_toView(&defaultAllocator, val.ptr.optr);
     break;
   case RAW:
-    fval = *(fptr *)val;
+    fval = *val.ptr.fptr;
     break;
   case SLIST:
-    fval = stringList_toView(&defaultAllocator, (stringList *)val).raw;
+    fval = stringList_toView(&defaultAllocator, val.ptr.sptr).raw;
     break;
   }
   fptr both;
   both.width = sizeof(OMap_Meta) + fval.width;
   uint8_t *dataBuffer = (uint8_t *)aAlloc(&defaultAllocator, both.width);
   both.ptr = dataBuffer;
-  *(OMap_Meta *)dataBuffer = kind;
+  *(OMap_Meta *)dataBuffer = val.kind;
   memcpy(dataBuffer + sizeof(OMap_Meta), fval.ptr, fval.width);
   stringList_append(list, both);
   aFree(&defaultAllocator, both.ptr);
-  switch (kind) {
+  switch (val.kind) {
   case RAW:
     break;
   default:
@@ -175,14 +182,21 @@ static inline void OMap_free(OMap *map) {
   aFree(allocator, map);
 }
 static inline void OMapView_free(const My_allocator *allocator, OMapView v) { aFree(allocator, v.ptr); }
+static inline void OMap_cleanupHandler(OMap **om) {
+  if (om && *om) {
+    OMap_free(*om);
+    *om = NULL;
+  }
+}
+#define OMap_scoped [[gnu::cleanup(OMap_cleanupHandler)]] OMap
 
 //
 //
 //
-//
-//
-//
 // printers
+//
+//
+//
 
 #include "print.h"
 REGISTER_SPECIAL_PRINTER("OMap_stringlistView", stringListView, {
@@ -193,7 +207,7 @@ REGISTER_SPECIAL_PRINTER("OMap_stringlistView", stringListView, {
     switch (el.t) {
     case RAW:
       USETYPEPRINTER(fptr, el.v);
-    PUTS(",", 1);
+      PUTS(",", 1);
       break;
     case OMAP:
       USENAMEDPRINTER("OMapView", el.v);

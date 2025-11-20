@@ -1,11 +1,8 @@
 #define PRINTER_LIST_TYPENAMES
-#include "../allocator.h"
 #include "../arenaAllocator.h"
-#include "../fptr.h"
 #include "../hmap.h"
 #include "../macroList.h"
 #include "../print.h"
-#include "../umap.h"
 #include "../wheels.h"
 #include <stddef.h>
 #include <stdint.h>
