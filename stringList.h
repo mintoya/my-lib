@@ -65,7 +65,7 @@ static inline stringList_Solid stringList_fromView(stringListView slv) {
 }
 static inline int stringListView_length(stringListView slv) {
   // meta is first
-  size_t size = *(size_t *)slv.raw.ptr;
+  size_t size = deREF(size_t, slv.raw.ptr);
   return size / sizeof(stringMetaData);
 }
 static inline fptr stringListView_get(stringListView slv, unsigned int index) {
@@ -119,14 +119,16 @@ fptr stringList_get(stringList *l, unsigned int index) {
   });
 }
 unsigned int stringList_search(stringList *l, fptr what) {
-  stringMetaData *meta = (stringMetaData *)l->List_stringMetaData.head;
+  void *meta = l->List_stringMetaData.head;
+  stringMetaData metaVal = deREF(stringMetaData, meta);
   unsigned int res = 0;
   unsigned int length = stringList_length(l);
 
   for (; res < length; res++) {
+    stringMetaData thismeta = deREF(stringMetaData, (uint8_t *)meta + sizeof(stringMetaData) * res);
     fptr thisS = ((um_fp){
-        .width = meta[res].width,
-        .ptr = (uint8_t *)List_getRef(&(l->List_char), meta[res].index),
+        .width = thismeta.width,
+        .ptr = (uint8_t *)List_getRef(&(l->List_char), thismeta.index),
     });
     if (um_eq(thisS, what))
       return res;
@@ -144,7 +146,7 @@ stringList *stringList_remake(stringList *origional) {
 unsigned int stringList_append(stringList *l, fptr value) {
   stringMetaData thisS = {
       .index = l->List_char.length,
-      .width = value.width,
+      .width = (unsigned int)value.width,
   };
   mList_add(&(l->List_stringMetaData), stringMetaData, thisS);
   List_appendFromArr(&(l->List_char), value.ptr, value.width);
@@ -153,7 +155,7 @@ unsigned int stringList_append(stringList *l, fptr value) {
 void stringList_insert(stringList *l, fptr value, unsigned int index) {
   stringMetaData thisS = {
       .index = l->List_char.length,
-      .width = value.width,
+      .width = (unsigned int)value.width,
   };
   mList_insert(&(l->List_stringMetaData), stringMetaData, thisS, index);
   List_appendFromArr(&(l->List_char), value.ptr, value.width);

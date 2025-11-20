@@ -43,9 +43,9 @@ unsigned int OMap_setKind(OMap *map, fptr key, fptr val, OMap_Meta kind);
 typedef struct {
   union {
     void *ptr;
-    fptr *fptr;
-    OMap *optr;
-    stringList *sptr;
+    fptr *f_ptr;
+    OMap *o_ptr;
+    stringList *s_ptr;
   } ptr;
   OMap_Meta kind;
 
@@ -118,13 +118,13 @@ static inline void OMap_setObj(OMap *map, fptr key, OMap_ObjArg val) {
   switch (val.kind) {
   case OMAP:
     fval =
-        OMap_toView(&defaultAllocator, val.ptr.optr);
+        OMap_toView(&defaultAllocator, val.ptr.o_ptr);
     break;
   case RAW:
-    fval = *(val.ptr.fptr);
+    fval = *(val.ptr.f_ptr);
     break;
   case SLIST:
-    fval = stringList_toView(&defaultAllocator, val.ptr.sptr).raw;
+    fval = stringList_toView(&defaultAllocator, val.ptr.s_ptr).raw;
     break;
   }
 
@@ -143,13 +143,13 @@ static inline void StringList_setObj(stringList *list, unsigned int key, OMap_Ob
   switch (val.kind) {
   case OMAP:
     fval =
-        OMap_toView(&defaultAllocator, val.ptr.optr);
+        OMap_toView(&defaultAllocator, val.ptr.o_ptr);
     break;
   case RAW:
-    fval = *val.ptr.fptr;
+    fval = *val.ptr.f_ptr;
     break;
   case SLIST:
-    fval = stringList_toView(&defaultAllocator, val.ptr.sptr).raw;
+    fval = stringList_toView(&defaultAllocator, val.ptr.s_ptr).raw;
     break;
   }
   fptr both;
@@ -201,13 +201,13 @@ static inline void StringList_appendObj(stringList *list, OMap_ObjArg val) {
   switch (val.kind) {
   case OMAP:
     fval =
-        OMap_toView(&defaultAllocator, val.ptr.optr);
+        OMap_toView(&defaultAllocator, val.ptr.o_ptr);
     break;
   case RAW:
-    fval = *val.ptr.fptr;
+    fval = *val.ptr.f_ptr;
     break;
   case SLIST:
-    fval = stringList_toView(&defaultAllocator, val.ptr.sptr).raw;
+    fval = stringList_toView(&defaultAllocator, val.ptr.s_ptr).raw;
     break;
   }
   fptr both;
@@ -281,7 +281,7 @@ static inline OMap_V OMap_getL(const OMap *map, fptr firstkey, ...) {
       break;
     }
 
-    key = va_arg(vl, fptr); 
+    key = va_arg(vl, fptr);
   }
 
   va_end(vl);

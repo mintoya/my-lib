@@ -2,6 +2,7 @@
 #define ARENA_ALLOCATOR_H
 #include "allocator.h"
 // #include "print.h"
+#include "fptr.h"
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
@@ -11,7 +12,7 @@ typedef struct ArenaBlock {
   ArenaBlock *next;
   size_t place;
   size_t size;
-  size_t *freelist[10];
+  void *freelist[10]; // size_t's
   uint8_t buffer[];
 } ArenaBlock;
 
@@ -55,17 +56,18 @@ void arenablock_free(ArenaBlock *block) {
   }
 }
 void arena_free(const My_allocator *allocator, void *ptr) {
-  size_t *thisSize = (size_t *)((uint8_t *)ptr - sizeof(size_t));
+  void *thisSizePtr = ((uint8_t *)ptr - sizeof(size_t));
+  size_t thisSize = deREF(size_t, (uint8_t *)ptr - sizeof(size_t));
   ArenaBlock *it = (ArenaBlock *)(allocator->arb);
   for (int i = 0; i < 10; i++) {
     if (!it->freelist[i]) {
-      it->freelist[i] = thisSize;
+      it->freelist[i] = thisSizePtr;
       return;
     }
   }
   for (int i = 0; i < 10; i++) {
-    if (*it->freelist[i] < *thisSize) {
-      it->freelist[i] = thisSize;
+    if (deREF(size_t, it->freelist[i]) < thisSize) {
+      it->freelist[i] = thisSizePtr;
       return;
     }
   }
@@ -87,11 +89,12 @@ My_allocator *arena_new(size_t blockSize) {
 void *arena_r_alloc(const My_allocator *arena, void *ptr, size_t size) {
   if (!ptr)
     exit(1);
-  size_t *lastSize = (size_t *)((uint8_t *)ptr - sizeof(size_t));
-  if (*lastSize > size)
+  void *lastSize = ((uint8_t *)ptr - sizeof(size_t));
+  size_t lastSizeVal = deREF(size_t, lastSize);
+  if (lastSizeVal > size)
     return ptr;
   void *res = arena_alloc(arena, size);
-  memmove(res, ptr, (*lastSize));
+  memmove(res, ptr, lastSizeVal);
   arena_free(arena, ptr);
   return res;
 }
@@ -100,16 +103,17 @@ void *arena_alloc(const My_allocator *ref, size_t size) {
   void *res = NULL;
   for (int i = 0; i < 10; i++) {
     if (it->freelist[i]) {
-      size_t *sizeptr = it->freelist[i];
-      if (*sizeptr >= size) {
+      void *sizeptr = it->freelist[i];
+      size_t sizeval = deREF(size_t, it->freelist[i]);
+      if (sizeval >= size) {
         it->freelist[i] = NULL;
-        return (void *)(sizeptr + 1);
+        return (void *)((uint8_t *)sizeptr + sizeof(size_t));
       }
     }
   }
   while (!res) {
     if (it->size - it->place >= size + sizeof(size_t)) {
-      *(size_t *)(it->buffer + it->place) = size;
+      setRef(size_t, it->buffer + it->place, size);
       it->place += sizeof(size_t);
 
       res = it->buffer + it->place;

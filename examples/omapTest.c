@@ -5,6 +5,7 @@
 
 #include "../printers/omap_printers.c"
 #include "../wheels.h"
+#include <alloca.h>
 #include <stdint.h>
 
 int main(void) {
@@ -18,18 +19,13 @@ int main(void) {
   StringList_appendObj(sl, OMOJA(omap, OMAP));
   StringList_appendObj(sl, OMOJA(sl, SLIST));
 
-  // StringList_setObj(sl, 0, REF(fptr,fp_from()
-
   OMap_setObj(omap, fp_from("list"), OMOJA(sl, SLIST));
   OMap_setObj(omap, fp_from("recurse"), OMOJA(omap, OMAP));
 
-  // OMapView oView = OMap_toView(local, omap);
   println("${OMap}", *omap);
   print_wf(kmlFormatPrinter, "${OMap}", *omap);
-  // OMap_free(omap);
-  // println("${OMapView}", oView);
 
-  println("getting list.[0].a : ${}", OMap_getL(omap, fp_from("list"), fp_from("[0]"), fp_from("a")).v);
+  println("compound getter : ${}", OMap_getL(omap, APPLY_N(fp_from, "list", "[1]", "[0]", "a"), nullFptr).v);
   println("arena size: ${}", arena_footprint(local));
   return EXIT_SUCCESS;
 }

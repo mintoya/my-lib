@@ -67,10 +67,10 @@ inline static void unBox(const Boxer *const Boxer, void **ptrs, fptr boxed) {
       place += boxes[i].size;
       break;
     case FPTR: {
-      size_t tsize = (*(size_t *)(boxed.ptr + place));
+      size_t tsize = deREF(size_t, boxed.ptr + place);
       boxes[i].size = sizeof(size_t) + tsize;
       bFptr **p = (bFptr **)ptrs[i];
-      *p = (bFptr *)(boxed.ptr + place);
+      setRef(bFptr *, p, (bFptr *)(boxed.ptr + place));
       place += boxes[i].size;
     } break;
     }

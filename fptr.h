@@ -1,5 +1,7 @@
 #ifndef UM_FP_H
 #define UM_FP_H
+#include <alloca.h>
+#include <stdalign.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -25,12 +27,12 @@ typedef union {
     fptr fpart;
     size_t capacity;
   } ffptr;
-  fptr fptr;
+  fptr fptrp;
 } ffptr;
 
 typedef fptr um_fp;
 
-// #include <string.h>
+#include <string.h>
 [[gnu::pure]] static inline int fptr_cmp(const fptr a, const fptr b) {
   int wd = a.width - b.width;
   if (wd) {
@@ -39,42 +41,38 @@ typedef fptr um_fp;
   if (!a.width) {
     return 0;
   }
-  // return
-  // memcmp(a.ptr, b.ptr, a.width);
-  int res = 0;
-  size_t top = a.width / sizeof(intmax_t);
-  size_t bottom = a.width % sizeof(intmax_t);
-  intmax_t *starta = (intmax_t *)a.ptr;
-  intmax_t *startb = (intmax_t *)b.ptr;
-  uint8_t *resta = a.ptr + (top * (sizeof(intmax_t)));
-  uint8_t *restb = b.ptr + (top * (sizeof(intmax_t)));
-  for (size_t i = 0; i < top && !res; i++)
-    res = (starta[i] - startb[i]);
-  for (size_t i = 0; i < bottom && !res; i++)
-    res = (resta[i] - restb[i]);
-  int result;
-  if (!res)
-    result = 0;
-  else if (res < 0)
-    result = -1;
-  else
-    result = 1;
-  return result;
+  return memcmp(a.ptr, b.ptr, a.width);
+  // int res = 0;
+  // size_t top = a.width / sizeof(intmax_t);
+  // size_t bottom = a.width % sizeof(intmax_t);
+  // intmax_t *starta = (intmax_t *)a.ptr;
+  // intmax_t *startb = (intmax_t *)b.ptr;
+  // uint8_t *resta = a.ptr + (top * (sizeof(intmax_t)));
+  // uint8_t *restb = b.ptr + (top * (sizeof(intmax_t)));
+  // for (size_t i = 0; i < top && !res; i++)
+  //   res = (starta[i] - startb[i]);
+  // for (size_t i = 0; i < bottom && !res; i++)
+  //   res = (resta[i] - restb[i]);
+  // int result;
+  // if (!res)
+  //   result = 0;
+  // else if (res < 0)
+  //   result = -1;
+  // else
+  //   result = 1;
+  // return result;
 }
 static int (*um_fp_cmp)(const fptr, const fptr) = fptr_cmp;
 
 #include <string.h>
 static inline void fpmemset(uint8_t *ptr, const fptr element, size_t ammount) {
-  size_t set = 0;
-  while (set < ammount) {
-    if (!set) {
-      memcpy(ptr, element.ptr, element.width);
-      set++;
-    } else {
-      size_t toset = set < (ammount - set) ? set : ammount - set;
-      memcpy(ptr + set * element.width, ptr, element.width * toset);
-      set *= 2;
-    }
+  if (!ammount)
+    return;
+  memcpy(ptr, element.ptr, element.width);
+  for (size_t set = 1; set < ammount; set *= 2) {
+    size_t toset = ammount - set;
+    toset = set < toset ? set : toset;
+    memcpy(ptr + set * element.width, ptr, element.width * toset);
   }
 }
 
@@ -84,10 +82,72 @@ static char (*um_eq)(fptr, fptr) = fptr_eq;
 #ifdef __cplusplus
 inline bool operator==(const fptr &a, const fptr &b) { return fptr_eq(a, b); }
 inline bool operator!=(const fptr &a, const fptr &b) { return !fptr_eq(a, b); }
-#endif
-#ifdef __cplusplus
 #define typeof(x) std::decay_t<decltype(x)>
+#else
+#define alignof(x) _Alignof(x)
 #endif
+#define align_alloca(type) ({                                           \
+  uintptr_t newptr = (uintptr_t)alloca(sizeof(type) + alignof(type));   \
+  newptr += (alignof(type) - (newptr % alignof(type))) % alignof(type); \
+  (type *)newptr;                                                       \
+})
+
+#define REF(type, value) ({                    \
+  type ___temp = value;                        \
+  type *__temp = (type *)alloca(sizeof(type)); \
+  memcpy(__temp, &(___temp), sizeof(type));    \
+  __temp;                                      \
+})
+#define deREF(type, ptr)                    \
+  ({                                        \
+    type _temp;                             \
+    if ((uintptr_t)(ptr) % alignof(type)) { \
+      type *newptr = align_alloca(type);    \
+      memcpy(newptr, (ptr), sizeof(type));  \
+      _temp = *(type *)(newptr);            \
+    } else {                                \
+      _temp = *(type *)(ptr);               \
+    }                                       \
+    _temp;                                  \
+  })
+#define setRef(type, ptr, value)         \
+  do {                                   \
+    type _temp = (type)(value);          \
+    memcpy((ptr), &_temp, sizeof(type)); \
+  } while (0)
+#define fptr_stack_split(string, ...) ({fptr* __temp__result = (fptr*)alloca( (sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1)*sizeof(fptr) ); \
+  do {                                                                                 \
+    uint8_t *last;                                                                     \
+    unsigned int args[] = {__VA_ARGS__};                                               \
+    for (int i = 0; i < sizeof(args) / sizeof(unsigned int); i++) {                    \
+      args[i] = (i == 0)                                                               \
+                    ? ((args[i] < string.width)                                        \
+                           ? args[i]                                                   \
+                           : string.width)                                             \
+                    : ((string.width < ((args[i] > args[i - 1])                        \
+                                            ? args[i]                                  \
+                                            : args[i - 1]))                            \
+                           ? string.width                                              \
+                           : ((args[i] > args[i - 1])                                  \
+                                  ? args[i]                                            \
+                                  : args[i - 1]));                                     \
+      __temp__result[i] = (fptr){                                                              \
+          .width = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),                     \
+          .ptr = (i == 0) ? (string.ptr) : (last),                                     \
+      };                                                                               \
+      last = ((uint8_t *)__temp__result[i].ptr) + __temp__result[i].width;                             \
+    }                                                                                  \
+    __temp__result[sizeof(args) / sizeof(unsigned int)] = (fptr){                              \
+        .width = string.width - ((uint8_t *)last - (uint8_t *)string.ptr),             \
+        .ptr = last,                                                                   \
+    };                                                                                 \
+  } while (0);__temp__result; })
+#define isSkip(char) ( \
+    char == ' ' ||     \
+    char == '\n' ||    \
+    char == '\r' ||    \
+    char == '\t'       \
+)
 #define UM_DEFAULT(...) {__VA_ARGS__}
 #define UM_CASE(fp, ...)     \
   if (fptr_eq(fp, __temp)) { \
@@ -188,40 +248,6 @@ inline fptr fp_from(const char (&s)[N]) {
 }
 
 #endif
-#define fptr_stack_split(string, ...) \
-  ({fptr* __temp__result = (fptr*)alloca( (sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1)*sizeof(fptr) ); \
-  do {                                                                                 \
-    uint8_t *last;                                                                     \
-    unsigned int args[] = {__VA_ARGS__};                                               \
-    for (int i = 0; i < sizeof(args) / sizeof(unsigned int); i++) {                    \
-      args[i] = (i == 0)                                                               \
-                    ? ((args[i] < string.width)                                        \
-                           ? args[i]                                                   \
-                           : string.width)                                             \
-                    : ((string.width < ((args[i] > args[i - 1])                        \
-                                            ? args[i]                                  \
-                                            : args[i - 1]))                            \
-                           ? string.width                                              \
-                           : ((args[i] > args[i - 1])                                  \
-                                  ? args[i]                                            \
-                                  : args[i - 1]));                                     \
-      __temp__result[i] = (fptr){                                                              \
-          .width = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),                     \
-          .ptr = (i == 0) ? (string.ptr) : (last),                                     \
-      };                                                                               \
-      last = ((uint8_t *)__temp__result[i].ptr) + __temp__result[i].width;                             \
-    }                                                                                  \
-    __temp__result[sizeof(args) / sizeof(unsigned int)] = (fptr){                              \
-        .width = string.width - ((uint8_t *)last - (uint8_t *)string.ptr),             \
-        .ptr = last,                                                                   \
-    };                                                                                 \
-  } while (0);__temp__result; })
-#define isSkip(char) ( \
-    char == ' ' ||     \
-    char == '\n' ||    \
-    char == '\r' ||    \
-    char == '\t'       \
-)
 static fptr fptr_trim(fptr in) {
   for (; isSkip(*in.ptr);) {
     in.ptr++;

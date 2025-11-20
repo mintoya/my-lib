@@ -7,14 +7,14 @@
 #define max(a, b) ((a > b) ? (a) : (b))
 
 unsigned int kml_indexOf(fptr string, char c);
-fptr kml_until(char delim, fptr string);
-fptr kml_behind(char delim, fptr string);
-fptr kml_inside(char limits[2], fptr string);
-fptr kml_around(char limits[2], fptr string);
-fptr kml_after(fptr main, um_fp slice);
+fptr kml_until(char delim, fptr in);
+fptr kml_behind(char delim, fptr in);
+fptr kml_inside(char limits[2], fptr in);
+fptr kml_around(char limits[2], fptr in);
+fptr kml_after(fptr main, fptr slice);
 fptr kml_trimPadding(fptr in);
-fptr findIndex(fptr str, unsigned int index);
-fptr findKey(fptr str, um_fp key);
+fptr findIndex(fptr in, unsigned int index);
+fptr findKey(fptr in, fptr key);
 
 #define fpChar(fptr) ((char *)fptr.ptr)
 OMap *parse(OMap *parent, stringList *lparent, fptr kml);
@@ -169,6 +169,7 @@ static void kmlFormatPrinter(
     unsigned int length,
     char flush
 ) {
+  (void)arb;
   static uint indentLevel = 0;
 
   for (size_t index = 0; index < length; index++) {

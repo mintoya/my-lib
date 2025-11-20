@@ -12,7 +12,7 @@
     type *elements;      \
   }
 #define MList_t(type) MList_typedef_##type
-#define MList_typeDef(type) typedef MList(type) MList_t(type);
+#define MList_typeDef(type) typedef MList(type) MList_t(type)
 
 #define MList_deconvert(name, list)                 \
   (typeof(list)){                                   \
