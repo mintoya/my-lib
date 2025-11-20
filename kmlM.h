@@ -39,7 +39,7 @@ stringList *parseList(stringList *lparent, fptr kml) {
     stringList_scoped *newmap = parseList(NULL, pval);
     if (newmap) {
       if (lparent) {
-        StringList_appendObj(lparent, (OMap_ObjArg){.ptr.sptr = newmap, SLIST});
+        StringList_appendObj(lparent, OMOJA(newmap, SLIST));
       }
     }
   } break;
@@ -49,7 +49,7 @@ stringList *parseList(stringList *lparent, fptr kml) {
     OMap_scoped *newmap = parse(NULL, NULL, pval);
     if (newmap) {
       if (lparent) {
-        StringList_appendObj(lparent, (OMap_ObjArg){.ptr.optr = newmap, OMAP});
+        StringList_appendObj(lparent, OMOJA(newmap, OMAP));
       }
     }
   } break;
@@ -69,12 +69,12 @@ stringList *parseList(stringList *lparent, fptr kml) {
     }
     kml.ptr--;
     kml.width++;
-    StringList_appendObj(lparent, (OMap_ObjArg){.ptr.fptr = &pval, RAW});
+    StringList_appendObj(lparent, OMOJA(&pval, RAW));
   } break;
   default: {
     val = kml_behind(',', kml);
     pval = kml_until(',', kml);
-    StringList_appendObj(lparent, (OMap_ObjArg){.ptr.fptr = &pval, RAW});
+    StringList_appendObj(lparent, OMOJA(&pval, RAW));
   }
   }
   fptr next = kml_after(kml, val);
@@ -126,10 +126,10 @@ OMap *parse(OMap *parent, stringList *lparent, fptr kml) {
     stringList_scoped *newmap = parseList(NULL, pval);
     if (newmap) {
       if (lparent) {
-        StringList_appendObj(lparent, (OMap_ObjArg){.ptr.sptr = newmap, SLIST});
+        StringList_appendObj(lparent, OMOJA(newmap, SLIST));
       }
       if (parent) {
-        OMap_setObj(parent, kml_trimPadding(key), (OMap_ObjArg){.ptr.sptr = newmap, SLIST});
+        OMap_setObj(parent, kml_trimPadding(key), OMOJA(newmap, SLIST));
       }
     }
   } break;
@@ -139,10 +139,10 @@ OMap *parse(OMap *parent, stringList *lparent, fptr kml) {
     OMap_scoped *newmap = parse(NULL, NULL, pval);
     if (newmap) {
       if (lparent) {
-        StringList_appendObj(lparent, (OMap_ObjArg){.ptr.optr = newmap, OMAP});
+        StringList_appendObj(lparent, OMOJA(newmap, OMAP));
       }
       if (parent) {
-        OMap_setObj(parent, kml_trimPadding(key), (OMap_ObjArg){.ptr.optr = newmap, OMAP});
+        OMap_setObj(parent, kml_trimPadding(key), OMOJA(newmap, OMAP));
       }
     }
   } break;
@@ -379,16 +379,15 @@ char isSkip(char c) {
 }
 um_fp kml_trimPadding(um_fp in) {
   um_fp res = in;
-  int front = 0;
-  int back = in.width - 1;
+  unsigned int front = 0;
+  unsigned int back = in.width - 1;
   while (front < in.width && isSkip(((char *)in.ptr)[front])) {
     front++;
   }
   while (back > front && isSkip(((char *)in.ptr)[back])) {
     back--;
   }
-  fptr *splits =
-      fptr_stack_split(splits, in, (unsigned int)front, (unsigned int)back + 1);
+  fptr *splits = fptr_stack_split(in, front, back + 1);
 
   res = splits[1];
   return res;

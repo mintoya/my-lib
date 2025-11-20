@@ -44,7 +44,7 @@ typedef struct {
   stringMetaData *Arr_stringMetaData;
   uint8_t *Arr_char;
 } stringList_Solid;
-Boxer stringListBoxer = {2, {{.type = FPTR}, {.type = FPTR}}};
+const Boxer stringListBoxer = {2, {{.type = FPTR}, {.type = FPTR}}};
 static inline stringListView stringList_toView(const My_allocator *allocator, stringList *sl) {
   fptr meta = (fptr){List_headArea(&(sl->List_stringMetaData)), sl->List_stringMetaData.head};
   fptr buff = (fptr){List_headArea(&(sl->List_char)), sl->List_char.head};

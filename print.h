@@ -11,31 +11,12 @@
 #include "printer/macros.h"
 #include "printer/variadic.h"
 
-// temporary variables for compound literals
-#ifdef __cplusplus
-// clang-format off
-  #include <type_traits>
-  #include <utility>
-  template <typename T> class StackPush {
-  private:
-    using RealT = std::remove_reference_t<T>;
-    RealT value; 
-  public:
-    template <typename ArgType>
-    explicit StackPush(ArgType &&arg) : value(std::forward<ArgType>(arg)) {}
-    operator RealT &() { return value; }
-    operator const RealT &() const { return value; }
-    operator void *() { return (void *)&value; }
-    operator const void *() const { return (const void *)&value; }
-  };
-// clang-format on
-// #define typeof(m) decltype(m)
-#define typeof(x) std::decay_t<decltype(x)>
-#define REF(type, value) (StackPush<type>(value))
-#else
-#define REF(type, value) ((type[1]){value})
-#endif
-
+#define REF(type, intvalue) ({                 \
+  type ___temp = intvalue;                     \
+  type *__temp = (type *)alloca(sizeof(type)); \
+  memcpy(__temp, &(___temp), sizeof(type));    \
+  __temp;                                      \
+})
 typedef void (*outputFunction)(
     const char *,
     void *,

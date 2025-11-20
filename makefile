@@ -1,4 +1,4 @@
-CC = gcc
+CC = g++
 DIR = build
 # CFLAGS = -w -O3
 CFLAGS = -fsanitize=address -g -O0 -w

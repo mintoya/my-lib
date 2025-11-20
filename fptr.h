@@ -188,8 +188,8 @@ inline fptr fp_from(const char (&s)[N]) {
 }
 
 #endif
-#define fptr_stack_split(result, string, ...)                                          \
-  result = (fptr[sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1]){}; \
+#define fptr_stack_split(string, ...) \
+  ({fptr* __temp__result = (fptr*)alloca( (sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1)*sizeof(fptr) ); \
   do {                                                                                 \
     uint8_t *last;                                                                     \
     unsigned int args[] = {__VA_ARGS__};                                               \
@@ -205,17 +205,17 @@ inline fptr fp_from(const char (&s)[N]) {
                            : ((args[i] > args[i - 1])                                  \
                                   ? args[i]                                            \
                                   : args[i - 1]));                                     \
-      result[i] = (fptr){                                                              \
+      __temp__result[i] = (fptr){                                                              \
           .width = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),                     \
           .ptr = (i == 0) ? (string.ptr) : (last),                                     \
       };                                                                               \
-      last = ((uint8_t *)result[i].ptr) + result[i].width;                             \
+      last = ((uint8_t *)__temp__result[i].ptr) + __temp__result[i].width;                             \
     }                                                                                  \
-    result[sizeof(args) / sizeof(unsigned int)] = (fptr){                              \
+    __temp__result[sizeof(args) / sizeof(unsigned int)] = (fptr){                              \
         .width = string.width - ((uint8_t *)last - (uint8_t *)string.ptr),             \
         .ptr = last,                                                                   \
     };                                                                                 \
-  } while (0)
+  } while (0);__temp__result; })
 #define isSkip(char) ( \
     char == ' ' ||     \
     char == '\n' ||    \
