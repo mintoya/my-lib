@@ -1,4 +1,3 @@
-#include <alloca.h>
 #define PRINTER_LIST_TYPENAMES
 #include "../allocator.h"
 #include "../kmlM.h"

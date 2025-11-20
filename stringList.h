@@ -159,6 +159,10 @@ void stringList_insert(stringList *l, fptr value, unsigned int index) {
   List_appendFromArr(&(l->List_char), value.ptr, value.width);
 }
 void stringList_set(stringList *l, fptr value, unsigned int index) {
+  if (index == stringList_length(l)) {
+    stringList_append(l, value);
+    return;
+  }
   stringMetaData thisS =
       mList_get(&(l->List_stringMetaData), stringMetaData, index);
   if (thisS.width < value.width) {

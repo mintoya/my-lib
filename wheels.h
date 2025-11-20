@@ -28,6 +28,14 @@
 #include "umap.h"
 #endif
 
+#ifdef OMAP_H
+#ifdef CHECKINCLUDES
+#pragma message("omap_h")
+#endif
+#define OMAP_C
+#include "omap.h"
+#endif
+
 #ifdef PRINTER_H
 #ifdef CHECKINCLUDES
 #pragma message("printer_h")

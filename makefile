@@ -3,7 +3,7 @@ DIR = build
 # CFLAGS = -w -O3
 CFLAGS = -fsanitize=address -g -O0 -w
 
-OBJECTS = ./examples/a.c
+OBJECTS = ./examples/omapTest.c
 
 UNAME_S := $(shell uname -s 2>/dev/null)
 
