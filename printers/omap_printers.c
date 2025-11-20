@@ -90,4 +90,38 @@ REGISTER_PRINTER(OMap, {
   }
   PUTS("}", 1);
 })
+
+REGISTER_PRINTER(OMap_V, {
+  PUTS("{v:", 3);
+  switch (in.t) {
+  case RAW:
+    USETYPEPRINTER(fptr, in.v);
+    break;
+  case OMAP:
+    USETYPEPRINTER(OMapView, in.v);
+    break;
+  case SLIST:
+    USENAMEDPRINTER("OMap_stringlistView", in.v);
+    break;
+  default:
+    PUTS("<?>", 3);
+  }
+  PUTS(",type:", 6);
+  switch (in.t) { // inline type printing
+  case RAW:
+    PUTS("RAW", 3);
+    break;
+  case OMAP:
+    PUTS("OMAP", 4);
+    break;
+  case SLIST:
+    PUTS("SLIST", 5);
+    break;
+  default:
+    PUTS("UNKNOWN", 7);
+    break;
+  }
+  PUTS("}", 1);
+})
+
 #endif // OMAP_PRINTER_C

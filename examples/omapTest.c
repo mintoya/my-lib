@@ -5,7 +5,6 @@
 
 #include "../printers/omap_printers.c"
 #include "../wheels.h"
-#include <alloca.h>
 #include <stdint.h>
 
 int main(void) {
