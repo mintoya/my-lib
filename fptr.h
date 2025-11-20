@@ -1,11 +1,11 @@
 #ifndef UM_FP_H
 #define UM_FP_H
-#include <alloca.h>
+#include <malloc.h>
 #include <stdalign.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-
+typedef unsigned int uint;
 typedef struct {
   size_t width;
   uint8_t *ptr;

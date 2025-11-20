@@ -41,21 +41,11 @@ unsigned int OMap_set(OMap *map, fptr key, fptr val);
 unsigned int OMap_setKind(OMap *map, fptr key, fptr val, OMap_Meta kind);
 // takes fptr*,OMap*,stringList*
 typedef struct {
-  union {
-    void *ptr;
-    fptr *f_ptr;
-    OMap *o_ptr;
-    stringList *s_ptr;
-  } ptr;
+  void *ptr;
   OMap_Meta kind;
 
 } OMap_ObjArg;
-static inline OMap_ObjArg OMOJA(void *v, OMap_Meta m) {
-  OMap_ObjArg res;
-  res.ptr.ptr = v;
-  res.kind = m;
-  return res;
-}
+#define OMOJA(ptr, kind) ((OMap_ObjArg){ptr, kind})
 static fptr OMapfptr_inside(um_fp string) {
   char limits[2] = {'[', ']'};
   if (!string.width)
@@ -118,13 +108,13 @@ static inline void OMap_setObj(OMap *map, fptr key, OMap_ObjArg val) {
   switch (val.kind) {
   case OMAP:
     fval =
-        OMap_toView(&defaultAllocator, val.ptr.o_ptr);
+        OMap_toView(&defaultAllocator, (OMap *)(val.ptr));
     break;
   case RAW:
-    fval = *(val.ptr.f_ptr);
+    fval = *(fptr *)(val.ptr);
     break;
   case SLIST:
-    fval = stringList_toView(&defaultAllocator, val.ptr.s_ptr).raw;
+    fval = stringList_toView(&defaultAllocator, (stringList *)val.ptr).raw;
     break;
   }
 
@@ -143,20 +133,20 @@ static inline void StringList_setObj(stringList *list, unsigned int key, OMap_Ob
   switch (val.kind) {
   case OMAP:
     fval =
-        OMap_toView(&defaultAllocator, val.ptr.o_ptr);
+        OMap_toView(&defaultAllocator, (OMap *)val.ptr);
     break;
   case RAW:
-    fval = *val.ptr.f_ptr;
+    fval = *(fptr *)val.ptr;
     break;
   case SLIST:
-    fval = stringList_toView(&defaultAllocator, val.ptr.s_ptr).raw;
+    fval = stringList_toView(&defaultAllocator, (stringList *)val.ptr).raw;
     break;
   }
   fptr both;
   both.width = sizeof(OMap_Meta) + fval.width;
   uint8_t *dataBuffer = (uint8_t *)aAlloc(&defaultAllocator, both.width);
   both.ptr = dataBuffer;
-  *(OMap_Meta *)dataBuffer = val.kind;
+  setRef(OMap_Meta, dataBuffer, val.kind);
   memcpy(dataBuffer + sizeof(OMap_Meta), fval.ptr, fval.width);
   stringList_set(list, both, key);
   aFree(&defaultAllocator, both.ptr);
@@ -175,7 +165,7 @@ static inline OMap_V Stringlist_getObj(stringList *list, unsigned int key) {
         .v = nullFptr,
         .t = RAW,
     };
-  OMap_V res = (OMap_V){.t = *(OMap_Meta *)(val.ptr)};
+  OMap_V res = (OMap_V){.t = deREF(OMap_Meta, val.ptr)};
   res.v = (fptr){
       .width = val.width - sizeof(OMap_Meta),
       .ptr = val.ptr + sizeof(OMap_Meta),
@@ -189,7 +179,7 @@ static inline OMap_V StringlistView_getObj(stringListView list, unsigned int key
         .v = nullFptr,
         .t = RAW,
     };
-  OMap_V res = (OMap_V){.t = *(OMap_Meta *)(val.ptr)};
+  OMap_V res = (OMap_V){.t = deREF(OMap_Meta, val.ptr)};
   res.v = (fptr){
       .width = val.width - sizeof(OMap_Meta),
       .ptr = val.ptr + sizeof(OMap_Meta),
@@ -200,21 +190,20 @@ static inline void StringList_appendObj(stringList *list, OMap_ObjArg val) {
   fptr fval;
   switch (val.kind) {
   case OMAP:
-    fval =
-        OMap_toView(&defaultAllocator, val.ptr.o_ptr);
+    fval = OMap_toView(&defaultAllocator, (OMap *)val.ptr);
     break;
   case RAW:
-    fval = *val.ptr.f_ptr;
+    fval = *(fptr *)val.ptr;
     break;
   case SLIST:
-    fval = stringList_toView(&defaultAllocator, val.ptr.s_ptr).raw;
+    fval = stringList_toView(&defaultAllocator, (stringList *)val.ptr).raw;
     break;
   }
   fptr both;
   both.width = sizeof(OMap_Meta) + fval.width;
   uint8_t *dataBuffer = (uint8_t *)aAlloc(&defaultAllocator, both.width);
   both.ptr = dataBuffer;
-  *(OMap_Meta *)dataBuffer = val.kind;
+  setRef(OMap_Meta, dataBuffer, val.kind);
   memcpy(dataBuffer + sizeof(OMap_Meta), fval.ptr, fval.width);
   stringList_append(list, both);
   aFree(&defaultAllocator, both.ptr);
@@ -253,6 +242,7 @@ static inline void OMap_cleanupHandler(OMap **om) {
     *om = NULL;
   }
 }
+#define OMap_getM(map, ...) OMap_getL(map, APPLY_N(fp_from, __VA_ARGS__), nullFptr)
 static inline OMap_V OMap_getL(const OMap *map, fptr firstkey, ...) {
   va_list vl;
   if (!firstkey.ptr)
@@ -290,14 +280,6 @@ static inline OMap_V OMap_getL(const OMap *map, fptr firstkey, ...) {
 
 #define OMap_scoped [[gnu::cleanup(OMap_cleanupHandler)]] OMap
 
-//
-//
-//
-// printers
-//
-//
-//
-
 #endif // OMAP_H
 #ifdef OMAP_C
 OMap *OMap_new(const My_allocator *allocator) {
@@ -326,7 +308,7 @@ OMap_V OMap_get(const OMap *map, fptr key) {
   if (index < OMap_length(map)) {
     fptr vall = OMap_getVal(map, index);
     fptr res = (fptr){vall.width - sizeof(OMap_Meta), vall.ptr + sizeof(OMap_Meta)};
-    return (OMap_V){res, *(OMap_Meta *)(vall.ptr)};
+    return (OMap_V){res, deREF(OMap_Meta, vall.ptr)};
   } else
     return (OMap_V){nullFptr, RAW};
 }
@@ -335,7 +317,7 @@ OMap_both OMap_getBoth(const OMap *map, fptr key) {
   if (index < OMap_length(map)) {
     fptr vall = OMap_getVal(map, index);
     fptr res = (fptr){vall.width - sizeof(OMap_Meta), vall.ptr + sizeof(OMap_Meta)};
-    return (OMap_both){OMap_getKey(map, index), res, *(OMap_Meta *)(vall.ptr)};
+    return (OMap_both){OMap_getKey(map, index), res, deREF(OMap_Meta, vall.ptr)};
   } else
     return (OMap_both){nullFptr, nullFptr, RAW};
 }
@@ -351,7 +333,7 @@ unsigned int OMap_set(OMap *map, fptr key, fptr val) {
   } else {
     dataBuffer = (uint8_t *)aAlloc(map->KVs->List_char.allocator, both.width);
   }
-  *(OMap_Meta *)dataBuffer = OMap_Meta_RAW;
+  setRef(OMap_Meta, dataBuffer, OMap_Meta_RAW);
   memcpy(dataBuffer + sizeof(OMap_Meta), val.ptr, val.width);
   both.ptr = dataBuffer;
   if (fptr_eq(key, OMap_getKey(map, index))) {
@@ -376,7 +358,7 @@ unsigned int OMap_setKind(OMap *map, fptr key, fptr val, OMap_Meta kind) {
   } else {
     dataBuffer = (uint8_t *)aAlloc(map->KVs->List_char.allocator, both.width);
   }
-  *(OMap_Meta *)dataBuffer = kind;
+  setRef(OMap_Meta, dataBuffer, kind);
   memcpy(dataBuffer + sizeof(OMap_Meta), val.ptr, val.width);
   both.ptr = dataBuffer;
   if (fptr_eq(key, OMap_getKey(map, index))) {
@@ -401,7 +383,7 @@ OMap_both OMapView_getIndex(OMapView mv, unsigned int index) {
 
   fptr key = (fptr){thisKey.width, map.KVs.Arr_char + thisKey.index};
   fptr val = (fptr){vall.width - sizeof(OMap_Meta), vall.ptr + sizeof(OMap_Meta)};
-  OMap_Meta ttype = *(OMap_Meta *)(vall.ptr);
+  OMap_Meta ttype = deREF(OMap_Meta, vall.ptr);
   return (OMap_both){
       .k = key,
       .v = val,

@@ -24,7 +24,8 @@ int main(void) {
   println("${OMap}", *omap);
   print_wf(kmlFormatPrinter, "${OMap}", *omap);
 
-  println("compound getter : ${}", OMap_getL(omap, APPLY_N(fp_from, "list", "[1]", "[0]", "a"), nullFptr).v);
+  println("compound getter : ${OMap_V}", OMap_getM(omap,"list","[1]","[0]","a"));
+  println("compound getter : ${OMap_V}", OMap_getM(omap,"list","[1]"));
   println("arena size: ${}", arena_footprint(local));
   return EXIT_SUCCESS;
 }
