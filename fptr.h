@@ -6,13 +6,34 @@
 #include <stddef.h>
 #include <stdint.h>
 typedef unsigned int uint;
+typedef unsigned char uchar;
+
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
+typedef int8_t i8;
+typedef int16_t i16;
+typedef int32_t i32;
+typedef int64_t i64;
+
+#ifdef __cplusplus
+#define tlocal thread_local
+#else
+#ifndef thread_local
+#define tlocal _Thread_local
+#else
+#define ttlocal thread_local
+#endif
+#endif
+
 typedef struct {
   size_t width;
-  uint8_t *ptr;
+  u8 *ptr;
 } fptr;
 typedef struct {
   size_t width;
-  uint8_t ptr[];
+  u8 ptr[];
 } bFptr;
 #define fptr_fromB(bfptr) ((fptr){.width = (bfptr).width, .ptr = (uint8_t *)(bfptr).ptr})
 
@@ -83,21 +104,38 @@ static char (*um_eq)(fptr, fptr) = fptr_eq;
 inline bool operator==(const fptr &a, const fptr &b) { return fptr_eq(a, b); }
 inline bool operator!=(const fptr &a, const fptr &b) { return !fptr_eq(a, b); }
 #define typeof(x) std::decay_t<decltype(x)>
-#else
-#define alignof(x) _Alignof(x)
 #endif
+
 #define align_alloca(type) ({                                           \
   uintptr_t newptr = (uintptr_t)alloca(sizeof(type) + alignof(type));   \
   newptr += (alignof(type) - (newptr % alignof(type))) % alignof(type); \
   (type *)newptr;                                                       \
 })
 
-#define REF(type, value) ({                    \
-  type ___temp = value;                        \
-  type *__temp = (type *)alloca(sizeof(type)); \
-  memcpy(__temp, &(___temp), sizeof(type));    \
-  __temp;                                      \
-})
+#ifndef __cplusplus
+#define REF(type, value) ((type[1]){value})
+#else
+// clang-format off
+  #include <type_traits>
+  #include <utility>
+  template <typename T> class StackPush {
+  private:
+    using RealT = std::remove_reference_t<T>;
+    RealT value; 
+  public:
+    template <typename ArgType>
+    explicit StackPush(ArgType &&arg) : value(std::forward<ArgType>(arg)) {}
+    operator RealT &() { return value; }
+    operator const RealT &() const { return value; }
+    operator void *() { return (void *)&value; }
+    operator const void *() const { return (const void *)&value; }
+  };
+// clang-format on
+// #define typeof(m) decltype(m)
+#define typeof(x) std::decay_t<decltype(x)>
+#define REF(type, value) (StackPush<type>(value))
+#endif
+
 #define deREF(type, ptr)                    \
   ({                                        \
     type _temp;                             \
@@ -275,8 +313,8 @@ static int fptr_toInt(const fptr in) {
   if (!number.width)
     return 0;
   char negetive = number.ptr[0] == '-';
-  number.width -= negetive;
-  number.ptr += negetive;
+  if (negetive)
+    number = fptr_stack_split(number, 1)[1];
   return (negetive ? -1 : 1) * fptr_toUint(number);
 }
 #endif // UM_FP_H

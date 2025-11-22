@@ -79,12 +79,6 @@ static outputFunction defaultPrinter = stdoutPrint;
 extern outputFunction defaultPrinter;
 #endif
 
-#ifdef __cplusplus
-#define tlocal thread_local
-#else
-#define tlocal _Thread_local
-#endif
-#include <assert.h>
 static void snPrint(
     const char *c,
     void *buffer,
@@ -111,7 +105,7 @@ static void asPrint(
     char flush
 ) {
   (void)flush;
-  assert(!!listptr);
+  // assert(!!listptr);
   List *list = *(List **)listptr;
   if (!list)
     list = List_new(&defaultAllocator, sizeof(char));
@@ -119,8 +113,8 @@ static void asPrint(
   *(List **)listptr = list;
 }
 
-//
-static tlocal struct
+// static tlocal struct
+static struct
 {
   HMap *data;
 } PrinterSingleton;
@@ -519,7 +513,6 @@ void print_f(outputFunction put, void *arb, fptr fmt, ...);
 #define print_as(listptr, fmt, ...) \
   print_wfO(asPrint, (&(listptr)), fmt, __VA_ARGS__)
 
-#undef tlocal
 #ifdef PRINTER_LIST_TYPENAMES
 [[gnu::constructor(205)]] static void post_init() {
   outputFunction put = defaultPrinter;

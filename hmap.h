@@ -29,29 +29,17 @@ static inline size_t HMap_footprint(HMap *hm) {
 #include <stdint.h>
 #include <string.h>
 
-// #TODO
-// #include "komihash/komihash.h"
-// [[gnu::pure]] static inline unsigned int HMap_hash(fptr str) {
-//   return komihash(str.ptr, str.width, 6767);
-// }
-
 static const intmax_t HMap_h = (0x67676141420);
 [[gnu::pure]] static inline intmax_t HMap_hash(const fptr str) {
-  intmax_t res = HMap_h;
-
   const size_t width = str.width;
   const uint8_t *ptr = str.ptr;
   const intmax_t *starta = (intmax_t *)ptr;
   const size_t top = width / sizeof(intmax_t);
   const size_t resta = top * sizeof(intmax_t);
 
-  // for (size_t i = 0; i < top; i++)
-  //   res ^= (res << 7) + starta[i];
-  for (size_t i = 0; i < top; i++) {
-    intmax_t chunk;
-    memcpy(&chunk, ptr + i * sizeof(intmax_t), sizeof(intmax_t));
-    res ^= (res << 10) + chunk;
-  }
+  intmax_t res = HMap_h;
+  for (size_t i = 0; i < top; i++)
+    res ^= (res << 7) + deREF(intmax_t, ptr + i * sizeof(intmax_t));
   for (size_t i = resta; i < width; i++)
     res ^= (res << 3) + ptr[i];
 
