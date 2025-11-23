@@ -79,12 +79,6 @@ static outputFunction defaultPrinter = stdoutPrint;
 extern outputFunction defaultPrinter;
 #endif
 
-#ifdef __cplusplus
-#define tlocal thread_local
-#else
-#define tlocal _Thread_local
-#endif
-#include <assert.h>
 static void snPrint(
     const char *c,
     void *buffer,
@@ -111,7 +105,7 @@ static void asPrint(
     char flush
 ) {
   (void)flush;
-  assert(!!listptr);
+  // assert(!!listptr);
   List *list = *(List **)listptr;
   if (!list)
     list = List_new(&defaultAllocator, sizeof(char));
@@ -120,7 +114,7 @@ static void asPrint(
 }
 
 //
-static tlocal struct
+static struct
 {
   HMap *data;
 } PrinterSingleton;

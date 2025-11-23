@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
 typedef unsigned int uint;
 typedef unsigned char uchar;
 
@@ -12,10 +13,25 @@ typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
+typedef uintmax_t umax;
 typedef int8_t i8;
 typedef int16_t i16;
 typedef int32_t i32;
 typedef int64_t i64;
+typedef intmax_t imax;
+
+#define _CONCAT(a, b) a##b
+#define CONCAT(a, b) _CONCAT(a, b)
+
+static void voidCleanup(void **ptrptr) {
+  if (ptrptr && *ptrptr) {
+    free(*ptrptr);
+    *ptrptr = NULL;
+  }
+}
+#define SCOPED(type, name)                                                                      \
+  [[gnu::cleanup(voidCleanup)]] void *CONCAT(cleanupPtr__, __LINE__) = malloc(sizeof(type[0])); \
+  type name = (type)CONCAT(cleanupPtr__, __LINE__);
 
 #ifndef __cplusplus
 #ifndef thread_local
@@ -62,10 +78,10 @@ typedef fptr um_fp;
   int res = 0;
   size_t top = a.width / sizeof(intmax_t);
   size_t bottom = a.width % sizeof(intmax_t);
-  intmax_t *starta = (intmax_t *)a.ptr;
-  intmax_t *startb = (intmax_t *)b.ptr;
-  uint8_t *resta = a.ptr + (top * (sizeof(intmax_t)));
-  uint8_t *restb = b.ptr + (top * (sizeof(intmax_t)));
+  imax *starta = (imax *)a.ptr;
+  imax *startb = (imax *)b.ptr;
+  u8 *resta = a.ptr + (top * (sizeof(imax)));
+  u8 *restb = b.ptr + (top * (sizeof(imax)));
   for (size_t i = 0; i < top && !res; i++)
     res = (starta[i] - startb[i]);
   for (size_t i = 0; i < bottom && !res; i++)
@@ -130,17 +146,18 @@ inline bool operator!=(const fptr &a, const fptr &b) { return !fptr_eq(a, b); }
 #define REF(type, value) (StackPush<type>(value))
 #endif
 
-#define deREF(type, ptr)                \
-  ({                                    \
-    type _res;                          \
-    memcpy(&_res, (ptr), sizeof(type)); \
-    _res;                               \
-  })
-#define setRef(type, ptr, value)         \
-  do {                                   \
-    type _temp = (type)(value);          \
-    memcpy((ptr), &_temp, sizeof(type)); \
-  } while (0)
+// #define deREF(type, ptr)                \
+//   ({                                    \
+//     type _res;                          \
+//     memcpy(&_res, (ptr), sizeof(type)); \
+//     _res;                               \
+//   })
+// #define setREF(type, ptr, value)         \
+//   do {                                   \
+//     type _temp = (type)(value);          \
+//     memcpy((ptr), &_temp, sizeof(type)); \
+//   } while (0)
+
 #define fptr_stack_split(string, ...) ({fptr* __temp__result = (fptr*)alloca( (sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1)*sizeof(fptr) ); \
   do {                                                                                 \
     uint8_t *last;                                                                     \
