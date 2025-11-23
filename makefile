@@ -1,9 +1,9 @@
-CC = g++
+CC = gcc
 DIR = build
-# CFLAGS = -w -O3
-CFLAGS = -fsanitize=address -g -O0 -w
+CFLAGS = -w -O3
+# CFLAGS = -fsanitize=address -g -O0 -w
 
-OBJECTS = ./examples/omapTest.c
+OBJECTS = ./examples/main.c
 
 UNAME_S := $(shell uname -s 2>/dev/null)
 

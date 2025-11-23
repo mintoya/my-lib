@@ -41,18 +41,13 @@ unsigned int OMap_set(OMap *map, fptr key, fptr val);
 unsigned int OMap_setKind(OMap *map, fptr key, fptr val, OMap_Meta kind);
 // takes fptr*,OMap*,stringList*
 typedef struct {
-  union {
-    void *ptr;
-    fptr *fptr;
-    OMap *optr;
-    stringList *sptr;
-  } ptr;
+  void *ptr;
   OMap_Meta kind;
 
 } OMap_ObjArg;
 static inline OMap_ObjArg OMOJA(void *v, OMap_Meta m) {
   OMap_ObjArg res;
-  res.ptr.ptr = v;
+  res.ptr = v;
   res.kind = m;
   return res;
 }
@@ -118,13 +113,13 @@ static inline void OMap_setObj(OMap *map, fptr key, OMap_ObjArg val) {
   switch (val.kind) {
   case OMAP:
     fval =
-        OMap_toView(&defaultAllocator, val.ptr.optr);
+        OMap_toView(&defaultAllocator, (OMap *)val.ptr);
     break;
   case RAW:
-    fval = *(val.ptr.fptr);
+    fval = *(fptr *)(val.ptr);
     break;
   case SLIST:
-    fval = stringList_toView(&defaultAllocator, val.ptr.sptr).raw;
+    fval = stringList_toView(&defaultAllocator, (stringList *)val.ptr).raw;
     break;
   }
 
@@ -143,13 +138,13 @@ static inline void StringList_setObj(stringList *list, unsigned int key, OMap_Ob
   switch (val.kind) {
   case OMAP:
     fval =
-        OMap_toView(&defaultAllocator, val.ptr.optr);
+        OMap_toView(&defaultAllocator, (OMap *)val.ptr);
     break;
   case RAW:
-    fval = *val.ptr.fptr;
+    fval = *(fptr *)val.ptr;
     break;
   case SLIST:
-    fval = stringList_toView(&defaultAllocator, val.ptr.sptr).raw;
+    fval = stringList_toView(&defaultAllocator, (stringList *)val.ptr).raw;
     break;
   }
   fptr both;
@@ -201,13 +196,13 @@ static inline void StringList_appendObj(stringList *list, OMap_ObjArg val) {
   switch (val.kind) {
   case OMAP:
     fval =
-        OMap_toView(&defaultAllocator, val.ptr.optr);
+        OMap_toView(&defaultAllocator, (OMap *)val.ptr);
     break;
   case RAW:
-    fval = *val.ptr.fptr;
+    fval = *(fptr *)val.ptr;
     break;
   case SLIST:
-    fval = stringList_toView(&defaultAllocator, val.ptr.sptr).raw;
+    fval = stringList_toView(&defaultAllocator, (stringList *)val.ptr).raw;
     break;
   }
   fptr both;
@@ -254,6 +249,7 @@ static inline void OMap_cleanupHandler(OMap **om) {
   }
 }
 
+#include "print.h"
 #define OMap_getM(map, ...) OMap_getL(map, APPLY_N(fp_from, __VA_ARGS__), nullFptr)
 static inline OMap_V OMap_getL(const OMap *map, fptr firstkey, ...) {
   va_list vl;
@@ -287,6 +283,42 @@ static inline OMap_V OMap_getL(const OMap *map, fptr firstkey, ...) {
   }
 
   va_end(vl);
+  return place;
+}
+static inline OMap_V OMap_getLA(const OMap *map, uint nargs, fptr args[nargs]) {
+  if (!nargs)
+    return (OMap_V){nullFptr, RAW};
+
+  OMap_V place = OMap_get(map, args[0]);
+
+  // Use pointer arithmetic to avoid bounds issues
+  fptr *current_arg = args + 1; // Start from second argument
+  uint args_remaining = nargs - 1;
+
+  while (args_remaining > 0 && place.t != RAW) {
+    fptr key = *current_arg;
+
+    switch (place.t) {
+    case OMAP: {
+      OMap_both t = OMapView_get(place.v, key);
+      place.v = t.v;
+      place.t = t.t;
+    } break;
+    case SLIST: {
+      fptr numver = OMapfptr_inside(key);
+      if (!numver.ptr) {
+        return (OMap_V){nullFptr, RAW};
+      }
+      place = StringlistView_getObj((stringListView){place.v}, fptr_toUint(numver));
+    } break;
+    default:
+      break;
+    }
+
+    current_arg++;
+    args_remaining--;
+  }
+
   return place;
 }
 

@@ -275,11 +275,11 @@ inline fptr fp_from(const char (&s)[N]) {
 
 #endif
 static fptr fptr_trim(fptr in) {
-  for (; isSkip(*in.ptr);) {
+  while (isSkip(*in.ptr)) {
     in.ptr++;
     in.width--;
   }
-  for (; isSkip(*(in.ptr + in.width - 1));) {
+  while (isSkip(*(in.ptr + in.width - 1))) {
     in.width--;
   }
   return in;

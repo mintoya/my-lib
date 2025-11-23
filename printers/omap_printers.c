@@ -90,4 +90,20 @@ REGISTER_PRINTER(OMap, {
   }
   PUTS("}", 1);
 })
+REGISTER_PRINTER(OMap_V, {
+  switch (in.t) {
+  case RAW: {
+    PUTS("(RAW)", 5);
+    USETYPEPRINTER(fptr, in.v);
+  } break;
+  case OMAP: {
+    PUTS("(OMAP)", 6);
+    USETYPEPRINTER(OMapView, in.v);
+  } break;
+  case SLIST: {
+    PUTS("(SLIST)", 7);
+    USENAMEDPRINTER("OMap_stringlistView", in.v);
+  } break;
+  }
+})
 #endif // OMAP_PRINTER_C
