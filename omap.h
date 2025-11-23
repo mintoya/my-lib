@@ -253,6 +253,8 @@ static inline void OMap_cleanupHandler(OMap **om) {
     *om = NULL;
   }
 }
+
+#define OMap_getM(map, ...) OMap_getL(map, APPLY_N(fp_from, __VA_ARGS__), nullFptr)
 static inline OMap_V OMap_getL(const OMap *map, fptr firstkey, ...) {
   va_list vl;
   if (!firstkey.ptr)
@@ -281,7 +283,7 @@ static inline OMap_V OMap_getL(const OMap *map, fptr firstkey, ...) {
       break;
     }
 
-    key = va_arg(vl, fptr); 
+    key = va_arg(vl, fptr);
   }
 
   va_end(vl);

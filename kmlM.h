@@ -17,9 +17,9 @@ fptr findIndex(fptr str, unsigned int index);
 fptr findKey(fptr str, um_fp key);
 
 #define fpChar(fptr) ((char *)fptr.ptr)
-OMap *parse(OMap *parent, stringList *lparent, fptr kml);
+static OMap *parse(OMap *parent, stringList *lparent, fptr kml);
 
-stringList *parseList(stringList *lparent, fptr kml) {
+static stringList *parseList(stringList *lparent, fptr kml) {
   if (!kml.width) {
     if (!(lparent)) {
       return stringList_new(&defaultAllocator);
@@ -86,7 +86,7 @@ stringList *parseList(stringList *lparent, fptr kml) {
   next = kml_trimPadding(next);
   return parseList(lparent, next);
 }
-OMap *parse(OMap *parent, stringList *lparent, fptr kml) {
+static OMap *parse(OMap *parent, stringList *lparent, fptr kml) {
   kml = kml_trimPadding(kml);
   if (!kml.width) {
     if (!(parent || lparent)) {
@@ -378,6 +378,8 @@ char isSkip(char c) {
   }
 }
 um_fp kml_trimPadding(um_fp in) {
+  if (!in.width)
+    return nullFptr;
   um_fp res = in;
   unsigned int front = 0;
   unsigned int back = in.width - 1;

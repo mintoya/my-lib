@@ -11,12 +11,6 @@
 #include "printer/macros.h"
 #include "printer/variadic.h"
 
-#define REF(type, intvalue) ({                 \
-  type ___temp = intvalue;                     \
-  type *__temp = (type *)alloca(sizeof(type)); \
-  memcpy(__temp, &(___temp), sizeof(type));    \
-  __temp;                                      \
-})
 typedef void (*outputFunction)(
     const char *,
     void *,
@@ -100,14 +94,14 @@ static void snPrint(
   (void)flush;
   ffptr snBuff = *(ffptr *)buffer;
 
-  size_t start = snBuff.fptr.width;
-  size_t end1 = snBuff.fptr.width + length;
+  size_t start = snBuff.fptrp.width;
+  size_t end1 = snBuff.fptrp.width + length;
   size_t end2 = snBuff.ffptr.capacity;
   const size_t end = end1 < end2 ? end1 : end2;
 
   for (; start < end; start++)
-    snBuff.fptr.ptr[start] = c[start - snBuff.fptr.width];
-  snBuff.fptr.width = end;
+    snBuff.fptrp.ptr[start] = c[start - snBuff.fptrp.width];
+  snBuff.fptrp.width = end;
   *(ffptr *)buffer = snBuff;
 }
 static void asPrint(

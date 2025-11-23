@@ -18,18 +18,20 @@ int main(void) {
   StringList_appendObj(sl, OMOJA(omap, OMAP));
   StringList_appendObj(sl, OMOJA(sl, SLIST));
 
-  // StringList_setObj(sl, 0, REF(fptr,fp_from()
-
   OMap_setObj(omap, fp_from("list"), OMOJA(sl, SLIST));
   OMap_setObj(omap, fp_from("recurse"), OMOJA(omap, OMAP));
 
-  // OMapView oView = OMap_toView(local, omap);
   println("${OMap}", *omap);
-  print_wf(kmlFormatPrinter, "${OMap}", *omap);
-  // OMap_free(omap);
-  // println("${OMapView}", oView);
+  List_scoped *chars = NULL;
+  print_as(chars, "${OMap}", *omap);
+  fptr printOutput = ((fptr){
+      .width = chars->length * sizeof(char),
+      .ptr = chars->head,
+  });
+  print_wf(kmlFormatPrinter, "print output: ${}", printOutput);
+  OMap_scoped *parsed = parse(NULL, NULL, printOutput);
+  print_wf(kmlFormatPrinter, "parsed output: ${OMap}", *parsed);
 
-  println("getting list.[0].a : ${}", OMap_getL(omap, fp_from("list"), fp_from("[0]"), fp_from("a")).v);
   println("arena size: ${}", arena_footprint(local));
   return EXIT_SUCCESS;
 }

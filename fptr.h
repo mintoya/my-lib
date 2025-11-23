@@ -1,16 +1,35 @@
 #ifndef UM_FP_H
 #define UM_FP_H
+#include <malloc.h>
+#include <stdalign.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+typedef unsigned int uint;
+typedef unsigned char uchar;
+
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+typedef uint64_t u64;
+typedef int8_t i8;
+typedef int16_t i16;
+typedef int32_t i32;
+typedef int64_t i64;
+
+#ifndef __cplusplus
+#ifndef thread_local
+#define thread_local _Thread_local
+#endif
+#endif
 
 typedef struct {
   size_t width;
-  uint8_t *ptr;
+  u8 *ptr;
 } fptr;
 typedef struct {
   size_t width;
-  uint8_t ptr[];
+  u8 ptr[];
 } bFptr;
 #define fptr_fromB(bfptr) ((fptr){.width = (bfptr).width, .ptr = (uint8_t *)(bfptr).ptr})
 
@@ -25,12 +44,12 @@ typedef union {
     fptr fpart;
     size_t capacity;
   } ffptr;
-  fptr fptr;
+  fptr fptrp;
 } ffptr;
 
 typedef fptr um_fp;
 
-// #include <string.h>
+#include <string.h>
 [[gnu::pure]] static inline int fptr_cmp(const fptr a, const fptr b) {
   int wd = a.width - b.width;
   if (wd) {
@@ -39,8 +58,7 @@ typedef fptr um_fp;
   if (!a.width) {
     return 0;
   }
-  // return
-  // memcmp(a.ptr, b.ptr, a.width);
+  // return memcmp(a.ptr, b.ptr, a.width);
   int res = 0;
   size_t top = a.width / sizeof(intmax_t);
   size_t bottom = a.width % sizeof(intmax_t);
@@ -65,16 +83,13 @@ static int (*um_fp_cmp)(const fptr, const fptr) = fptr_cmp;
 
 #include <string.h>
 static inline void fpmemset(uint8_t *ptr, const fptr element, size_t ammount) {
-  size_t set = 0;
-  while (set < ammount) {
-    if (!set) {
-      memcpy(ptr, element.ptr, element.width);
-      set++;
-    } else {
-      size_t toset = set < (ammount - set) ? set : ammount - set;
-      memcpy(ptr + set * element.width, ptr, element.width * toset);
-      set *= 2;
-    }
+  if (!ammount)
+    return;
+  memcpy(ptr, element.ptr, element.width);
+  for (size_t set = 1; set < ammount; set *= 2) {
+    size_t toset = ammount - set;
+    toset = set < toset ? set : toset;
+    memcpy(ptr + set * element.width, ptr, element.width * toset);
   }
 }
 
@@ -84,10 +99,81 @@ static char (*um_eq)(fptr, fptr) = fptr_eq;
 #ifdef __cplusplus
 inline bool operator==(const fptr &a, const fptr &b) { return fptr_eq(a, b); }
 inline bool operator!=(const fptr &a, const fptr &b) { return !fptr_eq(a, b); }
-#endif
-#ifdef __cplusplus
 #define typeof(x) std::decay_t<decltype(x)>
 #endif
+
+#define align_alloca(type) ({                                           \
+  uintptr_t newptr = (uintptr_t)alloca(sizeof(type) + alignof(type));   \
+  newptr += (alignof(type) - (newptr % alignof(type))) % alignof(type); \
+  (type *)newptr;                                                       \
+})
+
+#ifndef __cplusplus
+#define REF(type, value) ((type[1]){value})
+#else
+// clang-format off
+  #include <type_traits>
+  #include <utility>
+  template <typename T> class StackPush {
+  private:
+    using RealT = std::remove_reference_t<T>;
+    RealT value; 
+  public:
+    template <typename ArgType>
+    explicit StackPush(ArgType &&arg) : value(std::forward<ArgType>(arg)) {}
+    operator RealT &() { return value; }
+    operator const RealT &() const { return value; }
+    operator void *() { return (void *)&value; }
+    operator const void *() const { return (const void *)&value; }
+  };
+// clang-format on
+#define REF(type, value) (StackPush<type>(value))
+#endif
+
+#define deREF(type, ptr)                \
+  ({                                    \
+    type _res;                          \
+    memcpy(&_res, (ptr), sizeof(type)); \
+    _res;                               \
+  })
+#define setRef(type, ptr, value)         \
+  do {                                   \
+    type _temp = (type)(value);          \
+    memcpy((ptr), &_temp, sizeof(type)); \
+  } while (0)
+#define fptr_stack_split(string, ...) ({fptr* __temp__result = (fptr*)alloca( (sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1)*sizeof(fptr) ); \
+  do {                                                                                 \
+    uint8_t *last;                                                                     \
+    unsigned int args[] = {__VA_ARGS__};                                               \
+    for (int i = 0; i < sizeof(args) / sizeof(unsigned int); i++) {                    \
+      args[i] = (i == 0)                                                               \
+                    ? ((args[i] < string.width)                                        \
+                           ? args[i]                                                   \
+                           : string.width)                                             \
+                    : ((string.width < ((args[i] > args[i - 1])                        \
+                                            ? args[i]                                  \
+                                            : args[i - 1]))                            \
+                           ? string.width                                              \
+                           : ((args[i] > args[i - 1])                                  \
+                                  ? args[i]                                            \
+                                  : args[i - 1]));                                     \
+      __temp__result[i] = (fptr){                                                              \
+          .width = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),                     \
+          .ptr = (i == 0) ? (string.ptr) : (last),                                     \
+      };                                                                               \
+      last = ((uint8_t *)__temp__result[i].ptr) + __temp__result[i].width;                             \
+    }                                                                                  \
+    __temp__result[sizeof(args) / sizeof(unsigned int)] = (fptr){                              \
+        .width = string.width - ((uint8_t *)last - (uint8_t *)string.ptr),             \
+        .ptr = last,                                                                   \
+    };                                                                                 \
+  } while (0);__temp__result; })
+#define isSkip(char) ( \
+    char == ' ' ||     \
+    char == '\n' ||    \
+    char == '\r' ||    \
+    char == '\t'       \
+)
 #define UM_DEFAULT(...) {__VA_ARGS__}
 #define UM_CASE(fp, ...)     \
   if (fptr_eq(fp, __temp)) { \
@@ -188,40 +274,6 @@ inline fptr fp_from(const char (&s)[N]) {
 }
 
 #endif
-#define fptr_stack_split(string, ...) \
-  ({fptr* __temp__result = (fptr*)alloca( (sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1)*sizeof(fptr) ); \
-  do {                                                                                 \
-    uint8_t *last;                                                                     \
-    unsigned int args[] = {__VA_ARGS__};                                               \
-    for (int i = 0; i < sizeof(args) / sizeof(unsigned int); i++) {                    \
-      args[i] = (i == 0)                                                               \
-                    ? ((args[i] < string.width)                                        \
-                           ? args[i]                                                   \
-                           : string.width)                                             \
-                    : ((string.width < ((args[i] > args[i - 1])                        \
-                                            ? args[i]                                  \
-                                            : args[i - 1]))                            \
-                           ? string.width                                              \
-                           : ((args[i] > args[i - 1])                                  \
-                                  ? args[i]                                            \
-                                  : args[i - 1]));                                     \
-      __temp__result[i] = (fptr){                                                              \
-          .width = (i == 0) ? (args[0]) : (args[i] - args[i - 1]),                     \
-          .ptr = (i == 0) ? (string.ptr) : (last),                                     \
-      };                                                                               \
-      last = ((uint8_t *)__temp__result[i].ptr) + __temp__result[i].width;                             \
-    }                                                                                  \
-    __temp__result[sizeof(args) / sizeof(unsigned int)] = (fptr){                              \
-        .width = string.width - ((uint8_t *)last - (uint8_t *)string.ptr),             \
-        .ptr = last,                                                                   \
-    };                                                                                 \
-  } while (0);__temp__result; })
-#define isSkip(char) ( \
-    char == ' ' ||     \
-    char == '\n' ||    \
-    char == '\r' ||    \
-    char == '\t'       \
-)
 static fptr fptr_trim(fptr in) {
   for (; isSkip(*in.ptr);) {
     in.ptr++;
@@ -249,8 +301,10 @@ static int fptr_toInt(const fptr in) {
   if (!number.width)
     return 0;
   char negetive = number.ptr[0] == '-';
-  number.width -= negetive;
-  number.ptr += negetive;
+  if (negetive) {
+    number.ptr++;
+    number.width--;
+  }
   return (negetive ? -1 : 1) * fptr_toUint(number);
 }
 #endif // UM_FP_H

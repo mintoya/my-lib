@@ -8,8 +8,8 @@
 typedef struct {
   unsigned int index;
   unsigned int next;
-  unsigned char hasindex : 1;
-  unsigned char hasnext : 1;
+  bool hasindex : 1;
+  bool hasnext : 1;
 } HMap_innertype;
 typedef struct {
   unsigned int metaSize;
