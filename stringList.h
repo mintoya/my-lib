@@ -10,8 +10,8 @@
 #include <string.h>
 
 typedef struct {
-  unsigned int index;
-  unsigned int width;
+  uint index;
+  uint width;
 } stringMetaData;
 
 typedef struct {
@@ -143,18 +143,20 @@ stringList *stringList_remake(stringList *origional) {
   return res;
 }
 unsigned int stringList_append(stringList *l, fptr value) {
+  uint uwidth = (uint)value.width;
   stringMetaData thisS = {
       .index = l->List_char.length,
-      .width = value.width,
+      .width = uwidth,
   };
   mList_add(&(l->List_stringMetaData), stringMetaData, thisS);
   List_appendFromArr(&(l->List_char), value.ptr, value.width);
   return l->List_stringMetaData.length - 1;
 }
 void stringList_insert(stringList *l, fptr value, unsigned int index) {
+  uint uwidth = (uint)value.width;
   stringMetaData thisS = {
       .index = l->List_char.length,
-      .width = value.width,
+      .width = uwidth,
   };
   mList_insert(&(l->List_stringMetaData), stringMetaData, thisS, index);
   List_appendFromArr(&(l->List_char), value.ptr, value.width);

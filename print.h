@@ -194,7 +194,7 @@ static printerFunction PrinterSingleton_get(fptr name) {
 #define REGISTER_SPECIAL_PRINTER(str, type, ...) \
   REGISTER_SPECIAL_PRINTER_NEEDID(UNIQUE_PRINTER_FN, str, type, __VA_ARGS__)
 #define USETYPEPRINTER(T, val) \
-  GETTYPEPRINTERFN(T)(put, REF(T, val), nullUmf, _arb)
+  GETTYPEPRINTERFN(T)(put, (u8 *)(void *)REF(T, val), nullUmf, _arb)
 #define USENAMEDPRINTER(strname, val)                                     \
   print_f_helper(                                                         \
       (struct print_arg){.ref = REF(typeof(val), val), .name = nullFptr}, \
@@ -292,7 +292,7 @@ struct print_arg {
       PUTS("-", 1);
       in = -in;
     }
-    USETYPEPRINTER(uint, in);
+    USETYPEPRINTER(uint, (uint)in);
   });
   REGISTER_PRINTER(float, {
     if (in < 0) {
@@ -375,7 +375,7 @@ struct print_arg {
               if (zero_count) {
                   if (cut0s) {
                       PUTS("(", 1);
-                      USETYPEPRINTER(uint, zero_count);
+                      USETYPEPRINTER(uint, (uint)zero_count);
                       PUTS(")", 1);
                   } else {
                       for (uint i = 0; i < zero_count; i++) PUTS("0", 1);
