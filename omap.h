@@ -285,7 +285,7 @@ static inline OMap_V OMap_getL(const OMap *map, fptr firstkey, ...) {
   va_end(vl);
   return place;
 }
-static inline OMap_V OMap_getLA(const OMap *map, uint nargs, fptr args[nargs]) {
+static inline OMap_V OMap_getLA(const OMap *map, uint nargs, fptr *args) {
   if (!nargs)
     return (OMap_V){nullFptr, RAW};
 

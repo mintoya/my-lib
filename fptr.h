@@ -127,23 +127,29 @@ inline bool operator!=(const fptr &a, const fptr &b) { return !fptr_eq(a, b); }
 #ifndef __cplusplus
 #define REF(type, value) ((type[1]){value})
 #else
-// clang-format off
-  #include <type_traits>
-  #include <utility>
-  template <typename T> class StackPush {
-  private:
-    using RealT = std::remove_reference_t<T>;
-    RealT value; 
-  public:
-    template <typename ArgType>
-    explicit StackPush(ArgType &&arg) : value(std::forward<ArgType>(arg)) {}
-    operator RealT &() { return value; }
-    operator const RealT &() const { return value; }
-    operator void *() { return (void *)&value; }
-    operator const void *() const { return (const void *)&value; }
-  };
-// clang-format on
-#define REF(type, value) (StackPush<type>(value))
+// #include <type_traits>
+// #include <utility>
+// template <typename T>
+// class StackPush {
+// private:
+//   using RealT = std::remove_reference_t<T>;
+//   RealT value;
+//
+// public:
+//   template <typename ArgType>
+//   explicit StackPush(ArgType &&arg) : value(std::forward<ArgType>(arg)) {}
+//   operator RealT &() { return value; }
+//   operator const RealT &() const { return value; }
+//   operator void *() { return (void *)&value; }
+//   operator const void *() const { return (const void *)&value; }
+// };
+// #define REF(type, value) (StackPush<type>(value))
+template <typename T>
+static inline T *ref_tmp(T &&v) {
+  return &v;
+}
+#define REF(type, value) ref_tmp(type{value})
+
 #endif
 
 // #define deREF(type, ptr)                \

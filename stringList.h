@@ -48,15 +48,16 @@ const Boxer stringListBoxer = {2, {{.type = FPTR}, {.type = FPTR}}};
 static inline stringListView stringList_toView(const My_allocator *allocator, stringList *sl) {
   fptr meta = (fptr){List_headArea(&(sl->List_stringMetaData)), sl->List_stringMetaData.head};
   fptr buff = (fptr){List_headArea(&(sl->List_char)), sl->List_char.head};
-  fptr res = enBox(allocator, &stringListBoxer, (void *[2]){&(meta), &(buff)});
+  void *bx[2] = {&(meta), &(buff)};
+  fptr res = enBox(allocator, &stringListBoxer, bx);
 
   return (stringListView){res};
 }
 static inline stringList_Solid stringList_fromView(stringListView slv) {
   stringList_Solid res;
   bFptr *meta, *buff;
-
-  unBox(&stringListBoxer, (void *[2]){&(meta), &(buff)}, slv.raw);
+  void *bx[2] = {&(meta), &(buff)};
+  unBox(&stringListBoxer, bx, slv.raw);
   return (stringList_Solid){
       .metaSize = (unsigned int)(meta->width / sizeof(stringMetaData)),
       .Arr_stringMetaData = (stringMetaData *)meta->ptr,
