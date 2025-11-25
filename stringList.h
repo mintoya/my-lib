@@ -34,11 +34,14 @@ void stringList_insert(stringList *l, fptr, unsigned int index);
 void stringList_set(stringList *l, fptr, unsigned int index);
 unsigned int stringList_append(stringList *l, fptr);
 
-#define advance(dst, src, length) \
-  memcpy(dst, src, length);       \
-  dst += length / sizeof(uint8_t);
-// memory layot:
-//  { size_t:keycount | metadata buffer | data buffer }
+#define stringList_fromStat(allocator, char_ptr_ptr)                 \
+  ({                                                                 \
+    stringList *res = stringList_new(allocator);                     \
+    for (uint i = 0; i < sizeof(char_ptr_ptr) / sizeof(char *); i++) \
+      stringList_append(res, fp_from(char_ptr_ptr[i]));              \
+    res;                                                             \
+  })
+
 typedef struct {
   unsigned int metaSize;
   stringMetaData *Arr_stringMetaData;
@@ -85,7 +88,7 @@ unsigned int stringList_search(stringList *l, fptr key);
 stringList *stringList_remake(stringList *);
 void stringList_free(stringList *l);
 [[gnu::pure]] static inline unsigned int stringList_length(stringList *l) {
-  return l->List_stringMetaData.length;
+  return l ? l->List_stringMetaData.length : 0;
 }
 static inline void stringList_cleanup_handler(stringList **sl) {
   if (sl && *sl)

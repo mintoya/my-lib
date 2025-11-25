@@ -72,9 +72,9 @@ static int task_start(task *t) {
   }
   return res;
 }
-static void task_await(const task *t, const timespec *interval) {
+static void task_await(const task *t) {
   assert(!t->block);
   while (!t->fin)
-    thrd_sleep(interval, NULL);
+    thrd_yield();
 }
 #endif // MY_TASKS_H
