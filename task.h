@@ -27,6 +27,7 @@ typedef struct {
 #define task_new_s(funct, blocking, arglength)                             \
   ({                                                                       \
     task *res = (task *)alloca(sizeof(task) + sizeof(void *) * arglength); \
+    lmemset(res->arg, arglength, ((void *)0));                             \
     res->alen = arglength;                                                 \
     res->block = blocking;                                                 \
     res->function = funct;                                                 \
@@ -44,6 +45,7 @@ static task *task_new_h(
   res->alen = arglength;
   res->block = blocking;
   res->function = funct;
+  lmemset(res->arg, arglength, ((void *)0));
   res->fin = 0;
   return res;
 }
