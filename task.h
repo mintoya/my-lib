@@ -15,6 +15,10 @@ static inline timespec floatTspec(double seconds) {
   return res;
 }
 #include <threads.h>
+// static void task_wait(float seconds) {
+//   timespec delay = floatTspec(seconds);
+//   thrd_sleep(&delay, NULL);
+// }
 typedef struct {
   thrd_t handle;
   thrd_start_t function;
@@ -23,7 +27,6 @@ typedef struct {
   size_t alen;
   [[clang::counted_by(alen)]] void *arg[];
 } task;
-#define tnew_ref_helper(var) &(var)
 #define task_new_s(funct, blocking, arglength)                             \
   ({                                                                       \
     task *res = (task *)alloca(sizeof(task) + sizeof(void *) * arglength); \
@@ -49,8 +52,6 @@ static task *task_new_h(
   res->fin = 0;
   return res;
 }
-#define task_setArgs(task, ...) \
-  memcpy(task->arg, (void *[]){APPLY_N(tnew_ref_helper, __VA_ARGS__)}, task->alen * sizeof(void *));
 
 static int thread_handle(void *arg) {
   task *t = (task *)arg;
@@ -58,7 +59,7 @@ static int thread_handle(void *arg) {
   t->fin = 1;
   return res;
 }
-static int task_start(task t[]) {
+static int task_start(task *t) {
   int res = 0;
   switch (t->block) {
   case 1:
@@ -71,7 +72,7 @@ static int task_start(task t[]) {
   }
   return res;
 }
-static void task_await(task t[], const timespec *interval) {
+static void task_await(const task *t, const timespec *interval) {
   assert(!t->block);
   while (!t->fin)
     thrd_sleep(interval, NULL);
