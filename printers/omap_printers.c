@@ -3,14 +3,14 @@
 #include "../omap.h"
 #include "../print.h"
 REGISTER_SPECIAL_PRINTER("OMap_stringlist", stringList, {
-  PUTS("[", 1);
+  PUTS(L"[");
   const unsigned int length = stringList_length(&in);
   for (int i = 0; i < length; i++) {
     OMap_V el = Stringlist_getObj(&in, i);
     switch (el.t) {
     case RAW:
       USETYPEPRINTER(fptr, el.v);
-      PUTS(",", 1);
+      PUTS(L",");
       break;
     case OMAP:
       USENAMEDPRINTER("OMapView", el.v);
@@ -20,17 +20,17 @@ REGISTER_SPECIAL_PRINTER("OMap_stringlist", stringList, {
       break;
     }
   }
-  PUTS("]", 1);
+  PUTS(L"]");
 });
 REGISTER_SPECIAL_PRINTER("OMap_stringlistView", stringListView, {
-  PUTS("[", 1);
+  PUTS(L"[");
   const unsigned int length = stringListView_length(in);
   for (int i = 0; i < length; i++) {
     OMap_V el = StringlistView_getObj(in, i);
     switch (el.t) {
     case RAW:
       USETYPEPRINTER(fptr, el.v);
-      PUTS(",", 1);
+      PUTS(L",");
       break;
     case OMAP:
       USENAMEDPRINTER("OMapView", el.v);
@@ -40,19 +40,19 @@ REGISTER_SPECIAL_PRINTER("OMap_stringlistView", stringListView, {
       break;
     }
   }
-  PUTS("]", 1);
+  PUTS(L"]");
 });
 REGISTER_PRINTER(OMapView, {
   const int length = OMapView_length(in);
-  PUTS("{", 1);
+  PUTS(L"{");
   for (uint i = 0; i < length; i++) {
     OMap_both both = OMapView_getIndex(in, i);
     USETYPEPRINTER(fptr, both.k);
-    PUTS(":", 1);
+    PUTS(L":");
     switch (both.t) {
     case RAW:
       USETYPEPRINTER(fptr, both.v);
-      PUTS(";", 1);
+      PUTS(L";");
       break;
     case OMAP:
       USETYPEPRINTER(OMapView, both.v);
@@ -62,11 +62,11 @@ REGISTER_PRINTER(OMapView, {
       break;
     }
   }
-  PUTS("}", 1);
+  PUTS(L"}");
 });
 REGISTER_PRINTER(OMap, {
   const int length = OMap_length(&in);
-  PUTS("{", 1);
+  PUTS(L"{");
   for (uint i = 0; i < length; i++) {
     OMap_both both;
     both.k = OMap_getKey(&in, i);
@@ -74,11 +74,11 @@ REGISTER_PRINTER(OMap, {
     both.t = m.t;
     both.v = m.v;
     USETYPEPRINTER(fptr, both.k);
-    PUTS(":", 1);
+    PUTS(L":");
     switch (both.t) {
     case RAW:
       USETYPEPRINTER(fptr, both.v);
-      PUTS(";", 1);
+      PUTS(L";");
       break;
     case OMAP:
       USETYPEPRINTER(OMapView, both.v);
@@ -88,20 +88,20 @@ REGISTER_PRINTER(OMap, {
       break;
     }
   }
-  PUTS("}", 1);
+  PUTS(L"}");
 })
 REGISTER_PRINTER(OMap_V, {
   switch (in.t) {
   case RAW: {
-    PUTS("(RAW)", 5);
+    PUTS(L"(RAW)");
     USETYPEPRINTER(fptr, in.v);
   } break;
   case OMAP: {
-    PUTS("(OMAP)", 6);
+    PUTS(L"(OMAP)");
     USETYPEPRINTER(OMapView, in.v);
   } break;
   case SLIST: {
-    PUTS("(SLIST)", 7);
+    PUTS(L"(SLIST)");
     USENAMEDPRINTER("OMap_stringlistView", in.v);
   } break;
   }

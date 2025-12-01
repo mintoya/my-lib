@@ -164,7 +164,7 @@ static OMap *parse(OMap *parent, stringList *lparent, fptr kml) {
 }
 
 static void kmlFormatPrinter(
-    const char *data,
+    const wchar *data,
     void *arb,
     unsigned int length,
     char flush
@@ -172,41 +172,41 @@ static void kmlFormatPrinter(
   static uint indentLevel = 0;
 
   for (size_t index = 0; index < length; index++) {
-    char character = data[index];
+    wchar character = data[index];
     {
       switch (character) {
       case '{':
       case '[': {
-        putchar(character);
-        putchar('\n');
+        putwchar(character);
+        putwchar('\n');
         indentLevel++;
         for (int i = 0; i < indentLevel; i++) {
-          putchar(' ');
+          putwchar(' ');
         }
       } break;
       case '}':
       case ']': {
-        putchar('\033');
-        putchar('[');
-        putchar('1');
-        putchar('D');
-        putchar(character);
-        putchar('\n');
+        putwchar('\033');
+        putwchar('[');
+        putwchar('1');
+        putwchar('D');
+        putwchar(character);
+        putwchar('\n');
         indentLevel--;
         for (int i = 0; i < indentLevel; i++) {
-          putchar(' ');
+          putwchar(' ');
         }
       } break;
       case ';':
       case ',': {
-        putchar(character);
-        putchar('\n');
+        putwchar(character);
+        putwchar('\n');
         for (int i = 0; i < indentLevel; i++) {
-          putchar(' ');
+          putwchar(' ');
         }
       } break;
       default:
-        putchar(character);
+        putwchar(character);
       }
     }
   }

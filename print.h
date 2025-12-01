@@ -1,9 +1,11 @@
 #ifndef PRINTER_H
 #define PRINTER_H
 #include <errno.h>
+#include <locale.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <wchar.h>
 
 #include "allocator.h"
 #include "fptr.h"
@@ -12,7 +14,7 @@
 #include "printer/variadic.h"
 
 typedef void (*outputFunction)(
-    const char *,
+    const wchar *,
     void *,
     unsigned int,
     char
@@ -46,31 +48,54 @@ typedef pEsc printerEscape;
 #define pEscRst      \
   ((pEsc){           \
       .pos = {0, 0}, \
-      .reset = 1,    \
       .clear = 1,    \
+      .reset = 1,    \
   })
 #ifndef OVERRIDE_DEFAULT_PRINTER
 #include <stdio.h>
 static void stdoutPrint(
-    const char *c,
+    const wchar *c,
     void *,
     unsigned int length,
     char flush
 ) {
-  static struct
+  static const size_t bufLen = 2 << 16;
+  static thread_local mbstate_t mbs = {0};
+  static thread_local struct
   {
-    char buf[2048];
+    wchar buf[bufLen];
+    char crBuf[bufLen * 4];
     size_t place;
+    size_t crPlace;
   } buf = {
       .place = 0,
+      .crPlace = 0,
   };
 
-  if (buf.place + length >= 2048 || flush) {
-    fwrite(buf.buf, sizeof(char), buf.place, stdout);
-    fwrite(c, sizeof(char), length, stdout);
+  if (buf.place + length >= bufLen || flush) {
+    buf.crPlace = 0;
+    for (size_t i = 0; i < buf.place; i++)
+      buf.crPlace += wcrtomb(buf.crBuf + buf.crPlace, buf.buf[i], &mbs);
+    fwrite(buf.crBuf, sizeof(char), buf.crPlace, stdout);
+    buf.crPlace = 0;
+
+    char *useBuffer;
+    size_t useBufferPlace = 0;
+    if (length > bufLen) {
+      useBuffer = (char *)aAlloc(&defaultAllocator, length * sizeof(char) * 4);
+    } else {
+      useBuffer = buf.crBuf;
+    }
+    for (size_t i = 0; i < length; i++)
+      useBufferPlace += wcrtomb(useBuffer + useBufferPlace, c[i], &mbs);
+    fwrite(useBuffer, sizeof(char), useBufferPlace, stdout);
+
+    if (length > bufLen)
+      aFree(&defaultAllocator, useBuffer);
+
     buf.place = 0;
   } else {
-    memcpy(buf.buf + buf.place, c, length);
+    memcpy(buf.buf + buf.place, c, length * sizeof(wchar));
     buf.place += length;
   }
 }
@@ -98,8 +123,9 @@ static void snPrint(
   snBuff.fptrp.width = end;
   *(ffptr *)buffer = snBuff;
 }
+// #include "assert.h"
 static void asPrint(
-    const char *c,
+    const wchar *c,
     void *listptr,
     unsigned int length,
     char flush
@@ -107,17 +133,18 @@ static void asPrint(
   (void)flush;
   // assert(!!listptr);
   List *list = *(List **)listptr;
+
   if (!list)
-    list = List_new(&defaultAllocator, sizeof(char));
+    list = mList(wchar);
+  // assert(list->width == sizeof(wchar));
   List_appendFromArr(list, c, length);
   *(List **)listptr = list;
 }
 
-//
-static struct
-{
+static struct {
   HMap *data;
 } PrinterSingleton;
+
 static void PrinterSingleton_init() {
   PrinterSingleton.data = HMap_new(&defaultAllocator, 20);
 }
@@ -158,10 +185,15 @@ static printerFunction PrinterSingleton_get(fptr name) {
 
 // clang-format on
 
-[[gnu::constructor(200)]] static void printerInit() { PrinterSingleton_init(); }
+[[gnu::constructor(200)]] static void printerInit() {
+  setlocale(LC_ALL, "");
+  PrinterSingleton_init();
+}
 [[gnu::destructor]] static void printerDeinit() { PrinterSingleton_deinit(); }
 
-#define PUTS(characters, length) put(characters, _arb, length, 0)
+#define PUTS(characters) put(characters, _arb, (sizeof(characters) / sizeof(wchar)) - 1, 0)
+#define PUTC(character) put(REF(wchar, character), _arb, 1, 0)
+
 #define REGISTER_PRINTER(T, ...)                                       \
   [[gnu::weak]] void GETTYPEPRINTERFN(T)(                              \
       outputFunction put, const void *_v_in_ptr, fptr args, void *_arb \
@@ -250,13 +282,17 @@ struct print_arg {
 // does the same in cpp
 
   typedef char *char_ptr;
+  typedef wchar *wchar_ptr;
   REGISTER_PRINTER(fptr, {
-    if (in.ptr) { PUTS((char *)in.ptr, in.width); } else { PUTS("__NULLUMF__", 11); }
+    if (in.ptr) {for(size_t i = 0;i<in.width;i++){
+      wchar c = (wchar)in.ptr[i];
+      PUTC(c);
+    }} else { PUTS(L"__NULLUMF__"); }
   });
   typedef void *void_ptr;
   REGISTER_PRINTER(void_ptr, {
     uintptr_t v = (uintptr_t)in;
-    PUTS("0x", 2);
+    PUTS(L"0x");
 
     int shift = (sizeof(uintptr_t) * 8) - 4;
     int leading = 1;
@@ -265,13 +301,15 @@ struct print_arg {
       if (nibble || !leading || shift == 0) {
         leading = 0;
         char c = (nibble < 10) ? ('0' + nibble) : ('a' + nibble - 10);
-        PUTS(&c, 1);
+        PUTC((wchar)c);
       }
       shift -= 4;
     }
   });
-  REGISTER_PRINTER(char_ptr, { while(*in){ PUTS(in,1); in++; } });
-  REGISTER_PRINTER(char, {PUTS(&in,1);});
+  REGISTER_PRINTER(char_ptr, { while(*in){ PUTC((wchar)*in); in++; } });
+  REGISTER_PRINTER(wchar_ptr, { while(*in){ PUTC(*in); in++; } });
+  REGISTER_PRINTER(char, {PUTC((wchar)in);});
+  REGISTER_PRINTER(wchar, {PUTC(in);});
 
   REGISTER_PRINTER(size_t, {
     int l = 1;
@@ -279,7 +317,7 @@ struct print_arg {
       l *= 10;
     while (l) {
       char c = in / l + '0';
-      PUTS(&c, 1);
+      PUTC((wchar)c);
       in %= l;
       l /= 10;
     }
@@ -289,14 +327,14 @@ struct print_arg {
   });
   REGISTER_PRINTER(int, {
     if (in < 0) {
-      PUTS("-", 1);
+      PUTC(L'-');
       in = -in;
     }
     USETYPEPRINTER(uint, (uint)in);
   });
   REGISTER_PRINTER(float, {
     if (in < 0) {
-      PUTS("-", 1);
+      PUTC(L'-');
       in *= -1;
     }
     int push = 0;
@@ -306,19 +344,19 @@ struct print_arg {
     }
     in *= 10;
     if(!push)
-        PUTS(".", 1);
+      PUTC(L'.');
     for (int i = 0; i < 6; i++) {
-      char dig = '0';
+      wchar dig = L'0';
       dig += ((unsigned int)in) % 10;
-      PUTS(&dig, 1);
+      PUTC(dig);
       if (i + 1 == push)
-        PUTS(".", 1);
+        PUTC(L'.');
       in *= 10;
     }
   });
   REGISTER_PRINTER(double, {
     if (in < 0) {
-      PUTS("-", 1);
+      PUTC(L'-');
       in *= -1;
     }
     int push = 0;
@@ -328,18 +366,18 @@ struct print_arg {
     }
     in *= 10;
     if(!push)
-        PUTS(".", 1);
+        PUTC(L'.');
     for (int i = 0; i < 12; i++) {
-      char dig = '0';
+      wchar dig = L'0';
       dig += ((unsigned int)in) % 10;
-      PUTS(&dig, 1);
+      PUTC(dig);
       if (i + 1 == push)
-        PUTS(".", 1);
+        PUTC(L'.');
       in *= 10;
     }
   });
   REGISTER_SPECIAL_PRINTER("fptr<void>", fptr, {
-      const char hex_chars[17] = "0123456789abcdef";
+      const wchar hex_chars[17] = L"0123456789abcdef";
       char cut0s = 0;
       char useLength = 0;
 
@@ -352,11 +390,11 @@ struct print_arg {
       });
 
 
-      PUTS("<", 1);
+      PUTC(L'<');
       if (useLength) {
           USETYPEPRINTER(size_t, in.width);
       }
-      PUTS("<", 1);
+      PUTC(L'<');
 
       int zero_count = 0;
       while (in.width) {
@@ -374,66 +412,66 @@ struct print_arg {
           if (top || bottom) {
               if (zero_count) {
                   if (cut0s) {
-                      PUTS("(", 1);
+                      PUTC(L'(');
                       USETYPEPRINTER(uint, (uint)zero_count);
-                      PUTS(")", 1);
+                      PUTC(L')');
                   } else {
-                      for (uint i = 0; i < zero_count; i++) PUTS("0", 1);
+                      for (uint i = 0; i < zero_count; i++) PUTC(L'0');
                   }
                   zero_count = 0;
               }
-              if (top) PUTS(hex_chars + top, 1);
-              if (bottom) PUTS(hex_chars + bottom, 1);
+              if (top) PUTC(*( hex_chars + top ));
+              if (bottom) PUTC(*( hex_chars + bottom ));
           }
           in.width--;
       }
       if (zero_count) {
           if (cut0s) {
-              PUTS("(", 1);
+              PUTC(L'(');
               USETYPEPRINTER(int, zero_count);
-              PUTS(")", 1);
+              PUTC(L')');
           } else {
-              for (int i = 0; i < zero_count; i++) PUTS("0", 1);
+              for (int i = 0; i < zero_count; i++) PUTC(L'0');
           }
       }
 
-      PUTS(">>", 2);
+      PUTS(L">>");
   });
 
   REGISTER_PRINTER(pEsc, {
     if (in.poset) {
 
-      PUTS("\033[", 2);
+      PUTS(L"\033[");
       USETYPEPRINTER(uint, in.pos.row);
-      PUTS(";", 1);
+      PUTS(L";");
       USETYPEPRINTER(uint, in.pos.col);
-      PUTS("H", 1);
+      PUTS(L"H");
     }
     if (in.fgset) {
-      PUTS("\033[38;2;", 7);
+      PUTS(L"\033[38;2;");
       USETYPEPRINTER(uint, in.fg.r);
-      PUTS(";", 1);
+      PUTS(L";");
       USETYPEPRINTER(uint, in.fg.g);
-      PUTS(";", 1);
+      PUTS(L";");
       USETYPEPRINTER(uint, in.fg.b);
-      PUTS("m", 1);
+      PUTS(L"m");
     }
 
     if (in.bgset) {
-      PUTS("\033[48;2;", 7);
+      PUTS(L"\033[48;2;");
       USETYPEPRINTER(uint, in.bg.r);
-      PUTS(";", 1);
+      PUTS(L";");
       USETYPEPRINTER(uint, in.bg.g);
-      PUTS(";", 1);
+      PUTS(L";");
       USETYPEPRINTER(uint, in.bg.b);
-      PUTS("m", 1);
+      PUTS(L"m");
     }
     if (in.clear) {
-      PUTS("\033[2J", 4);
-      PUTS("\033[H", 3);
+      PUTS(L"\033[2J");
+      PUTS(L"\033[H");
     }
     if (in.reset) {
-      PUTS("\033[0m", 4);
+      PUTS(L"\033[0m");
     }
   });
 // type assumption
@@ -459,6 +497,10 @@ struct print_arg {
   MAKE_PRINT_ARG_TYPE(uint);
   #include "printer/genericName.h"
   MAKE_PRINT_ARG_TYPE(pEsc);
+  // #include "printer/genericName.h"
+  // MAKE_PRINT_ARG_TYPE(wchar);
+  // #include "printer/genericName.h"
+  // MAKE_PRINT_ARG_TYPE(wchar_ptr);
    
   #define MAKE_PRINT_ARG(a)               \
     ((struct print_arg){                  \
@@ -479,11 +521,13 @@ struct print_arg {
   MAKE_PRINT_ARG_TYPE(fptr);
   MAKE_PRINT_ARG_TYPE(char);
   MAKE_PRINT_ARG_TYPE(pEsc);
+  MAKE_PRINT_ARG_TYPE(wchar);
   MAKE_PRINT_ARG_TYPE(float);
   MAKE_PRINT_ARG_TYPE(size_t);
   MAKE_PRINT_ARG_TYPE(double);
   MAKE_PRINT_ARG_TYPE(void_ptr);
   MAKE_PRINT_ARG_TYPE(char_ptr);
+  MAKE_PRINT_ARG_TYPE(wchar_ptr);
   
   #define MAKE_PRINT_ARG(a)                                          \
     ((struct print_arg){                                             \
@@ -496,6 +540,7 @@ struct print_arg {
 
 void print_f_helper(struct print_arg p, fptr typeName, outputFunction put, fptr args, void *arb);
 
+static thread_local uchar print_f_shouldFlush = 1;
 void print_f(outputFunction put, void *arb, fptr fmt, ...);
 
 #define print_wfO(printerfn, arb, fmt, ...)                                               \
@@ -610,9 +655,15 @@ void print_f_helper(struct print_arg p, fptr typeName, outputFunction put, fptr 
   }
   printerFunction fn = PrinterSingleton_get(typeName);
   if (!fn) {
+    // if (!args.width) {
     USETYPEPRINTER(fptr, fp_from("__ NO_TYPE("));
     USETYPEPRINTER(fptr, typeName);
     USETYPEPRINTER(fptr, fp_from(") __"));
+    // } else {
+    //   if (fptr_eq(fp_from("flush"), args)) {
+    //     put(NULL, _arb, 0, 1);
+    //   }
+    // }
   } else {
     fn(put, ref, args, _arb);
   }
@@ -630,10 +681,12 @@ void print_f(outputFunction put, void *arb, const fptr fmt, ...) {
   for (unsigned int i = 0; i < fmt.width; i++) {
     switch (ccstr[i]) {
     case '$':
-      if (check)
-        put(ccstr + i - 1, arb, 1, 0);
+      if (check) {
+        wchar c = (wchar) * (ccstr + i - 1);
+        put(&c, arb, 1, 0);
+      }
       if (i + 1 == fmt.width)
-        put("$", arb, 1, 0);
+        put(L"$", arb, 1, 0);
       check = 1;
       break;
     case '{':
@@ -646,33 +699,37 @@ void print_f(outputFunction put, void *arb, const fptr fmt, ...) {
             .ptr = ((uint8_t *)fmt.ptr) + i + 1,
         };
         struct print_arg assumedName = va_arg(l, struct print_arg);
-        if (!assumedName.ref) {
-          va_end(l);
-          return put("__ NO ARGUMENT PROVIDED, ENDING PRINT __\n", arb, 41, 1);
-        }
 
         fptr tname = printer_arg_until(':', typeName);
         fptr parseargs = printer_arg_after(':', typeName);
         tname = printer_arg_trim(tname);
+        if (!assumedName.ref) {
+          va_end(l);
+          return put(L"__ NO ARGUMENT PROVIDED, ENDING PRINT __\n", arb, 41, 1);
+        }
         print_f_helper(assumedName, tname, put, parseargs, arb);
         i = j;
         check = 0;
       } else {
-        put("{", arb, 1, 0);
+        put(L"{", arb, 1, 0);
       }
       break;
     default:
-      if (check)
-        put(ccstr + i - 1, arb, 1, 0);
+      if (check) {
+        wchar c = (wchar) * (ccstr + i - 1);
+        put(&c, arb, 1, 0);
+      }
       size_t ne;
-      for (ne = 0; ne + i < fmt.width && ccstr[ne + i] != '$'; ne++)
-        ;
-      put(ccstr + i, arb, ne, 0);
+      for (ne = 0; ne + i < fmt.width && ccstr[ne + i] != '$'; ne++) {
+        wchar c = (wchar) * (ccstr + i + ne);
+        put(&c, arb, 1, 0);
+      }
       i += (ne - 1);
       check = 0;
     }
   }
   va_end(l);
-  put(NULL, arb, 0, 1);
+  if (print_f_shouldFlush)
+    put(NULL, arb, 0, 1);
 }
 #endif

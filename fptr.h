@@ -5,7 +5,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <wchar.h>
 
+typedef wchar_t wchar;
 typedef unsigned int uint;
 typedef unsigned char uchar;
 
