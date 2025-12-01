@@ -60,11 +60,11 @@ static void stdoutPrint(
     char flush
 ) {
   static const size_t bufLen = 2 << 16;
-  static thread_local mbstate_t mbs = {0};
+  mbstate_t mbs = {0};
   static thread_local struct
   {
     wchar buf[bufLen];
-    char crBuf[bufLen * 4];
+    char crBuf[bufLen / sizeof(wchar) * 4];
     size_t place;
     size_t crPlace;
   } buf = {
@@ -147,6 +147,7 @@ static struct {
 
 static void PrinterSingleton_init() {
   PrinterSingleton.data = HMap_new(&defaultAllocator, 20);
+  stringList_preload(PrinterSingleton.data->KVs, 20, 10);
 }
 static void PrinterSingleton_deinit() { HMap_free(PrinterSingleton.data); }
 static void PrinterSingleton_append(fptr name, printerFunction function) {
@@ -601,9 +602,25 @@ void print_f(outputFunction put, void *arb, fptr fmt, ...);
 }
 #endif // PRINTER_LIST_TYPENAMES
 
+fptr wchar_toUtf8(const My_allocator *allocator, fptr wbuf);
 #endif
 
 #ifdef PRINTER_C
+fptr wchar_toUtf8(const My_allocator *allocator, fptr wbuf) {
+  fptr res = {
+      .ptr = (u8 *)aAlloc(allocator, 4 * (wbuf.width / sizeof(wchar))),
+      .width = 0,
+  };
+  wchar *wb = (wchar *)wbuf.ptr;
+  mbstate_t mbs = {0};
+  for (size_t i = 0; i < (wbuf.width / sizeof(wchar)); i++)
+    res.width += wcrtomb(
+        (char *)(res.ptr + res.width),
+        wb[i],
+        &mbs
+    );
+  return res;
+}
 inline unsigned int printer_arg_indexOf(fptr string, char c) {
   int i;
   char *ptr = (char *)string.ptr;

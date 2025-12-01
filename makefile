@@ -1,4 +1,4 @@
-CC = g++
+CC = clang
 DIR = build
 CFLAGS = -w -O3
 # CFLAGS = -fsanitize=address -g -O0 -w
@@ -36,7 +36,7 @@ clean:
 run: make
 	./$(DIR)/$(EXECUTABLE) 
 debug: 
-	gcc -o $(DIR)/$(EXECUTABLE) $(OBJECTS) $(CFLAGS) -g
+	gcc -o $(DIR)/$(EXECUTABLE) $(OBJECTS) -g
 	gdb --tui ./$(DIR)/$(EXECUTABLE)
 profile: make
 	@echo "perf report to view"

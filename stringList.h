@@ -26,6 +26,10 @@ static inline size_t stringList_footprint(stringList *sl) {
 typedef struct {
   fptr raw;
 } stringListView;
+static inline void stringList_preload(stringList *sl, uint elementCount, uint elementSize) {
+  List_resize(&(sl->List_stringMetaData), elementCount);
+  List_resize(&(sl->List_char), elementCount * elementSize);
+}
 
 stringList *stringList_new(const My_allocator *);
 fptr stringList_get(stringList *l, unsigned int index);
