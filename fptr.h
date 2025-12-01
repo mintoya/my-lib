@@ -76,26 +76,31 @@ typedef fptr um_fp;
   if (!a.width) {
     return 0;
   }
-  // return memcmp(a.ptr, b.ptr, a.width);
+#ifndef IGNORE_ALIGNMENT
+  return memcmp(a.ptr, b.ptr, a.width);
+#else
   int res = 0;
   size_t top = a.width / sizeof(intmax_t);
   size_t bottom = a.width % sizeof(intmax_t);
-  imax *starta = (imax *)a.ptr;
-  imax *startb = (imax *)b.ptr;
   u8 *resta = a.ptr + (top * (sizeof(imax)));
   u8 *restb = b.ptr + (top * (sizeof(imax)));
-  for (size_t i = 0; i < top && !res; i++)
-    res = (starta[i] - startb[i]);
+  for (size_t i = 0; i < top && !res; i++) {
+    imax ai;
+    imax bi;
+    ai = *(imax *)(a.ptr + sizeof(imax) * i);
+    bi = *(imax *)(b.ptr + sizeof(imax) * i);
+    res = ai - bi;
+  }
   for (size_t i = 0; i < bottom && !res; i++)
     res = (resta[i] - restb[i]);
   int result;
   if (!res)
-    result = 0;
+    return 0;
   else if (res < 0)
-    result = -1;
+    return -1;
   else
-    result = 1;
-  return result;
+    return 1;
+#endif
 }
 static int (*um_fp_cmp)(const fptr, const fptr) = fptr_cmp;
 
@@ -119,6 +124,18 @@ inline bool operator==(const fptr &a, const fptr &b) { return fptr_eq(a, b); }
 inline bool operator!=(const fptr &a, const fptr &b) { return !fptr_eq(a, b); }
 #define typeof(x) std::decay_t<decltype(x)>
 #endif
+
+#define setvar_aligned(var, ptr)                   \
+  do {                                             \
+    const size_t alignment = alignof(typeof(var)); \
+    const uintptr_t address = (uintptr_t)(ptr);    \
+                                                   \
+    if (!(address & (alignment - 1))) {            \
+      var = *(typeof(var) *)(ptr);                 \
+    } else {                                       \
+      memcpy(&(var), (ptr), sizeof(typeof(var)));  \
+    }                                              \
+  } while (0)
 
 #define align_alloca(type) ({                                           \
   uintptr_t newptr = (uintptr_t)alloca(sizeof(type) + alignof(type));   \
@@ -153,18 +170,6 @@ static inline T *ref_tmp(T &&v) {
 #define REF(type, value) ref_tmp(type{value})
 
 #endif
-
-// #define deREF(type, ptr)                \
-//   ({                                    \
-//     type _res;                          \
-//     memcpy(&_res, (ptr), sizeof(type)); \
-//     _res;                               \
-//   })
-// #define setREF(type, ptr, value)         \
-//   do {                                   \
-//     type _temp = (type)(value);          \
-//     memcpy((ptr), &_temp, sizeof(type)); \
-//   } while (0)
 
 #define fptr_stack_split(string, ...) ({fptr* __temp__result = (fptr*)alloca( (sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1)*sizeof(fptr) ); \
   do {                                                                                 \

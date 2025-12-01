@@ -35,9 +35,9 @@ static inline size_t HMap_footprint(HMap *hm) {
 //   return komihash(str.ptr, str.width, 6767);
 // }
 
-static const intmax_t HMap_h = (0x67676141420);
-[[gnu::pure]] static inline intmax_t HMap_hash(const fptr str) {
-  intmax_t res = HMap_h;
+static const umax HMap_h = (0x67676141420);
+[[gnu::pure]] static inline umax HMap_hash(const fptr str) {
+  umax res = HMap_h;
 
   const size_t width = str.width;
   const uint8_t *ptr = str.ptr;

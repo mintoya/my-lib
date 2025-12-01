@@ -429,8 +429,10 @@ OMap_both OMapView_getIndex(OMapView mv, unsigned int index) {
   OMap_solid map = OMap_fromView(mv);
   if (index > length)
     return (OMap_both){nullFptr, nullFptr, RAW};
-  stringMetaData thisKey = map.KVs.Arr_stringMetaData[index * 2];
-  stringMetaData thisVal = map.KVs.Arr_stringMetaData[index * 2 + 1];
+  stringMetaData thisKey;
+  memcpy(&thisKey, map.KVs.Arr_stringMetaData + (index * 2) * sizeof(stringMetaData), sizeof(stringMetaData));
+  stringMetaData thisVal;
+  memcpy(&thisVal, map.KVs.Arr_stringMetaData + (index * 2 + 1) * sizeof(stringMetaData), sizeof(stringMetaData));
   fptr vall = (fptr){thisVal.width, map.KVs.Arr_char + thisVal.index};
 
   fptr key = (fptr){thisKey.width, map.KVs.Arr_char + thisKey.index};

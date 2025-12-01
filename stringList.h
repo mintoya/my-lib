@@ -48,8 +48,8 @@ unsigned int stringList_append(stringList *l, fptr);
 
 typedef struct {
   unsigned int metaSize;
-  stringMetaData *Arr_stringMetaData;
-  uint8_t *Arr_char;
+  u8 *Arr_stringMetaData;
+  u8 *Arr_char;
 } stringList_Solid;
 const Boxer stringListBoxer = {2, {{.type = FPTR}, {.type = FPTR}}};
 static inline stringListView stringList_toView(const My_allocator *allocator, stringList *sl) {
@@ -62,25 +62,27 @@ static inline stringListView stringList_toView(const My_allocator *allocator, st
 }
 static inline stringList_Solid stringList_fromView(stringListView slv) {
   stringList_Solid res;
-  bFptr *meta, *buff;
-  void *bx[2] = {&(meta), &(buff)};
+  fptr meta, buff;
+  void *bx[2] = {&meta, &buff};
   unBox(&stringListBoxer, bx, slv.raw);
   return (stringList_Solid){
-      .metaSize = (unsigned int)(meta->width / sizeof(stringMetaData)),
-      .Arr_stringMetaData = (stringMetaData *)meta->ptr,
-      .Arr_char = (uint8_t *)buff->ptr,
+      .metaSize = (unsigned int)(meta.width / sizeof(stringMetaData)),
+      .Arr_stringMetaData = (u8 *)meta.ptr,
+      .Arr_char = (u8 *)buff.ptr,
   };
 }
 static inline int stringListView_length(stringListView slv) {
   // meta is first
-  size_t size = *(size_t *)slv.raw.ptr;
+  size_t size;
+  memcpy(&size, slv.raw.ptr, sizeof(size_t));
   return size / sizeof(stringMetaData);
 }
 static inline fptr stringListView_get(stringListView slv, unsigned int index) {
   stringList_Solid sls = stringList_fromView(slv);
   if (index > sls.metaSize)
     return nullFptr;
-  stringMetaData thisS = sls.Arr_stringMetaData[index];
+  stringMetaData thisS;
+  memcpy(&thisS, sls.Arr_stringMetaData + sizeof(stringMetaData) * index, sizeof(stringMetaData));
   return ((fptr){thisS.width, (uint8_t *)(sls.Arr_char + thisS.index)});
 }
 

@@ -168,7 +168,7 @@ static printerFunction PrinterSingleton_get(fptr name) {
   struct HMap_both both = HMap_getBoth(PrinterSingleton.data, name);
   printerFunction p = NULL;
   if (both.val.width) {
-    p = *(printerFunction *)(both.val.ptr);
+    setvar_aligned(p, both.val.ptr);
     lasttick = !lasttick;
     lastprinters[lasttick] = p;
     lastnames[lasttick] = both.key;
