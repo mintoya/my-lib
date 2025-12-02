@@ -28,6 +28,7 @@ static const My_allocator defaultAllocator = {
     .r_alloc = default_r_alloc,
     .arb = NULL,
 };
+extern inline const My_allocator *getDefaultAllocator() { return &defaultAllocator; }
 #define aAlloc(allocatorptr, size) ((allocatorptr)->alloc((allocatorptr), size))
 
 #define aRealloc(allocatorptr, voidptr, size) \

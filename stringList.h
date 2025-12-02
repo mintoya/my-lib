@@ -138,7 +138,7 @@ unsigned int stringList_search(stringList *l, fptr what) {
         .width = meta[res].width,
         .ptr = (uint8_t *)List_getRef(&(l->List_char), meta[res].index),
     });
-    if (um_eq(thisS, what))
+    if (fptr_eq(thisS, what))
       return res;
   }
   return res;

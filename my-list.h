@@ -21,17 +21,17 @@ typedef struct List {
 List *List_new(const My_allocator *, size_t bytes);
 void List_makeNew(const My_allocator *, List *s, size_t bytes);
 // valid bytes list owns
-[[gnu::pure]] static inline size_t List_headArea(const List *l) {
+[[gnu::pure]] extern inline size_t List_headArea(const List *l) {
   return (l->width * l->length);
 }
 // all bytes list owns
-[[gnu::pure]] static inline size_t List_fullHeadArea(const List *l) {
+[[gnu::pure]] extern inline size_t List_fullHeadArea(const List *l) {
   return (l->width * l->size);
 }
-[[gnu::pure]] static inline void *List_getRefForce(const List *l, unsigned int i) {
+[[gnu::pure]] extern inline void *List_getRefForce(const List *l, unsigned int i) {
   return (l->head + l->width * i);
 }
-[[gnu::pure]] static inline void *List_getRef(const List *l, unsigned int i) {
+[[gnu::pure]] extern inline void *List_getRef(const List *l, unsigned int i) {
   void *res;
   res = (i < l->length) ? (l->head + l->width * i) : (NULL);
   return res;
@@ -39,7 +39,7 @@ void List_makeNew(const My_allocator *, List *s, size_t bytes);
 void List_resize(List *l, unsigned int newSize);
 void List_forceResize(List *l, unsigned int newSize);
 
-static inline void List_set(List *l, unsigned int i, const void *element) {
+extern inline void List_set(List *l, unsigned int i, const void *element) {
   if (i < l->length) {
     memcpy(l->head + i * l->width, element, l->width);
   }
@@ -47,7 +47,7 @@ static inline void List_set(List *l, unsigned int i, const void *element) {
   //   exit(1);
   // }
 }
-static inline void List_append(List *l, const void *element) {
+extern inline void List_append(List *l, const void *element) {
   if (l->size < l->length + 1) {
     List_resize(l, LIST_GROW_EQ(l->length));
   }
@@ -62,7 +62,7 @@ void List_appendFromArr(List *l, const void *source, unsigned int i);
 int List_search(List *l, const void *value);
 void List_insert(List *l, unsigned int i, void *element);
 void List_remove(List *l, unsigned int i);
-static inline void List_zeroOut(List *l) {
+extern inline void List_zeroOut(List *l) {
   memset(l->head, 0, List_fullHeadArea(l));
 }
 void List_free(List *l);

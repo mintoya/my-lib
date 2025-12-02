@@ -68,7 +68,13 @@ typedef union {
 typedef fptr um_fp;
 
 #include <string.h>
-[[gnu::pure]] static inline int fptr_cmp(const fptr a, const fptr b) {
+extern inline fptr fptr_fromCS(char *cstr) {
+  return (fptr){(size_t)strlen(cstr), (u8 *)cstr};
+}
+extern inline fptr fptr_fromPL(u8 *cstr, size_t len) {
+  return (fptr){len, (u8 *)cstr};
+}
+[[gnu::pure]] extern inline int fptr_cmp(const fptr a, const fptr b) {
   int wd = a.width - b.width;
   if (wd) {
     return wd;
@@ -105,7 +111,7 @@ typedef fptr um_fp;
 static int (*um_fp_cmp)(const fptr, const fptr) = fptr_cmp;
 
 #include <string.h>
-static inline void fpmemset(uint8_t *ptr, const fptr element, size_t ammount) {
+extern inline void fpmemset(uint8_t *ptr, const fptr element, size_t ammount) {
   if (!ammount)
     return;
   memcpy(ptr, element.ptr, element.width);
@@ -116,8 +122,7 @@ static inline void fpmemset(uint8_t *ptr, const fptr element, size_t ammount) {
   }
 }
 
-static char fptr_eq(fptr a, fptr b) { return !fptr_cmp(a, b); }
-static char (*um_eq)(fptr, fptr) = fptr_eq;
+extern inline char fptr_eq(fptr a, fptr b) { return !fptr_cmp(a, b); }
 
 #ifdef __cplusplus
 inline bool operator==(const fptr &a, const fptr &b) { return fptr_eq(a, b); }
