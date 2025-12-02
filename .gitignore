@@ -4,3 +4,4 @@ string-List/a*
 cSum/a*
 perf.*
 .gdb*
+.zig-cache
