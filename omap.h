@@ -45,6 +45,25 @@ u32 OMap_setRaw(OMap *map, fptr key, fptr val);
 fptr OMap_getRaw(const OMap *map, fptr key);
 
 u32 OMap_setKind(OMap *map, fptr key, fptr val, OMap_Meta kind);
+
+OMap *OMap_new(const My_allocator *allocator);
+
+u32 OMap_binarySearch(const OMap *map, fptr key);
+typedef struct {
+  stringList_Solid KVs;
+} OMap_solid;
+static inline u32 OMapView_length(const OMapView omv) {
+  return stringListView_length((stringListView){omv}) / 2;
+}
+OMap_both OMapView_get(OMapView mv, fptr key);
+OMap_both OMapView_getIndex(OMapView mv, u32 index);
+static inline OMap_solid OMap_fromView(const OMapView omv) { return (OMap_solid){stringList_fromView((stringListView){omv})}; }
+
+extern inline size_t OMap_footprint(OMap *map);
+extern inline void OMap_free(OMap *map);
+extern inline void OMapView_free(const My_allocator *allocator, OMapView v);
+extern inline void OMap_cleanupHandler(OMap **om);
+
 // takes fptr*,OMap*,stringList*
 typedef struct {
   void *ptr;
@@ -56,7 +75,18 @@ static inline OMap_ObjArg OMOJA(void *v, OMap_Meta m) {
   res.kind = m;
   return res;
 }
-static fptr OMapfptr_inside(um_fp string) {
+
+extern inline void OMap_setObj(OMap *map, fptr key, OMap_ObjArg val);
+extern inline void StringList_setObj(stringList *list, u32 key, OMap_ObjArg val);
+extern inline OMap_V Stringlist_getObj(stringList *list, u32 key);
+extern inline OMap_V StringlistView_getObj(stringListView list, u32 key);
+extern inline void StringList_appendObj(stringList *list, OMap_ObjArg val);
+
+#define OMap_scoped [[gnu::cleanup(OMap_cleanupHandler)]] OMap
+
+#endif // OMAP_H
+#ifdef OMAP_C
+inline fptr OMapfptr_inside(um_fp string) {
   char limits[2] = {'[', ']'};
   if (!string.width)
     return nullUmf;
@@ -112,19 +142,18 @@ static fptr OMapfptr_inside(um_fp string) {
   }
   return nullUmf;
 }
-
-static inline void OMap_setObj(OMap *map, fptr key, OMap_ObjArg val) {
+inline void OMap_setObj(OMap *map, fptr key, OMap_ObjArg val) {
   fptr fval;
   switch (val.kind) {
   case OMAP:
     fval =
-        OMap_toView(&defaultAllocator, (OMap *)val.ptr);
+        OMap_toView(NULL, (OMap *)val.ptr);
     break;
   case RAW:
     fval = *(fptr *)(val.ptr);
     break;
   case SLIST:
-    fval = stringList_toView(&defaultAllocator, (stringList *)val.ptr).raw;
+    fval = stringList_toView(NULL, (stringList *)val.ptr).raw;
     break;
   }
 
@@ -134,41 +163,41 @@ static inline void OMap_setObj(OMap *map, fptr key, OMap_ObjArg val) {
   case RAW:
     break;
   default:
-    aFree(&defaultAllocator, fval.ptr);
+    aFree(NULL, fval.ptr);
     break;
   }
 }
-static inline void StringList_setObj(stringList *list, u32 key, OMap_ObjArg val) {
+inline void StringList_setObj(stringList *list, u32 key, OMap_ObjArg val) {
   fptr fval;
   switch (val.kind) {
   case OMAP:
     fval =
-        OMap_toView(&defaultAllocator, (OMap *)val.ptr);
+        OMap_toView(NULL, (OMap *)val.ptr);
     break;
   case RAW:
     fval = *(fptr *)val.ptr;
     break;
   case SLIST:
-    fval = stringList_toView(&defaultAllocator, (stringList *)val.ptr).raw;
+    fval = stringList_toView(NULL, (stringList *)val.ptr).raw;
     break;
   }
   fptr both;
   both.width = sizeof(OMap_Meta) + fval.width;
-  uint8_t *dataBuffer = (uint8_t *)aAlloc(&defaultAllocator, both.width);
+  uint8_t *dataBuffer = (uint8_t *)aAlloc(NULL, both.width);
   both.ptr = dataBuffer;
   *(OMap_Meta *)dataBuffer = val.kind;
   memcpy(dataBuffer + sizeof(OMap_Meta), fval.ptr, fval.width);
   stringList_set(list, both, key);
-  aFree(&defaultAllocator, both.ptr);
+  aFree(NULL, both.ptr);
   switch (val.kind) {
   case RAW:
     break;
   default:
-    aFree(&defaultAllocator, fval.ptr);
+    aFree(NULL, fval.ptr);
     break;
   }
 }
-static inline OMap_V Stringlist_getObj(stringList *list, u32 key) {
+inline OMap_V Stringlist_getObj(stringList *list, u32 key) {
   fptr val = stringList_get(list, key);
   if (!val.ptr)
     return (OMap_V){
@@ -182,7 +211,7 @@ static inline OMap_V Stringlist_getObj(stringList *list, u32 key) {
   };
   return res;
 }
-static inline OMap_V StringlistView_getObj(stringListView list, u32 key) {
+inline OMap_V StringlistView_getObj(stringListView list, u32 key) {
   fptr val = stringListView_get(list, key);
   if (!val.ptr)
     return (OMap_V){
@@ -196,65 +225,49 @@ static inline OMap_V StringlistView_getObj(stringListView list, u32 key) {
   };
   return res;
 }
-static inline void StringList_appendObj(stringList *list, OMap_ObjArg val) {
+inline void StringList_appendObj(stringList *list, OMap_ObjArg val) {
   fptr fval;
   switch (val.kind) {
   case OMAP:
     fval =
-        OMap_toView(&defaultAllocator, (OMap *)val.ptr);
+        OMap_toView(NULL, (OMap *)val.ptr);
     break;
   case RAW:
     fval = *(fptr *)val.ptr;
     break;
   case SLIST:
-    fval = stringList_toView(&defaultAllocator, (stringList *)val.ptr).raw;
+    fval = stringList_toView(NULL, (stringList *)val.ptr).raw;
     break;
   }
   fptr both;
   both.width = sizeof(OMap_Meta) + fval.width;
-  uint8_t *dataBuffer = (uint8_t *)aAlloc(&defaultAllocator, both.width);
+  uint8_t *dataBuffer = (uint8_t *)aAlloc(NULL, both.width);
   both.ptr = dataBuffer;
   *(OMap_Meta *)dataBuffer = val.kind;
   memcpy(dataBuffer + sizeof(OMap_Meta), fval.ptr, fval.width);
   stringList_append(list, both);
-  aFree(&defaultAllocator, both.ptr);
+  aFree(NULL, both.ptr);
   switch (val.kind) {
   case RAW:
     break;
   default:
-    aFree(&defaultAllocator, fval.ptr);
+    aFree(NULL, fval.ptr);
     break;
   }
 }
-
-OMap *OMap_new(const My_allocator *allocator);
-
-u32 OMap_binarySearch(const OMap *map, fptr key);
-typedef struct {
-  stringList_Solid KVs;
-} OMap_solid;
-static inline u32 OMapView_length(const OMapView omv) {
-  return stringListView_length((stringListView){omv}) / 2;
-}
-OMap_both OMapView_get(OMapView mv, fptr key);
-OMap_both OMapView_getIndex(OMapView mv, u32 index);
-static inline OMap_solid OMap_fromView(const OMapView omv) { return (OMap_solid){stringList_fromView((stringListView){omv})}; }
-
-static inline size_t OMap_footprint(OMap *map) { return stringList_footprint(map->KVs); }
-extern inline void OMap_free(OMap *map) {
+inline size_t OMap_footprint(OMap *map) { return stringList_footprint(map->KVs); }
+inline void OMap_free(OMap *map) {
   const My_allocator *allocator = map->KVs->List_char.allocator;
   stringList_free(map->KVs);
   aFree(allocator, map);
 }
-static inline void OMapView_free(const My_allocator *allocator, OMapView v) { aFree(allocator, v.ptr); }
-static inline void OMap_cleanupHandler(OMap **om) {
+inline void OMapView_free(const My_allocator *allocator, OMapView v) { aFree(allocator, v.ptr); }
+inline void OMap_cleanupHandler(OMap **om) {
   if (om && *om) {
     OMap_free(*om);
     *om = NULL;
   }
 }
-
-#include "print.h"
 #define OMap_getM(map, ...) OMap_getL(map, APPLY_N(fp_from, __VA_ARGS__), nullFptr)
 static inline OMap_V OMap_getL(const OMap *map, fptr firstkey, ...) {
   va_list vl;
@@ -326,11 +339,6 @@ static inline OMap_V OMap_getLA(const OMap *map, uint nargs, fptr *args) {
 
   return place;
 }
-
-#define OMap_scoped [[gnu::cleanup(OMap_cleanupHandler)]] OMap
-
-#endif // OMAP_H
-#ifdef OMAP_C
 fptr OMap_getKey(const OMap *map, u32 index) { return stringList_get(map->KVs, index * 2); }
 fptr OMap_getVal(const OMap *map, u32 index) { return stringList_get(map->KVs, index * 2 + 1); }
 u32 OMap_length(const OMap *map) { return stringList_length(map->KVs) / 2; }

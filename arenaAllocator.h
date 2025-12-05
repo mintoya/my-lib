@@ -32,6 +32,7 @@ void arena_free(const My_allocator *allocator, void *ptr);
 void *arena_alloc(const My_allocator *ref, size_t size);
 void *arena_r_alloc(const My_allocator *arena, void *ptr, size_t size);
 ArenaBlock *arenablock_new(const My_allocator *allocator, size_t blockSize);
+OwnAllocator arena_owned_new(void);
 
 void arena_cleanup(My_allocator *arena) {
   ArenaBlock *it = (ArenaBlock *)(arena->arb);
@@ -75,21 +76,31 @@ void arena_free(const My_allocator *allocator, void *ptr) {
   // noop
 }
 
+My_allocator *ownArenaInit(void) {
+  return arena_new(1024);
+}
+void ownArenaDeInit(My_allocator *d) {
+  return arena_cleanup(d);
+}
+OwnAllocator arena_owned_new(void) {
+  return (OwnAllocator){ownArenaInit, ownArenaDeInit};
+}
 My_allocator *arena_new_ext(const My_allocator *base, size_t blockSize) {
   My_allocator *res =
       (My_allocator *)aAlloc(base, sizeof(My_allocator));
   if (!res)
     exit(ENOMEM);
-  *res = (My_allocator){
-      .alloc = arena_alloc,
-      .free = arena_free,
-      .r_alloc = arena_r_alloc,
-      .arb = arenablock_new(base, blockSize),
-  };
+  *res =
+      (My_allocator){
+          arena_alloc,
+          arena_free,
+          arena_r_alloc,
+      };
+  res->arb = arenablock_new(base, blockSize);
   return res;
 }
 My_allocator *arena_new(size_t blockSize) {
-  return arena_new_ext(&defaultAllocator, blockSize);
+  return arena_new_ext(NULL, blockSize);
 }
 void *arena_r_alloc(const My_allocator *arena, void *ptr, size_t size) {
   size = (size + alignof(max_align_t) - 1) / alignof(max_align_t) * alignof(max_align_t);

@@ -22,13 +22,13 @@ static OMap *parse(OMap *parent, stringList *lparent, fptr kml);
 static stringList *parseList(stringList *lparent, fptr kml) {
   if (!kml.width) {
     if (!(lparent)) {
-      return stringList_new(&defaultAllocator);
+      return stringList_new(NULL);
     } else {
       return lparent ? lparent : NULL;
     }
   }
   if (!(lparent)) {
-    lparent = stringList_new(&defaultAllocator);
+    lparent = stringList_new(NULL);
   }
   kml = kml_trimPadding(kml);
   fptr val, pval;
@@ -90,13 +90,13 @@ static OMap *parse(OMap *parent, stringList *lparent, fptr kml) {
   kml = kml_trimPadding(kml);
   if (!kml.width) {
     if (!(parent || lparent)) {
-      return OMap_new(&defaultAllocator);
+      return OMap_new(NULL);
     } else {
       return parent ? parent : NULL;
     }
   }
   if (!(parent || lparent)) {
-    parent = OMap_new(&defaultAllocator);
+    parent = OMap_new(NULL);
   }
   if (fpChar(kml)[0] == '{') {
     kml = kml_inside("{}", kml);
@@ -104,7 +104,7 @@ static OMap *parse(OMap *parent, stringList *lparent, fptr kml) {
   kml = kml_trimPadding(kml);
   if (!kml.width) {
     if (!(parent || lparent)) {
-      return OMap_new(&defaultAllocator);
+      return OMap_new(NULL);
     } else {
       return parent ? parent : NULL;
     }

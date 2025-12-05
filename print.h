@@ -82,7 +82,7 @@ static void stdoutPrint(
     char *useBuffer;
     size_t useBufferPlace = 0;
     if (length > bufLen) {
-      useBuffer = (char *)aAlloc(&defaultAllocator, length * sizeof(char) * 4);
+      useBuffer = (char *)aAlloc(NULL, length * sizeof(char) * 4);
     } else {
       useBuffer = buf.crBuf;
     }
@@ -91,7 +91,7 @@ static void stdoutPrint(
     fwrite(useBuffer, sizeof(char), useBufferPlace, stdout);
 
     if (length > bufLen)
-      aFree(&defaultAllocator, useBuffer);
+      aFree(NULL, useBuffer);
 
     buf.place = 0;
   } else {
@@ -134,7 +134,7 @@ static void asPrint(
   assert(!!listptr);
   List *list = *(List **)listptr;
   if (!list)
-    list = List_new(&defaultAllocator, sizeof(wchar));
+    list = List_new(NULL, sizeof(wchar));
   switch (list->width) {
   case sizeof(wchar):
     List_appendFromArr(list, c, length);
@@ -156,8 +156,8 @@ static struct {
 } PrinterSingleton;
 
 static void PrinterSingleton_init() {
-  PrinterSingleton.data = HMap_new(&defaultAllocator, 20);
-  stringList_preload(PrinterSingleton.data->KVs, 20, 10);
+  PrinterSingleton.data = HMap_new(NULL, 20);
+  HMap_preload(PrinterSingleton.data, 20, 10);
 }
 static void PrinterSingleton_deinit() { HMap_free(PrinterSingleton.data); }
 static void PrinterSingleton_append(fptr name, printerFunction function) {

@@ -214,9 +214,9 @@ static inline T *ref_tmp(T &&v) {
     fptr __temp = fp;      \
     __VA_ARGS__            \
   } while (0)
-#define lmemset(arr, arrlen, ...)                       \
+#define lmemset(arr, arrlen, value)                     \
   do {                                                  \
-    typeof(__VA_ARGS__) __temp = (__VA_ARGS__);         \
+    typeof(value) __temp = (value);                     \
     fptr __tempFp = ((fptr){                            \
         .width = sizeof(__temp),                        \
         .ptr = ((uint8_t *)&(__temp)),                  \

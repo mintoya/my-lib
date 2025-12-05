@@ -3,32 +3,15 @@
 #include "allocator.h"
 #include "fptr.h"
 #include "stringList.h"
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-typedef struct {
-  u32 index;
-  u32 next;
-  bool hasindex : 1;
-  bool hasnext : 1;
-} HMap_innertype;
-typedef struct {
-  unsigned int metaSize;
-  HMap_innertype *metadata;
-  List *links;
-  stringList *KVs;
-} HMap;
-static inline size_t HMap_footprint(HMap *hm) {
-  size_t res = stringList_footprint(hm->KVs) +
-               hm->metaSize * sizeof(HMap_innertype) +
-               List_fullHeadArea(hm->links);
-  return res;
-}
-
-#define HMap_innerEmpty ((HMap_innertype){0})
-#include <stddef.h>
-#include <stdint.h>
 #include <string.h>
+
+typedef struct HMap HMap;
+
+extern inline umax HMap_hash(const fptr str);
 
 // TODO handle errors
 // pub extern fn HMap_new(*const c.My_allocator, u32) *HMap;
@@ -36,7 +19,100 @@ static inline size_t HMap_footprint(HMap *hm) {
 // pub extern fn HMap_remake(arg: *HMap) void;
 // pub extern fn HMap_get(map: *HMap, c.fptr) c.fptr;
 // pub extern fn HMap_set(map: *HMap, key: c.fptr, val: c.fptr) c_uint;
-umax HMap_hash(const fptr str) {
+
+// exports
+HMap *HMap_new(const My_allocator *allocator, unsigned int metaSize);
+void HMap_free(HMap *hm);
+void HMap_remake(HMap *hm);
+fptr HMap_get(HMap *, fptr);
+u32 HMap_set(HMap *map, fptr key, fptr val);
+u32 HMap_count(const HMap *map);
+extern inline fptr HMap_getKey(const HMap *map, u32 n); // linked to getKey, but otherwise meaningless
+extern inline fptr HMap_getVal(const HMap *map, u32 n); // linked to getVal, but otherwise meaningless
+
+extern inline void HMap_preload(HMap *, u32 pairCount, u32 guessSize);
+stringList *HMap_getkeys(HMap *map);
+size_t HMap_countCollisions(HMap *map);
+typedef struct HMap_both {
+  fptr key;
+  fptr val;
+} HMap_both;
+HMap_both HMap_getBoth(HMap *map, fptr key);
+HMap_both HMap_getNth(const HMap *map, u32 n);
+
+size_t HMap_footprint(HMap *hm);
+static inline void HMap_cleanup_handler(HMap **hm) {
+  if (hm && *hm) {
+    HMap_free(*hm);
+    *hm = NULL;
+  }
+}
+#define HMap_scoped [[gnu::cleanup(HMap_cleanup_handler)]] HMap
+
+#endif // HMAP_H
+
+#ifdef HMAP_C
+
+typedef struct {
+  u32 index;
+  u32 next;
+  bool hasindex : 1;
+  bool hasnext : 1;
+} HMap_innertype;
+
+static const HMap_innertype HMap_innerEmpty = (HMap_innertype){0, 0, 0, 0};
+
+typedef struct HMap {
+  unsigned int metaSize;
+  HMap_innertype *metadata;
+  List *links;
+  stringList *KVs;
+} HMap;
+size_t HMap_footprint(HMap *hm) {
+  size_t res = stringList_footprint(hm->KVs) +
+               hm->metaSize * sizeof(HMap_innertype) +
+               List_fullHeadArea(hm->links);
+  return res;
+}
+stringList *HMap_getkeys(HMap *map) {
+  stringList *keys = stringList_new(map->KVs->List_stringMetaData.allocator);
+
+  for (size_t i = 0; i < map->metaSize; i++) {
+    HMap_innertype *h = &map->metadata[i];
+
+    while (h->hasindex) {
+      stringList_append(keys, stringList_get(map->KVs, h->index));
+
+      if (!h->hasnext)
+        break;
+
+      h = (HMap_innertype *)List_getRef(map->links, h->next);
+      if (!h)
+        break;
+    }
+  }
+
+  return keys;
+}
+HMap_both HMap_getNth(const HMap *map, u32 n) {
+  return (HMap_both){
+      .key = stringList_get(map->KVs, n * 2),
+      .val = stringList_get(map->KVs, n * 2 + 1),
+  };
+}
+u32 HMap_count(const HMap *map) {
+  return stringList_length(map->KVs) / 2;
+}
+size_t HMap_countCollisions(HMap *map) {
+  return (map->links->length);
+}
+void HMap_remake(HMap *hm) {
+  stringList *l = stringList_remake(hm->KVs);
+  stringList_free(hm->KVs);
+  hm->KVs = l;
+}
+#include <assert.h>
+inline umax HMap_hash(const fptr str) {
   umax hash = 5381;
   size_t s = 0;
   for (; s < str.width; s++)
@@ -62,7 +138,13 @@ umax HMap_hash(const fptr str) {
   //
   // return res;
 }
-#include <assert.h>
+void HMap_free(HMap *hm) {
+  const My_allocator *allocator = hm->links->allocator;
+  List_free(hm->links);
+  stringList_free(hm->KVs);
+  aFree(allocator, hm->metadata);
+  aFree(allocator, hm);
+}
 HMap *HMap_new(const My_allocator *allocator, unsigned int metaSize) {
   assert(metaSize != 0 && "metaSize cant be 0");
 
@@ -75,72 +157,8 @@ HMap *HMap_new(const My_allocator *allocator, unsigned int metaSize) {
   };
   List_resize(res->links, metaSize / 4);
   lmemset(res->metadata, metaSize, HMap_innerEmpty);
-  assert(res->metaSize != 0 && "metasize corrupted in init");
   return res;
 }
-unsigned int HMap_set(HMap *, fptr key, fptr val);
-fptr HMap_get(HMap *, fptr);
-extern inline void HMap_free(HMap *hm) {
-  const My_allocator *allocator = hm->links->allocator;
-  List_free(hm->links);
-  stringList_free(hm->KVs);
-  aFree(allocator, hm->metadata);
-  aFree(allocator, hm);
-}
-
-static inline void HMap_cleanup_handler(HMap **hm) {
-  if (hm && *hm) {
-    HMap_free(*hm);
-    *hm = NULL;
-  }
-}
-extern inline void HMap_remake(HMap *hm) {
-  stringList *l = stringList_remake(hm->KVs);
-  stringList_free(hm->KVs);
-  hm->KVs = l;
-}
-extern inline stringList *HMap_getkeys(HMap *map) {
-  stringList *keys = stringList_new(map->KVs->List_stringMetaData.allocator);
-
-  for (size_t i = 0; i < map->metaSize; i++) {
-    HMap_innertype *h = &map->metadata[i];
-
-    while (h->hasindex) {
-      stringList_append(keys, stringList_get(map->KVs, h->index));
-
-      if (!h->hasnext)
-        break;
-
-      h = (HMap_innertype *)List_getRef(map->links, h->next);
-      if (!h)
-        break;
-    }
-  }
-
-  return keys;
-}
-extern inline size_t HMap_countCollisions(HMap *map) {
-  return (map->links->length);
-}
-typedef struct HMap_both {
-  fptr key;
-  fptr val;
-} HMap_both;
-HMap_both HMap_getBoth(HMap *map, fptr key);
-extern inline u32 HMap_count(const HMap *map) {
-  return stringList_length(map->KVs) / 2;
-}
-extern inline HMap_both HMap_getNth(const HMap *map, u32 n) {
-  return (HMap_both){
-      .key = stringList_get(map->KVs, n * 2),
-      .val = stringList_get(map->KVs, n * 2 + 1),
-  };
-}
-#define HMap_scoped [[gnu::cleanup(HMap_cleanup_handler)]] HMap
-
-#endif // HMAP_H
-
-#ifdef HMAP_C
 unsigned int HMap_setForce(HMap *map, HMap_innertype *handle, fptr key, fptr val) {
   if (!handle->hasindex) {
     handle->index = stringList_append(map->KVs, key);
@@ -157,7 +175,7 @@ unsigned int HMap_setForce(HMap *map, HMap_innertype *handle, fptr key, fptr val
       handle->hasnext = 1;
       handle->next = map->links->length;
       next_index = handle->next;
-      mList_add(map->links, HMap_innertype, HMap_innerEmpty);
+      List_append(map->links, NULL);
     } else {
       next_index = handle->next;
     }
@@ -166,7 +184,7 @@ unsigned int HMap_setForce(HMap *map, HMap_innertype *handle, fptr key, fptr val
     );
   }
 }
-unsigned int HMap_set(HMap *map, fptr key, fptr val) {
+u32 HMap_set(HMap *map, fptr key, fptr val) {
   unsigned int hash = HMap_hash(key);
   if (map->metaSize == 0) {
     fprintf(stderr, "\n\nkvs: %p,links: %p,metaptr: %p,metasize: %u\n\n", map->KVs, map->links, map->metadata, map->metaSize);
@@ -202,5 +220,14 @@ struct HMap_both HMap_getBoth(HMap *map, fptr key) {
       return (struct HMap_both){nullFptr, nullFptr};
     ht = (HMap_innertype *)List_getRef(map->links, ht->next);
   }
+}
+inline void HMap_preload(HMap *map, u32 pairCount, u32 guessSize) {
+  stringList_preload(map->KVs, pairCount * 2, guessSize);
+}
+inline fptr HMap_getKey(const HMap *map, u32 n) {
+  return stringList_get(map->KVs, n * 2);
+}
+inline fptr HMap_getVal(const HMap *map, u32 n) {
+  return stringList_get(map->KVs, n * 2 + 1);
 }
 #endif // HMAP_C
