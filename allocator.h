@@ -2,10 +2,14 @@
 #define MY_ALLOCATOR_H
 #include <stddef.h>
 typedef struct My_allocator My_allocator;
+typedef void *(*My_allocator_alloc)(const My_allocator *, size_t);
+typedef void (*My_allocator_free)(const My_allocator *, void *);
+typedef void *(*My_allocator_realloc)(const My_allocator *, void *, size_t);
+
 typedef struct My_allocator {
-  void *(*alloc)(const My_allocator *, size_t);
-  void (*free)(const My_allocator *, void *);
-  void *(*r_alloc)(const My_allocator *, void *, size_t);
+  My_allocator_alloc alloc;
+  My_allocator_free free;
+  My_allocator_realloc r_alloc;
   void *arb; // state
 } My_allocator;
 
@@ -28,7 +32,7 @@ static const My_allocator defaultAllocator = {
     .r_alloc = default_r_alloc,
     .arb = NULL,
 };
-extern inline const My_allocator *getDefaultAllocator() { return &defaultAllocator; }
+static const My_allocator *getDefaultAllocator() { return &defaultAllocator; }
 #define aAlloc(allocatorptr, size) ((allocatorptr)->alloc((allocatorptr), size))
 
 #define aRealloc(allocatorptr, voidptr, size) \

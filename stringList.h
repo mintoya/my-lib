@@ -4,14 +4,15 @@
 #include "boxer.h"
 #include "fptr.h"
 #include "my-list.h"
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
 typedef struct {
-  uint index;
-  uint width;
+  u32 index;
+  u32 width;
 } stringMetaData;
 
 typedef struct {
@@ -32,11 +33,12 @@ static inline void stringList_preload(stringList *sl, uint elementCount, uint el
 }
 
 stringList *stringList_new(const My_allocator *);
-fptr stringList_get(stringList *l, unsigned int index);
-ffptr stringList_getExt(stringList *l, unsigned int index);
-void stringList_insert(stringList *l, fptr, unsigned int index);
-void stringList_set(stringList *l, fptr, unsigned int index);
+fptr stringList_get(stringList *l, u32 index);
+ffptr stringList_getExt(stringList *l, u32 index);
+void stringList_insert(stringList *l, fptr, u32 index);
+void stringList_set(stringList *l, fptr, u32);
 unsigned int stringList_append(stringList *l, fptr);
+void stringList_remove(stringList *l, u32 idx);
 
 #define stringList_fromStat(allocator, char_ptr_ptr)                 \
   ({                                                                 \
@@ -89,7 +91,7 @@ static inline fptr stringListView_get(stringListView slv, unsigned int index) {
 void stringListView_free(const My_allocator *allocator, stringListView slv);
 
 // returns length if not found
-unsigned int stringList_search(stringList *l, fptr key);
+u32 stringList_search(stringList *l, fptr key);
 // new sl with unused space removed
 stringList *stringList_remake(stringList *);
 void stringList_free(stringList *l);
@@ -118,7 +120,7 @@ stringList *stringList_new(const My_allocator *allocator) {
 }
 #define max(a, b) ((a < b) ? (b) : (a))
 
-fptr stringList_get(stringList *l, unsigned int index) {
+fptr stringList_get(stringList *l, u32 index) {
   if (index >= l->List_stringMetaData.length)
     return nullFptr;
   stringMetaData thisS =
@@ -145,10 +147,8 @@ unsigned int stringList_search(stringList *l, fptr what) {
 }
 stringList *stringList_remake(stringList *origional) {
   stringList *res = stringList_new(origional->List_char.allocator);
-  for (unsigned int i = 0; i < stringList_length(origional); i++) {
-    fptr item = stringList_get(origional, i);
-    stringList_append(res, item);
-  }
+  for (unsigned int i = 0; i < stringList_length(origional); i++)
+    stringList_append(res, stringList_get(origional, i));
   return res;
 }
 unsigned int stringList_append(stringList *l, fptr value) {
@@ -170,7 +170,11 @@ void stringList_insert(stringList *l, fptr value, unsigned int index) {
   mList_insert(&(l->List_stringMetaData), stringMetaData, thisS, index);
   List_appendFromArr(&(l->List_char), value.ptr, value.width);
 }
-void stringList_set(stringList *l, fptr value, unsigned int index) {
+void stringList_remove(stringList *l, u32 idx) {
+  List_remove(&(l->List_stringMetaData), idx);
+}
+void stringList_set(stringList *l, fptr value, u32 index) {
+  assert(value.width < (size_t)((u32)-1));
   if (index == stringList_length(l)) {
     stringList_append(l, value);
     return;

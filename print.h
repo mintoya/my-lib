@@ -10,6 +10,7 @@
 #include "allocator.h"
 #include "fptr.h"
 #include "hmap.h"
+#include "my-list.h"
 #include "printer/macros.h"
 #include "printer/variadic.h"
 
@@ -59,7 +60,7 @@ static void stdoutPrint(
     unsigned int length,
     char flush
 ) {
-  static const size_t bufLen = 2 << 16;
+#define bufLen (2 << 16)
   mbstate_t mbs = {0};
   static thread_local struct
   {
@@ -68,8 +69,7 @@ static void stdoutPrint(
     size_t place;
     size_t crPlace;
   } buf = {
-      .place = 0,
-      .crPlace = 0,
+      0
   };
 
   if (buf.place + length >= bufLen || flush) {
@@ -131,13 +131,23 @@ static void asPrint(
     char flush
 ) {
   (void)flush;
-  // assert(!!listptr);
+  assert(!!listptr);
   List *list = *(List **)listptr;
-
   if (!list)
-    list = mList(wchar);
-  // assert(list->width == sizeof(wchar));
-  List_appendFromArr(list, c, length);
+    list = List_new(&defaultAllocator, sizeof(wchar));
+  switch (list->width) {
+  case sizeof(wchar):
+    List_appendFromArr(list, c, length);
+    break;
+  case sizeof(char):
+    for (size_t i = 0; i < length; i++)
+      List_append(list, (char *)(c + i));
+    break;
+  default:
+    assert(false || ({fprintf(stderr, "sizes %llu & %llu \n %llu not supported\n",sizeof(wchar),sizeof(char),list->width);
+       false; }));
+    break;
+  }
   *(List **)listptr = list;
 }
 
@@ -187,7 +197,11 @@ static printerFunction PrinterSingleton_get(fptr name) {
 // clang-format on
 
 [[gnu::constructor(200)]] static void printerInit() {
+#ifdef __WIN32
   setlocale(LC_ALL, "");
+#else
+  setlocale(LC_ALL, ".UTF8");
+#endif
   PrinterSingleton_init();
 }
 [[gnu::destructor]] static void printerDeinit() { PrinterSingleton_deinit(); }
@@ -313,7 +327,7 @@ struct print_arg {
   REGISTER_PRINTER(wchar, {PUTC(in);});
 
   REGISTER_PRINTER(size_t, {
-    int l = 1;
+    size_t l = 1;
     while (l <= in / 10)
       l *= 10;
     while (l) {

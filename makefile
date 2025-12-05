@@ -7,20 +7,7 @@ OBJECTS = ./examples/omapTest.c
 
 UNAME_S := $(shell uname -s 2>/dev/null)
 
-ifeq ($(UNAME_S),Darwin)    
-    EXECUTABLE = a
-else ifeq ($(UNAME_S),Linux) 
-    EXECUTABLE = a
-else ifneq ($(findstring MINGW,$(UNAME_S)),)
-    EXECUTABLE = a.exe
-else ifneq ($(findstring CYGWIN,$(UNAME_S)),)
-    EXECUTABLE = a.exe
-else ifneq ($(findstring MSYS,$(UNAME_S)),) 
-    EXECUTABLE = a.exe
-else                                       
-    EXECUTABLE = a
-endif
-
+EXECUTABLE = a.exe
 
 # TODO
 # gcc -fdump-tree-original printexample.c

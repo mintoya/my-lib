@@ -8,7 +8,8 @@
 #include <stdint.h>
 
 int main(void) {
-  Arena_scoped *local = arena_new(2500);
+  // Arena_scoped *local = arena_new(2500);
+  My_allocator *local = arena_new(2500);
 
   OMap *omap = OMap_new(local);
   OMap_set(omap, fp_from("a"), fp_from("b"));
@@ -22,10 +23,10 @@ int main(void) {
   OMap_setObj(omap, fp_from("recurse"), OMOJA(omap, OMAP));
 
   println("${OMap}", *omap);
-  List_scoped *chars = NULL;
+  List_scoped *chars = mList(char);
   print_as(chars, "${OMap}", *omap);
   fptr printOutput = ((fptr){
-      .width = chars->length * sizeof(char),
+      .width = chars->length,
       .ptr = chars->head,
   });
   print_wf(kmlFormatPrinter, "print output: ${}", printOutput);
@@ -33,5 +34,6 @@ int main(void) {
   print_wf(kmlFormatPrinter, "parsed output: ${OMap}", *parsed);
 
   println("arena size: ${}", arena_footprint(local));
+  arena_cleanup_handler(&local);
   return EXIT_SUCCESS;
 }

@@ -1,16 +1,18 @@
 #ifndef MY_LIST_H
 #define MY_LIST_H
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
-static inline bool memzeroed(void *mem, size_t len) {
-  for (; len > 0; len--) {
-    if (((uint8_t *)mem)[len - 1])
-      return false;
-  }
-  return true;
-}
+#ifdef OLD_ATTR
+#define ATTR(arg, ...) __attribute__((arg))
+#elifdef NEW_ATTR
+#define ATTR(arg, ...) [[__VA_OPT__(__VA_ARGS__::) arg]]
+#else
+#define ATTR(...)
+#endif
+
 // clang-format off
   #ifndef LIST_GROW_EQ
     #define LIST_GROW_EQ(uint) ((uint + (uint << 1)) + 1)
@@ -24,122 +26,52 @@ typedef struct List {
   uint8_t *head;
   const My_allocator *allocator;
 } List;
-typedef enum : uint8_t { CANTRESIZE,
-                         INVALID,
-                         OK = 0,
+typedef enum : uint8_t {
+  OK = 0,
+  CANTRESIZE,
+  INVALID,
 } List_opError;
-extern inline List_opError List_validState(const List *l) {
-  // clang-format off
-  return (
-      l &&
-      l->width &&
-      l->size &&
-      l->head &&
-      l->allocator &&
-      l->size >= l->length
-  )?OK:INVALID;
-  // clang-format on
-}
-extern inline void List_makeNew(const My_allocator *allocator, List *l, size_t bytes) {
-  if (!l)
-    return;
-  *l = (List){
-      .width = bytes,
-      .length = 0,
-      .size = 1,
-      .head = (uint8_t *)aAlloc(allocator, bytes),
-      .allocator = allocator,
-  };
-}
-extern inline void List_free(List *l) {
-  if (!l || !l->allocator)
-    return;
-  if (l->head)
-    aFree(l->allocator, l->head);
-  l->head = NULL;
-  l->width = 0;
-  aFree(l->allocator, l);
-}
+struct List_opErrorStruct {
+  List_opError Ok;
+  List_opError CantResize;
+  List_opError Invalid;
+};
+extern const struct List_opErrorStruct List_opErrorS;
+extern inline List_opError List_validState(const List *l);
 // same as list_resize but it enforces size
 List_opError List_forceResize(List *l, unsigned int newSize);
-extern inline List_opError List_resize(List *l, unsigned int newSize) {
-  newSize = newSize ? newSize : 1;
-  if ((newSize > l->size || newSize < l->size / 8))
-    return List_forceResize(l, newSize);
-  return OK;
-}
-extern inline List *List_new(const My_allocator *allocator, size_t bytes) {
-  List *l = (List *)aAlloc(allocator, sizeof(List));
-  List_makeNew(allocator, l, bytes);
-  return l;
-}
 
-[[gnu::pure]] extern inline size_t List_headArea(const List *l) {
-  return (l->width * l->length);
-}
+ATTR(pure, gnu)
+extern inline size_t List_headArea(const List *l);
 // all bytes list owns
-[[gnu::pure]] extern inline size_t List_fullHeadArea(const List *l) {
-  return (l->width * l->size);
-}
-[[gnu::pure]] extern inline void *List_getRefForce(const List *l, unsigned int i) {
-  return (l->head + l->width * i);
-}
-[[gnu::pure]] extern inline void *List_getRef(const List *l, unsigned int i) {
-  if (List_validState(l) != OK)
-    return NULL;
+ATTR(pure, gnu)
+extern inline size_t List_fullHeadArea(const List *l);
+ATTR(pure, gnu)
+extern inline void *List_getRefForce(const List *l, unsigned int i);
+ATTR(pure, gnu)
+extern inline void *List_getRef(const List *l, unsigned int i);
+extern inline void List_makeNew(const My_allocator *allocator, List *l, size_t bytes);
+extern inline List_opError List_resize(List *l, unsigned int newSize);
+extern inline List *List_new(const My_allocator *allocator, size_t bytes);
+extern inline void List_free(List *l);
 
-  return (i < l->length) ? (l->head + l->width * i) : (NULL);
-}
-
-extern inline void List_set(List *l, unsigned int i, const void *element) {
-  if (List_validState(l) != OK)
-    return;
-  if (i < l->length) {
-    if (element) {
-      memcpy(l->head + i * l->width, element, l->width);
-    } else {
-      memset(l->head + i * l->width, 0, l->width);
-    }
-  }
-}
 List_opError List_append(List *l, const void *element);
 List_opError List_insert(List *l, unsigned int i, void *element);
 // helper function to append 0's
 List_opError List_pad(List *l, unsigned int ammount);
 List *List_fromArr(const My_allocator *, const void *source, unsigned int size, unsigned int length);
 List_opError List_appendFromArr(List *l, const void *source, unsigned int i);
-extern inline uint32_t List_search(const List *l, const void *element) {
-  if (!List_validState(l))
-    return ((uint32_t)-1);
-  unsigned int i = 0;
-  if (element) {
-    for (; i < l->length; i++) {
-      if (!memcmp(element, List_getRef(l, i), l->width))
-        return i;
-    }
-  } else {
-    for (; i < l->length; i++) {
-      if (memzeroed(List_getRef(l, i), l->width))
-        return i;
-    }
-  }
-  return i;
-}
-extern inline void List_remove(List *l, unsigned int i) {
-  if (List_validState(l) != OK)
-    return;
-  memmove(l->head + i * l->width, l->head + (i + 1) * l->width, (l->length - i - 1) * l->width);
-  l->length--;
-}
-extern inline void List_zeroOut(List *l) {
-  if (!List_validState(l))
-    return;
-  memset(l->head, 0, List_fullHeadArea(l));
-}
+
+extern inline uint32_t List_length(List *l);
+extern inline void List_set(List *l, unsigned int i, const void *element);
+extern inline uint32_t List_search(const List *l, const void *element);
+extern inline void List_remove(List *l, unsigned int i);
+extern inline void List_zeroOut(List *l);
 void *List_toBuffer(List *l);
 void *List_fromBuffer(void *ref);
 List *List_deepCopy(List *l);
-extern inline void List_cleanup_handler(List **l) {
+
+static void List_cleanup_handler(List **l) {
   if (l && *l)
     List_free(*l);
   *l = NULL;
@@ -178,7 +110,120 @@ extern inline void List_cleanup_handler(List **l) {
 #endif // MY_LIST_H
 
 #ifdef MY_LIST_C
+const struct List_opErrorStruct List_opErrorS = {
+    OK, CANTRESIZE, INVALID
+};
+static inline bool memzeroed(void *mem, size_t len) {
+  for (; len > 0; len--) {
+    if (((uint8_t *)mem)[len - 1])
+      return false;
+  }
+  return true;
+}
+inline List_opError List_resize(List *l, unsigned int newSize) {
+  newSize = newSize ? newSize : 1;
+  if ((newSize > l->size || newSize < l->size / 8))
+    return List_forceResize(l, newSize);
+  return OK;
+}
+inline List *List_new(const My_allocator *allocator, size_t bytes) {
+  List *l = (List *)aAlloc(allocator, sizeof(List));
+  List_makeNew(allocator, l, bytes);
+  return l;
+}
+ATTR(pure, gnu)
+inline size_t List_headArea(const List *l) {
+  return (l->width * l->length);
+}
+// all bytes list owns
+ATTR(pure, gnu)
+inline size_t List_fullHeadArea(const List *l) {
+  return (l->width * l->size);
+}
+ATTR(pure, gnu)
+inline void *List_getRefForce(const List *l, unsigned int i) {
+  return (l->head + l->width * i);
+}
+ATTR(pure, gnu)
+inline void *List_getRef(const List *l, unsigned int i) {
+  if (List_validState(l) != OK)
+    return NULL;
 
+  return (i < l->length) ? (l->head + l->width * i) : (NULL);
+}
+inline List_opError List_validState(const List *l) {
+  // clang-format off
+  return (
+      l &&
+      l->width &&
+      l->size &&
+      l->head &&
+      l->allocator &&
+      l->size >= l->length
+  )?OK:INVALID;
+  // clang-format on
+}
+inline void List_makeNew(const My_allocator *allocator, List *l, size_t bytes) {
+  if (!l)
+    return;
+  *l = (List){
+      .width = bytes,
+      .length = 0,
+      .size = 1,
+      .head = (uint8_t *)aAlloc(allocator, bytes),
+      .allocator = allocator,
+  };
+}
+inline void List_free(List *l) {
+  if (!l || !l->allocator)
+    return;
+  if (l->head)
+    aFree(l->allocator, l->head);
+  l->head = NULL;
+  l->width = 0;
+  aFree(l->allocator, l);
+}
+ATTR(pure, gnu)
+inline uint32_t List_length(List *l) { return l->length; }
+inline void List_set(List *l, unsigned int i, const void *element) {
+  if (List_validState(l) != OK)
+    return;
+  if (i < l->length) {
+    if (element) {
+      memcpy(l->head + i * l->width, element, l->width);
+    } else {
+      memset(l->head + i * l->width, 0, l->width);
+    }
+  }
+}
+inline uint32_t List_search(const List *l, const void *element) {
+  if (!List_validState(l))
+    return ((uint32_t)-1);
+  unsigned int i = 0;
+  if (element) {
+    for (; i < l->length; i++) {
+      if (!memcmp(element, List_getRef(l, i), l->width))
+        return i;
+    }
+  } else {
+    for (; i < l->length; i++) {
+      if (memzeroed(List_getRef(l, i), l->width))
+        return i;
+    }
+  }
+  return i;
+}
+inline void List_remove(List *l, unsigned int i) {
+  if (List_validState(l) != OK)
+    return;
+  memmove(l->head + i * l->width, l->head + (i + 1) * l->width, (l->length - i - 1) * l->width);
+  l->length--;
+}
+inline void List_zeroOut(List *l) {
+  if (!List_validState(l))
+    return;
+  memset(l->head, 0, List_fullHeadArea(l));
+}
 List_opError List_insert(List *l, unsigned int i, void *element) {
   if (List_validState(l) != OK)
     return INVALID;
@@ -236,6 +281,7 @@ List_opError List_pad(List *l, unsigned int ammount) {
   }
   memset(l->head + l->length * l->width, 0, ammount * l->width);
   l->length += ammount;
+  return List_opErrorS.Ok;
 }
 List *List_fromArr(const My_allocator *allocator, const void *source, unsigned int width, unsigned int length) {
   List *res = (List *)aAlloc(allocator, sizeof(List));

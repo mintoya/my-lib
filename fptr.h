@@ -1,11 +1,15 @@
 #ifndef UM_FP_H
 #define UM_FP_H
-#include <malloc.h>
+#ifdef _WIN32
+// #include <malloc.h>
+// #else
+// #include <alloca.h>
+#endif
 #include <stdalign.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <wchar.h>
+// #include <wchar.h>
 
 typedef wchar_t wchar;
 typedef unsigned int uint;
@@ -15,25 +19,16 @@ typedef uint8_t u8;
 typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
-typedef uintmax_t umax;
 typedef int8_t i8;
 typedef int16_t i16;
 typedef int32_t i32;
 typedef int64_t i64;
+typedef uintmax_t umax;
 typedef intmax_t imax;
+typedef size_t usize;
 
 #define _CONCAT(a, b) a##b
 #define CONCAT(a, b) _CONCAT(a, b)
-
-static void voidCleanup(void **ptrptr) {
-  if (ptrptr && *ptrptr) {
-    free(*ptrptr);
-    *ptrptr = NULL;
-  }
-}
-#define SCOPED(type, name)                                                                      \
-  [[gnu::cleanup(voidCleanup)]] void *CONCAT(cleanupPtr__, __LINE__) = malloc(sizeof(type[0])); \
-  type name = (type)CONCAT(cleanupPtr__, __LINE__);
 
 #ifndef __cplusplus
 #ifndef thread_local
