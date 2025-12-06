@@ -114,7 +114,7 @@ static inline void stringList_cleanup_handler(stringList **sl) {
 
 stringList *stringList_new(const My_allocator *allocator) {
   stringList *res = (stringList *)aAlloc(allocator, sizeof(stringList));
-  List_makeNew(allocator, &(res->List_char), 1);
+  List_makeNew(allocator, &(res->List_char), sizeof(char));
   List_makeNew(allocator, &(res->List_stringMetaData), sizeof(stringMetaData));
   return res;
 }
@@ -125,9 +125,15 @@ fptr stringList_get(stringList *l, u32 index) {
     return nullFptr;
   stringMetaData thisS =
       mList_get(&(l->List_stringMetaData), stringMetaData, index);
+  u8 *listPlace = (uint8_t *)(List_getRef(&(l->List_char), thisS.index));
+  assertMessage(listPlace != NULL, "stringlist index out of bounds\n"
+                                   "data length: %u:\n"
+                                   "  index :%u\n"
+                                   "  length:%u\n",
+                l->List_char.length, thisS.index, thisS.width);
   return ((fptr){
       .width = thisS.width,
-      .ptr = (uint8_t *)(List_getRef(&(l->List_char), thisS.index)),
+      .ptr = listPlace,
   });
 }
 unsigned int stringList_search(stringList *l, fptr what) {
@@ -157,7 +163,7 @@ unsigned int stringList_append(stringList *l, fptr value) {
       .index = l->List_char.length,
       .width = uwidth,
   };
-  mList_add(&(l->List_stringMetaData), stringMetaData, thisS);
+  List_append(&(l->List_stringMetaData), &thisS);
   List_appendFromArr(&(l->List_char), value.ptr, value.width);
   return l->List_stringMetaData.length - 1;
 }
@@ -191,7 +197,10 @@ void stringList_set(stringList *l, fptr value, u32 index) {
     stringMetaData *ref =
         (stringMetaData *)List_getRef(&(l->List_stringMetaData), index);
     ref->width = value.width;
-    memcpy(List_getRef(&(l->List_char), ref->index), value.ptr, value.width);
+    if (value.width && value.ptr)
+      memcpy(List_getRef(&(l->List_char), ref->index), value.ptr, value.width);
+    else 
+      assertMessage(!value.width && !value.ptr, "null pointer to %llu bytes!",value.width);
   }
 }
 

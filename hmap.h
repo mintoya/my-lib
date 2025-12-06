@@ -60,7 +60,7 @@ typedef struct {
   bool hasnext : 1;
 } HMap_innertype;
 
-static const HMap_innertype HMap_innerEmpty = (HMap_innertype){0, 0, 0, 0};
+static const HMap_innertype HMap_innerEmpty = (HMap_innertype){0};
 
 typedef struct HMap {
   unsigned int metaSize;
@@ -111,7 +111,6 @@ void HMap_remake(HMap *hm) {
   stringList_free(hm->KVs);
   hm->KVs = l;
 }
-#include <assert.h>
 inline umax HMap_hash(const fptr str) {
   umax hash = 5381;
   size_t s = 0;
@@ -146,8 +145,7 @@ void HMap_free(HMap *hm) {
   aFree(allocator, hm);
 }
 HMap *HMap_new(const My_allocator *allocator, unsigned int metaSize) {
-  assert(metaSize != 0 && "metaSize cant be 0");
-
+  metaSize = metaSize ? metaSize : 20;
   HMap *res = (HMap *)aAlloc(allocator, sizeof(HMap));
   *res = (HMap){
       .metaSize = metaSize,
@@ -160,6 +158,7 @@ HMap *HMap_new(const My_allocator *allocator, unsigned int metaSize) {
   return res;
 }
 unsigned int HMap_setForce(HMap *map, HMap_innertype *handle, fptr key, fptr val) {
+  assertMessage((map && handle), "map:%p nor handle:%p can be null\n", map, handle);
   if (!handle->hasindex) {
     handle->index = stringList_append(map->KVs, key);
     handle->hasindex = 1;
@@ -185,16 +184,13 @@ unsigned int HMap_setForce(HMap *map, HMap_innertype *handle, fptr key, fptr val
   }
 }
 u32 HMap_set(HMap *map, fptr key, fptr val) {
+  assertMessage(map->metaSize != 0, "map.metaSize cant be 0");
   unsigned int hash = HMap_hash(key);
-  if (map->metaSize == 0) {
-    fprintf(stderr, "\n\nkvs: %p,links: %p,metaptr: %p,metasize: %u\n\n", map->KVs, map->links, map->metadata, map->metaSize);
-    fflush(stderr);
-  }
-  assert(map->metaSize != 0 && "hmap corrupted?");
   HMap_innertype *ht = map->metadata + (hash % map->metaSize);
   return HMap_setForce(map, ht, key, val);
 }
 fptr HMap_get(HMap *map, fptr key) {
+  assertMessage(map->metaSize != 0, "map.metaSize cant be 0");
   unsigned int hash = HMap_hash(key);
   HMap_innertype *ht = map->metadata + (hash % map->metaSize);
   while (1) {
@@ -207,6 +203,7 @@ fptr HMap_get(HMap *map, fptr key) {
   }
 }
 struct HMap_both HMap_getBoth(HMap *map, fptr key) {
+  assertMessage(map->metaSize != 0, "map.metaSize cant be 0");
   unsigned int hash = HMap_hash(key);
   HMap_innertype *ht = map->metadata + (hash % map->metaSize);
   while (1) {

@@ -87,7 +87,7 @@ static void List_cleanup_handler(List **l) {
       __VA_ARGS__                                          \
     }                                                      \
   } while (0)
-#define mList(type) List_new(NULL, sizeof(type))
+#define mList(allocator,type) List_new(allocator, sizeof(type))
 #define mList_get(list, type, index) (*(type *)List_getRef(list, index))
 #define mList_add(list, type, value)         \
   do {                                       \
@@ -169,8 +169,8 @@ inline void List_makeNew(const My_allocator *allocator, List *l, size_t bytes) {
   *l = (List){
       .width = bytes,
       .length = 0,
-      .size = 1,
-      .head = (uint8_t *)aAlloc(allocator, bytes),
+      .size = 2,
+      .head = (uint8_t *)aAlloc(allocator, bytes * 2),
       .allocator = allocator,
   };
 }
@@ -297,6 +297,8 @@ List *List_fromArr(const My_allocator *allocator, const void *source, unsigned i
 List_opError List_appendFromArr(List *l, const void *source, unsigned int ammount) {
   if (List_validState(l) != OK)
     return INVALID;
+  if (!ammount)
+    return OK;
   if (l->size < l->length + ammount) {
     unsigned int newsize = l->size;
     while (newsize < l->length + ammount) {

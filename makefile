@@ -1,7 +1,9 @@
 CC = zig cc
 DIR = build
-CFLAGS = -w -O3
-# CFLAGS = -fsanitize=address -g -O0 -w
+# CFLAGS = -w -O0
+CFLAGS = -g -O0 -w -ldl -fsanitize=leak
+
+CFLAGS2 = -g -O0 -w -ldl -D_GNU_SOURCE
 
 OBJECTS = ./examples/omapTest.c
 
@@ -13,7 +15,7 @@ EXECUTABLE = a.exe
 # gcc -fdump-tree-original printexample.c
 # add later
 make: $(DIR) $(OBJECTS)
-	$(CC) -o $(DIR)/$(EXECUTABLE) $(OBJECTS) $(CFLAGS)
+	$(CC) -o $(DIR)/$(EXECUTABLE) $(OBJECTS) $(CFLAGS) $(CFLAGS2)
 
 $(DIR):
 	mkdir -p $(DIR)
@@ -23,7 +25,7 @@ clean:
 run: make
 	./$(DIR)/$(EXECUTABLE) 
 debug: 
-	gcc -o $(DIR)/$(EXECUTABLE) $(OBJECTS) -g
+	gcc -o $(DIR)/$(EXECUTABLE) $(OBJECTS) -g $(CFLAGS2)
 	gdb --tui ./$(DIR)/$(EXECUTABLE)
 profile: make
 	@echo "perf report to view"

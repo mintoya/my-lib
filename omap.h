@@ -147,13 +147,13 @@ inline void OMap_setObj(OMap *map, fptr key, OMap_ObjArg val) {
   switch (val.kind) {
   case OMAP:
     fval =
-        OMap_toView(NULL, (OMap *)val.ptr);
+        OMap_toView(defaultAlloc, (OMap *)val.ptr);
     break;
   case RAW:
     fval = *(fptr *)(val.ptr);
     break;
   case SLIST:
-    fval = stringList_toView(NULL, (stringList *)val.ptr).raw;
+    fval = stringList_toView(defaultAlloc, (stringList *)val.ptr).raw;
     break;
   }
 
@@ -163,7 +163,7 @@ inline void OMap_setObj(OMap *map, fptr key, OMap_ObjArg val) {
   case RAW:
     break;
   default:
-    aFree(NULL, fval.ptr);
+    aFree(defaultAlloc, fval.ptr);
     break;
   }
 }
@@ -172,28 +172,28 @@ inline void StringList_setObj(stringList *list, u32 key, OMap_ObjArg val) {
   switch (val.kind) {
   case OMAP:
     fval =
-        OMap_toView(NULL, (OMap *)val.ptr);
+        OMap_toView(defaultAlloc, (OMap *)val.ptr);
     break;
   case RAW:
     fval = *(fptr *)val.ptr;
     break;
   case SLIST:
-    fval = stringList_toView(NULL, (stringList *)val.ptr).raw;
+    fval = stringList_toView(defaultAlloc, (stringList *)val.ptr).raw;
     break;
   }
   fptr both;
   both.width = sizeof(OMap_Meta) + fval.width;
-  uint8_t *dataBuffer = (uint8_t *)aAlloc(NULL, both.width);
+  uint8_t *dataBuffer = (uint8_t *)aAlloc(defaultAlloc, both.width);
   both.ptr = dataBuffer;
   *(OMap_Meta *)dataBuffer = val.kind;
   memcpy(dataBuffer + sizeof(OMap_Meta), fval.ptr, fval.width);
   stringList_set(list, both, key);
-  aFree(NULL, both.ptr);
+  aFree(defaultAlloc, both.ptr);
   switch (val.kind) {
   case RAW:
     break;
   default:
-    aFree(NULL, fval.ptr);
+    aFree(defaultAlloc, fval.ptr);
     break;
   }
 }
@@ -230,28 +230,28 @@ inline void StringList_appendObj(stringList *list, OMap_ObjArg val) {
   switch (val.kind) {
   case OMAP:
     fval =
-        OMap_toView(NULL, (OMap *)val.ptr);
+        OMap_toView(defaultAlloc, (OMap *)val.ptr);
     break;
   case RAW:
     fval = *(fptr *)val.ptr;
     break;
   case SLIST:
-    fval = stringList_toView(NULL, (stringList *)val.ptr).raw;
+    fval = stringList_toView(defaultAlloc, (stringList *)val.ptr).raw;
     break;
   }
   fptr both;
   both.width = sizeof(OMap_Meta) + fval.width;
-  uint8_t *dataBuffer = (uint8_t *)aAlloc(NULL, both.width);
+  uint8_t *dataBuffer = (uint8_t *)aAlloc(defaultAlloc, both.width);
   both.ptr = dataBuffer;
   *(OMap_Meta *)dataBuffer = val.kind;
   memcpy(dataBuffer + sizeof(OMap_Meta), fval.ptr, fval.width);
   stringList_append(list, both);
-  aFree(NULL, both.ptr);
+  aFree(defaultAlloc, both.ptr);
   switch (val.kind) {
   case RAW:
     break;
   default:
-    aFree(NULL, fval.ptr);
+    aFree(defaultAlloc, fval.ptr);
     break;
   }
 }

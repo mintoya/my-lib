@@ -2,6 +2,7 @@
 #define KMLM_H
 #include "fptr.h"
 #include "omap.h"
+#include "wchar.h"
 
 #define min(a, b) ((a < b) ? (a) : (b))
 #define max(a, b) ((a > b) ? (a) : (b))
@@ -22,13 +23,13 @@ static OMap *parse(OMap *parent, stringList *lparent, fptr kml);
 static stringList *parseList(stringList *lparent, fptr kml) {
   if (!kml.width) {
     if (!(lparent)) {
-      return stringList_new(NULL);
+      return stringList_new(defaultAlloc);
     } else {
       return lparent ? lparent : NULL;
     }
   }
   if (!(lparent)) {
-    lparent = stringList_new(NULL);
+    lparent = stringList_new(defaultAlloc);
   }
   kml = kml_trimPadding(kml);
   fptr val, pval;
@@ -90,13 +91,13 @@ static OMap *parse(OMap *parent, stringList *lparent, fptr kml) {
   kml = kml_trimPadding(kml);
   if (!kml.width) {
     if (!(parent || lparent)) {
-      return OMap_new(NULL);
+      return OMap_new(defaultAlloc);
     } else {
       return parent ? parent : NULL;
     }
   }
   if (!(parent || lparent)) {
-    parent = OMap_new(NULL);
+    parent = OMap_new(defaultAlloc);
   }
   if (fpChar(kml)[0] == '{') {
     kml = kml_inside("{}", kml);
@@ -104,7 +105,7 @@ static OMap *parse(OMap *parent, stringList *lparent, fptr kml) {
   kml = kml_trimPadding(kml);
   if (!kml.width) {
     if (!(parent || lparent)) {
-      return OMap_new(NULL);
+      return OMap_new(defaultAlloc);
     } else {
       return parent ? parent : NULL;
     }

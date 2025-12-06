@@ -82,7 +82,7 @@ static void stdoutPrint(
     char *useBuffer;
     size_t useBufferPlace = 0;
     if (length > bufLen) {
-      useBuffer = (char *)aAlloc(NULL, length * sizeof(char) * 4);
+      useBuffer = (char *)aAlloc(defaultAlloc, length * sizeof(char) * 4);
     } else {
       useBuffer = buf.crBuf;
     }
@@ -91,7 +91,7 @@ static void stdoutPrint(
     fwrite(useBuffer, sizeof(char), useBufferPlace, stdout);
 
     if (length > bufLen)
-      aFree(NULL, useBuffer);
+      aFree(defaultAlloc, useBuffer);
 
     buf.place = 0;
   } else {
@@ -134,7 +134,7 @@ static void asPrint(
   assert(!!listptr);
   List *list = *(List **)listptr;
   if (!list)
-    list = List_new(NULL, sizeof(wchar));
+    list = List_new(defaultAlloc, sizeof(wchar));
   switch (list->width) {
   case sizeof(wchar):
     List_appendFromArr(list, c, length);
@@ -144,8 +144,7 @@ static void asPrint(
       List_append(list, (char *)(c + i));
     break;
   default:
-    assert(false || ({fprintf(stderr, "sizes %llu & %llu \n %llu not supported\n",sizeof(wchar),sizeof(char),list->width);
-       false; }));
+    assertMessage(false, "sizes %llu & %llu \n %llu not supported\n", sizeof(wchar), sizeof(char), list->width);
     break;
   }
   *(List **)listptr = list;
@@ -156,7 +155,7 @@ static struct {
 } PrinterSingleton;
 
 static void PrinterSingleton_init() {
-  PrinterSingleton.data = HMap_new(NULL, 20);
+  PrinterSingleton.data = HMap_new(defaultAlloc, 20);
   HMap_preload(PrinterSingleton.data, 20, 10);
 }
 static void PrinterSingleton_deinit() { HMap_free(PrinterSingleton.data); }
@@ -304,8 +303,7 @@ struct print_arg {
       PUTC(c);
     }} else { PUTS(L"__NULLUMF__"); }
   });
-  typedef void *void_ptr;
-  REGISTER_PRINTER(void_ptr, {
+  REGISTER_SPECIAL_PRINTER("ptr", void*,{
     uintptr_t v = (uintptr_t)in;
     PUTS(L"0x");
 
@@ -320,6 +318,7 @@ struct print_arg {
       }
       shift -= 4;
     }
+
   });
   REGISTER_PRINTER(char_ptr, { while(*in){ PUTC((wchar)*in); in++; } });
   REGISTER_PRINTER(wchar_ptr, { while(*in){ PUTC(*in); in++; } });
@@ -499,8 +498,6 @@ struct print_arg {
   #include "printer/genericName.h"
   MAKE_PRINT_ARG_TYPE(size_t);
   #include "printer/genericName.h"
-  MAKE_PRINT_ARG_TYPE(void_ptr);
-  #include "printer/genericName.h"
   MAKE_PRINT_ARG_TYPE(char_ptr);
   #include "printer/genericName.h"
   MAKE_PRINT_ARG_TYPE(float);
@@ -540,7 +537,6 @@ struct print_arg {
   MAKE_PRINT_ARG_TYPE(float);
   MAKE_PRINT_ARG_TYPE(size_t);
   MAKE_PRINT_ARG_TYPE(double);
-  MAKE_PRINT_ARG_TYPE(void_ptr);
   MAKE_PRINT_ARG_TYPE(char_ptr);
   MAKE_PRINT_ARG_TYPE(wchar_ptr);
   

@@ -13,7 +13,7 @@ fptr read_stdin() {
   int c;
   while ((c = fgetc(stdin)) != EOF)
     MList_push(chars, (char)c);
-  aFree(&defaultAllocator, lptr);
+  aFree(defaultAlloc, lptr);
   return MList_fp(chars);
 }
 
@@ -31,6 +31,6 @@ int main(int nargs, char *args[nargs]) {
   }
   println("${OMap_V}", OMap_getLA(map, nargs - 1, argsf + 1));
 
-  aFree(&defaultAllocator, stin.ptr);
+  aFree(defaultAlloc, stin.ptr);
   return 0;
 }

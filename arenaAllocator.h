@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <string.h>
 
+OwnAllocator arena_owned_new(void);
 My_allocator *arena_new(size_t blockSize);
 My_allocator *arena_new_ext(const My_allocator *base, size_t blockSize);
 void arena_cleanup(My_allocator *arena);
@@ -32,7 +33,6 @@ void arena_free(const My_allocator *allocator, void *ptr);
 void *arena_alloc(const My_allocator *ref, size_t size);
 void *arena_r_alloc(const My_allocator *arena, void *ptr, size_t size);
 ArenaBlock *arenablock_new(const My_allocator *allocator, size_t blockSize);
-OwnAllocator arena_owned_new(void);
 
 void arena_cleanup(My_allocator *arena) {
   ArenaBlock *it = (ArenaBlock *)(arena->arb);
@@ -100,7 +100,7 @@ My_allocator *arena_new_ext(const My_allocator *base, size_t blockSize) {
   return res;
 }
 My_allocator *arena_new(size_t blockSize) {
-  return arena_new_ext(NULL, blockSize);
+  return arena_new_ext(defaultAlloc, blockSize);
 }
 void *arena_r_alloc(const My_allocator *arena, void *ptr, size_t size) {
   size = (size + alignof(max_align_t) - 1) / alignof(max_align_t) * alignof(max_align_t);

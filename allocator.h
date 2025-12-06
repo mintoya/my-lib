@@ -25,34 +25,39 @@ typedef struct {
 typedef My_allocator MyAllocator;
 typedef Own_Allocator OwnAllocator;
 
+extern const My_allocator *defaultAlloc;
+extern inline void *aAlloc(const My_allocator *allocator, size_t size);
+extern inline void *aRealloc(const My_allocator *allocator, void *oldptr, size_t size);
+extern inline void aFree(const My_allocator *allocator, void *oldptr);
+// object-like allocation
+#define aAlloc(allocator, size)        \
+  ({                                   \
+    allocator->alloc(allocator, size); \
+  })
+#define aRealloc(allocator, oldptr, size)        \
+  ({                                             \
+    allocator->r_alloc(allocator, oldptr, size); \
+  })
+#define aFree(allocator, oldptr)        \
+  ({                                    \
+    allocator->free(allocator, oldptr); \
+  })
+#endif // MY_ALLOCATOR_H
+#ifdef MY_ALLOCATOR_C
 #include <stdlib.h>
-static void *
-default_alloc(const My_allocator *allocator, size_t s) {
+void *default_alloc(const My_allocator *allocator, size_t s) {
   (void)allocator;
   return malloc(s);
 }
-static void *default_r_alloc(const My_allocator *allocator, void *p, size_t s) {
+void *default_r_alloc(const My_allocator *allocator, void *p, size_t s) {
   (void)allocator;
   return realloc(p, s);
 }
-static void default_free(const My_allocator *allocator, void *p) {
+void default_free(const My_allocator *allocator, void *p) {
   (void)allocator;
   return free(p);
 }
-// object-like allocation
-static inline void *aAlloc(const My_allocator *allocator, size_t size) {
-  if (!allocator)
-    return default_alloc(NULL, size);
-  return allocator->alloc(allocator, size);
-}
-static inline void *aRealloc(const My_allocator *allocator, void *oldptr, size_t size) {
-  if (!allocator)
-    return default_r_alloc(NULL, oldptr, size);
-  return allocator->r_alloc(allocator, oldptr, size);
-}
-static inline void aFree(const My_allocator *allocator, void *oldptr) {
-  if (!allocator)
-    return default_free(NULL, oldptr);
-  return allocator->free(allocator, oldptr);
-}
-#endif // MY_ALLOCATOR_H
+#include "fptr.h"
+const My_allocator defaultAllocator = (My_allocator){default_alloc, default_free, default_r_alloc};
+const My_allocator *defaultAlloc = &defaultAllocator;
+#endif // MY_ALLOCATOR_C

@@ -62,6 +62,8 @@ typedef union {
 
 typedef fptr um_fp;
 
+// vptr version of dereferencing a value
+#define fptr_fromTypeDef(v) ((fptr){sizeof(typeof(v)), (u8 *)REF(typeof(v), v)})
 #include <string.h>
 extern inline fptr fptr_fromCS(char *cstr) {
   return (fptr){(size_t)strlen(cstr), (u8 *)cstr};
@@ -74,9 +76,8 @@ extern inline fptr fptr_fromPL(u8 *cstr, size_t len) {
   if (wd) {
     return wd;
   }
-  if (!a.width) {
+  if (!a.width)
     return 0;
-  }
 #ifndef IGNORE_ALIGNMENT
   return memcmp(a.ptr, b.ptr, a.width);
 #else
@@ -143,6 +144,8 @@ inline bool operator!=(const fptr &a, const fptr &b) { return !fptr_eq(a, b); }
   (type *)newptr;                                                       \
 })
 
+// #define catch (boo, elseExpr)
+// #define orelse(expr, defaultV)
 #ifndef __cplusplus
 #define REF(type, value) ((type[1]){value})
 #else
@@ -162,7 +165,6 @@ inline bool operator!=(const fptr &a, const fptr &b) { return !fptr_eq(a, b); }
 //   operator void *() { return (void *)&value; }
 //   operator const void *() const { return (const void *)&value; }
 // };
-// #define REF(type, value) (StackPush<type>(value))
 template <typename T>
 static inline T *ref_tmp(T &&v) {
   return &v;
@@ -337,4 +339,31 @@ static int fptr_toInt(const fptr in) {
   }
   return (negetive ? -1 : 1) * fptr_toUint(number);
 }
+// #define noAssertMessage
+#include "assert.h"
+#ifndef noAssertMessage
+#define assertMessage(expr, fmstr, ...)                              \
+  do {                                                               \
+    bool result = expr;                                              \
+    if (!(result)) {                                                 \
+      fprintf(                                                       \
+          stderr,                                                    \
+          "\x1b[31m\n\n" fmstr "\n\x1b[0m" __VA_OPT__(, __VA_ARGS__) \
+      );                                                             \
+      fprintf(                                                       \
+          stderr, "\x1b[38;5;208min %s\n\n\n\x1b[0m",                \
+          __PRETTY_FUNCTION__                                        \
+      );                                                             \
+      fprintf(                                                       \
+          stderr, "\x1b[38;5;208mexpression: %s\n\n\n\x1b[0m",       \
+          #expr                                                      \
+      );                                                             \
+      fflush(stderr);                                                \
+    }                                                                \
+    assert(result);                                                  \
+  } while (0)
+#else
+#define assertMessage(bool, fmstr, ...) assert(bool)
+#endif
+
 #endif // UM_FP_H
