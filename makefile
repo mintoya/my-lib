@@ -1,13 +1,14 @@
 CC = zig cc
 DIR = build
 # CFLAGS = -w -O0
-CFLAGS = -g -O0 -w -ldl -fsanitize=leak
+CFLAGS_NOTWIN32 = -g -O0 -w -ldl -fsanitize=leak -D_GNU_SOURCE
+CFLAGS_WIN32 = -g -o0 -w -fsanitize=leak -ldbghelp
 
-CFLAGS2 = -g -O0 -w -ldl -D_GNU_SOURCE
 
 OBJECTS = ./examples/omapTest.c
 
 UNAME_S := $(shell uname -s 2>/dev/null)
+
 
 EXECUTABLE = a.exe
 
