@@ -3,6 +3,7 @@
 // #else
 #ifndef MACROLIST_H
 #define MACROLIST_H
+#include "fptr.h"
 #include "my-list.h"
 
 #define MList(type)      \

@@ -144,27 +144,10 @@ inline bool operator!=(const fptr &a, const fptr &b) { return !fptr_eq(a, b); }
   (type *)newptr;                                                       \
 })
 
-// #define catch (boo, elseExpr)
-// #define orelse(expr, defaultV)
 #ifndef __cplusplus
 #define REF(type, value) ((type[1]){value})
+// #define REF(type, value) (&(type){value})
 #else
-// #include <type_traits>
-// #include <utility>
-// template <typename T>
-// class StackPush {
-// private:
-//   using RealT = std::remove_reference_t<T>;
-//   RealT value;
-//
-// public:
-//   template <typename ArgType>
-//   explicit StackPush(ArgType &&arg) : value(std::forward<ArgType>(arg)) {}
-//   operator RealT &() { return value; }
-//   operator const RealT &() const { return value; }
-//   operator void *() { return (void *)&value; }
-//   operator const void *() const { return (const void *)&value; }
-// };
 template <typename T>
 static inline T *ref_tmp(T &&v) {
   return &v;
@@ -339,31 +322,58 @@ static int fptr_toInt(const fptr in) {
   }
   return (negetive ? -1 : 1) * fptr_toUint(number);
 }
+
 // #define noAssertMessage
 #include "assert.h"
+#define PRINTORANGE "\x1b[38;5;208m"
+#define PRINTRESET "\x1b[0m"
+#define PRINTRED "\x1b[31m\n\n"
 #ifndef noAssertMessage
-#define assertMessage(expr, fmstr, ...)                              \
-  do {                                                               \
-    bool result = expr;                                              \
-    if (!(result)) {                                                 \
-      fprintf(                                                       \
-          stderr,                                                    \
-          "\x1b[31m\n\n" fmstr "\n\x1b[0m" __VA_OPT__(, __VA_ARGS__) \
-      );                                                             \
-      fprintf(                                                       \
-          stderr, "\x1b[38;5;208min %s\n\n\n\x1b[0m",                \
-          __PRETTY_FUNCTION__                                        \
-      );                                                             \
-      fprintf(                                                       \
-          stderr, "\x1b[38;5;208mexpression: %s\n\n\n\x1b[0m",       \
-          #expr                                                      \
-      );                                                             \
-      fflush(stderr);                                                \
-    }                                                                \
-    assert(result);                                                  \
+#define assertMessage(expr, ...)   \
+  do {                             \
+    bool result = (expr);          \
+    if (!(result)) {               \
+      fprintf(                     \
+          stderr,                  \
+          PRINTRED                 \
+          "\nmessage:\n"           \
+          "" __VA_ARGS__           \
+      );                           \
+      fprintf(                     \
+          stderr,                  \
+          PRINTORANGE              \
+          "\nassert:\n\t%s\n"      \
+          "in fn :\n\t%s"          \
+          "\nfailed\n",            \
+          #expr,                   \
+          __PRETTY_FUNCTION__      \
+      );                           \
+      fprintf(stderr, PRINTRESET); \
+      fflush(stderr);              \
+      abort();                     \
+    }                              \
   } while (0)
+
 #else
 #define assertMessage(bool, fmstr, ...) assert(bool)
 #endif
+
+// returns "else" block, or exit
+#define valElse(expr, ovalue, ...)  \
+  ({                                \
+    typeof((expr)) res = (expr);    \
+    typeof(res) other = (ovalue);   \
+    if (res == ovalue) {            \
+      typeof(res) elseBlock = ({    \
+        (typeof(res))(ovalue);      \
+        __VA_OPT__((__VA_ARGS__);)  \
+      });                           \
+      res = elseBlock;              \
+      assertMessage(res != ovalue); \
+    }                               \
+    res;                            \
+  })
+#define nullElse(expr, ...) \
+  valElse(expr, NULL, __VA_ARGS__);
 
 #endif // UM_FP_H

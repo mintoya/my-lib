@@ -1,4 +1,10 @@
-// because order matters
+// impl order matters
+
+#ifdef HMAP_ALLOCATOR_H
+#define HMAP_ALLOCATOR_C
+#include "hmap_arena.h"
+#endif
+
 #ifdef KMLM_H
 #define KMLM_C
 #include "kmlM.h"

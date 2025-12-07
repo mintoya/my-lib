@@ -144,7 +144,7 @@ static void asPrint(
       List_append(list, (char *)(c + i));
     break;
   default:
-    assertMessage(false, "sizes %llu & %llu \n %llu not supported\n", sizeof(wchar), sizeof(char), list->width);
+    assertMessage(false, "sizes %lu & %lu \n %lu not supported\n", sizeof(wchar), sizeof(char), list->width);
     break;
   }
   *(List **)listptr = list;
@@ -569,7 +569,6 @@ void print_f(outputFunction put, void *arb, fptr fmt, ...);
 #define print_as(listptr, fmt, ...) \
   print_wfO(asPrint, (&(listptr)), fmt, __VA_ARGS__)
 
-#undef tlocal
 #ifdef PRINTER_LIST_TYPENAMES
 [[gnu::constructor(205)]] static void post_init() {
   outputFunction put = defaultPrinter;
@@ -577,38 +576,21 @@ void print_f(outputFunction put, void *arb, fptr fmt, ...);
         "printer debug\n"
         "==============================\n");
   println("list of printer type names: ");
-  int count = 0;
-  HMap_innertype *metas = PrinterSingleton.data->metadata;
-  for (int i = 0; i < PrinterSingleton.data->metaSize; i++) {
-    fptr key = stringList_get(PrinterSingleton.data->KVs, metas[i].index);
-    if (metas[i].hasindex) {
-      println(" ${}", key);
-      count++;
-      if (metas[i].hasnext) {
-        HMap_innertype *h = metas + i;
-        h = (HMap_innertype *)List_getRef(PrinterSingleton.data->links, h->next);
-
-        while (h->hasindex) {
-          fptr key = stringList_get(PrinterSingleton.data->KVs, metas[i].index);
-          println("   ${}", stringList_get(PrinterSingleton.data->KVs, h->index));
-          count++;
-
-          if (!h->hasnext)
-            break;
-
-          h = (HMap_innertype *)List_getRef(PrinterSingleton.data->links, h->next);
-          if (!h)
-            break;
-        }
-      }
-    }
+  for (int i = 0; i < HMap_count(PrinterSingleton.data); i++) {
+    fptr key = HMap_getKey(PrinterSingleton.data, i);
+    println(" ${}", key);
   }
-  println("buckets   : ${}\n"
-          "footprint : ${}\n"
-          "types     : ${}\n"
-          "collisions: ${}\n"
-          "==============================\n",
-          (size_t)PrinterSingleton.data->metaSize, (size_t)HMap_footprint(PrinterSingleton.data), (size_t)count, (int)HMap_countCollisions(PrinterSingleton.data));
+  println(
+      "buckets   : ${}\n"
+      "footprint : ${}\n"
+      "types     : ${}\n"
+      "collisions: ${}\n"
+      "==============================\n",
+      HMap_getMetaSize(PrinterSingleton.data),
+      HMap_footprint(PrinterSingleton.data),
+      (size_t)HMap_count(PrinterSingleton.data),
+      (int)HMap_countCollisions(PrinterSingleton.data)
+  );
 }
 #endif // PRINTER_LIST_TYPENAMES
 
@@ -618,8 +600,8 @@ fptr wchar_toUtf8(const My_allocator *allocator, fptr wbuf);
 #ifdef PRINTER_C
 fptr wchar_toUtf8(const My_allocator *allocator, fptr wbuf) {
   fptr res = {
-      .ptr = (u8 *)aAlloc(allocator, 4 * (wbuf.width / sizeof(wchar))),
-      .width = 0,
+      0,
+      (u8 *)aAlloc(allocator, 4 * (wbuf.width / sizeof(wchar))),
   };
   wchar *wb = (wchar *)wbuf.ptr;
   mbstate_t mbs = {0};
