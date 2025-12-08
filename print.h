@@ -150,37 +150,57 @@ static void asPrint(
 }
 
 static struct {
-  HMap *data;
-  // HHMap *data;
+  HHMap *data;
+  usize maxkey;
 } PrinterSingleton;
 
 static void PrinterSingleton_init() {
-  PrinterSingleton.data = HMap_new(defaultAlloc, 20);
-  HMap_preload(PrinterSingleton.data, 20, 10);
+  PrinterSingleton.maxkey = 15;
+  PrinterSingleton.data = HHMap_new(15, sizeof(printerFunction), defaultAlloc, 20);
 }
-static void PrinterSingleton_deinit() { HMap_free(PrinterSingleton.data); }
+static void PrinterSingleton_deinit() { HHMap_free(PrinterSingleton.data); }
 static void PrinterSingleton_append(fptr name, printerFunction function) {
-  HMap_set(PrinterSingleton.data, name, (fptr){
-                                            .width = sizeof(printerFunction),
-                                            .ptr = (uint8_t *)(void *)REF(printerFunction, function),
-                                        });
+  if (name.width > PrinterSingleton.maxkey) {
+    PrinterSingleton.maxkey = name.width + 5;
+    HHMap_transform(&(PrinterSingleton.data), name.width + 5, 0, NULL, 0);
+  }
+  printerFunction container[] = {function};
+
+  char *nname = (char *)alloca(PrinterSingleton.maxkey);
+  memset(nname, 0, PrinterSingleton.maxkey);
+  memcpy(nname, name.ptr, name.width);
+  HHMap_set(PrinterSingleton.data, nname, (uint8_t *)container);
+
+  void *res = HHMap_get(PrinterSingleton.data, nname);
+  memset((void *)container, 0, sizeof(res));
+  memcpy((void *)container, res, sizeof(function));
+  assertMessage(*container == function);
 }
 static printerFunction lastprinters[2] = {NULL, NULL};
 static fptr lastnames[2] = {nullUmf, nullUmf};
 static char lasttick = 0;
+
 static printerFunction PrinterSingleton_get(fptr name) {
   if (!fptr_cmp(name, lastnames[lasttick])) {
     return lastprinters[lasttick];
   } else if (!fptr_cmp(name, lastnames[!lasttick])) {
     return lastprinters[!lasttick];
   }
-  struct HMap_both both = HMap_getBoth(PrinterSingleton.data, name);
+
+  u8 *nname = (u8 *)alloca(PrinterSingleton.maxkey);
+  memset(nname, 0, PrinterSingleton.maxkey);
+  memcpy(nname, name.ptr, name.width);
+
+  void *val = HHMap_get(PrinterSingleton.data, nname); 
+
   printerFunction p = NULL;
-  if (both.val.width) {
-    setvar_aligned(p, both.val.ptr);
+  if (val) {
+    memcpy(&p, val, sizeof(printerFunction));
     lasttick = !lasttick;
     lastprinters[lasttick] = p;
-    lastnames[lasttick] = both.key;
+    lastnames[lasttick] = name;
+  } else {
+    assert(false);
   }
   return p;
 }
@@ -590,8 +610,8 @@ void print_f(outputFunction put, void *arb, fptr fmt, ...);
         "printer debug\n"
         "==============================\n");
   println("list of printer type names: ");
-  for (int i = 0; i < HMap_count(PrinterSingleton.data); i++) {
-    fptr key = HMap_getKey(PrinterSingleton.data, i);
+  for (int i = 0; i < HHMap_count(PrinterSingleton.data); i++) {
+    fptr key = ((fptr){PrinterSingleton.maxkey, (u8 *)HHMap_getKey(PrinterSingleton.data, i)});
     println(" ${}", key);
   }
   println(
@@ -600,10 +620,10 @@ void print_f(outputFunction put, void *arb, fptr fmt, ...);
       "types     : ${}\n"
       "collisions: ${}\n"
       "==============================\n",
-      HMap_getMetaSize(PrinterSingleton.data),
-      HMap_footprint(PrinterSingleton.data),
-      (size_t)HMap_count(PrinterSingleton.data),
-      (int)HMap_countCollisions(PrinterSingleton.data)
+      HHMap_getMetaSize(PrinterSingleton.data),
+      HHMap_footprint(PrinterSingleton.data),
+      (size_t)HHMap_count(PrinterSingleton.data),
+      (int)HHMap_countCollisions(PrinterSingleton.data)
   );
 }
 #endif // PRINTER_LIST_TYPENAMES

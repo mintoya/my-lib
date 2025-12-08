@@ -9,7 +9,6 @@ typedef struct HHMap HHMap;
 // exports
 HHMap *HHMap_new(usize kSize, usize vSize, const My_allocator *allocator, u32 metaSize);
 // crops or expands (with 0's) the keys and vals
-// slower if metasize isnt 0
 // if any argument is 0, it will assume you want the same one of that on the last ptr
 void HHMap_transform(HHMap **last, usize kSize, usize vSize, const My_allocator *allocator, u32 metaSize);
 void HHMap_free(HHMap *hm);
@@ -20,6 +19,13 @@ u32 HHMap_getMetaSize(HHMap *);
 u32 HHMap_count(const HHMap *map);
 extern inline void *HHMap_getKey(const HHMap *map, u32 n); // linked to getKey, but otherwise meaningless
 extern inline void *HHMap_getVal(const HHMap *map, u32 n); // linked to getVal, but otherwise meaningless
+struct HHMap_both {
+  void *key;
+  void *val;
+};
+struct HHMap_both HHMap_getBoth(HHMap *map, void *key);
+usize HHMap_footprint(const HHMap *map);
+u32 HHMap_countCollisions(const HHMap *map);
 
 static inline void HHMap_cleanup_handler(HHMap **v) {
   if (v && *v) {
@@ -104,17 +110,25 @@ void HHMap_transform(HHMap **last, usize kSize, usize vSize, const My_allocator 
     kSize = lastmap->keysize;
   if (!vSize)
     vSize = lastmap->KVs.width - kSize;
-  bool sameMeta = !metaSize;
-  if (sameMeta)
+  if (!metaSize)
     metaSize = lastmap->metaSize;
   assertMessage(kSize && vSize && allocator);
   HHMap *res = HHMap_new(kSize, vSize, allocator, metaSize);
-  if (sameMeta) {
-  } else {
-    for (u32 i = 0; i < HHMap_count(lastmap); i++) {
-      // HHMap_set(res,HH);
-    }
+  #define max(a, b) ((a) > (b) ? (a) : (b))
+  usize maxK = (max(kSize, lastmap->keysize));
+  usize maxV = (max(vSize, lastmap->KVs.width - lastmap->keysize));
+  #undef max
+  u8 *buffer = (u8 *)alloca(maxK + maxV);
+  u8 *keyBuffer = buffer;
+  u8 *valBuffer = buffer + maxK;
+  for (u32 i = 0; i < HHMap_count(lastmap); i++) {
+    memset(buffer, 0, maxK + maxV);
+    memcpy(keyBuffer, HHMap_getKey(lastmap, i), lastmap->keysize);
+    memcpy(valBuffer, HHMap_getVal(lastmap, i), lastmap->KVs.width - lastmap->keysize);
+    HHMap_set(res, keyBuffer, valBuffer);
   }
+  HHMap_free(lastmap);
+  *last = res;
 }
 void HHMap_free(HHMap *hm) {
   const My_allocator *allocator = hm->KVs.allocator;
@@ -200,5 +214,27 @@ void *HHMap_get(HHMap *map, void *key) {
     return NULL;
   u8 *element = (u8 *)List_getRef(&(map->KVs), listLocatoin) + keysize;
   return element;
+}
+struct HHMap_both HHMap_getBoth(HHMap *map, void *key) {
+  usize keysize = map->keysize;
+  usize valsize = map->KVs.width - map->keysize;
+  unsigned int hash = HHMap_hash((fptr){map->keysize, (u8 *)key});
+  HHMap_innertype *ht = map->metadata + (hash % map->metaSize);
+  u32 listLocatoin = HHMap_setForce(map, ht, key, NULL, false);
+  if (listLocatoin == map->KVs.length)
+    return (struct HHMap_both){NULL, NULL};
+  u8 *element = (u8 *)List_getRef(&(map->KVs), listLocatoin) + keysize;
+  return (struct HHMap_both){element, element + keysize};
+}
+usize HHMap_footprint(const HHMap *map) {
+  return (
+      sizeof(HHMap) +
+      List_headArea(&(map->KVs)) +
+      List_headArea(&(map->links)) +
+      sizeof(HHMap_innertype) * map->metaSize
+  );
+}
+u32 HHMap_countCollisions(const HHMap *map) {
+  return map->links.length;
 }
 #endif // HHMAP_C
