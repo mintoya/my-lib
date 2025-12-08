@@ -26,6 +26,9 @@ struct HHMap_both {
 struct HHMap_both HHMap_getBoth(HHMap *map, void *key);
 usize HHMap_footprint(const HHMap *map);
 u32 HHMap_countCollisions(const HHMap *map);
+u8 *HHMap_getKeyBuffer(const HHMap *map);
+u8 *HHMap_getValBuffer(const HHMap *map);
+usize HHMap_getKeySize(const HHMap *map);
 
 static inline void HHMap_cleanup_handler(HHMap **v) {
   if (v && *v) {
@@ -53,6 +56,16 @@ typedef struct HHMap {
   List links; // List<hhmap_innertype>
   usize metaSize;
   // valsize = KVs.width-keysize
+  // buffer garunteed to have enough
+  // space for keys
+  u8 *ykbuffer;
+  // buffer garunteed to have enough
+  // space for values
+  u8 *yvbuffer;
+  // same thing, but will be modified
+  // by calls to set/get
+  u8 *mkbuffer;
+  u8 *mvbuffer;
   usize keysize;
   HHMap_innertype metadata[];
 } HHMap;
@@ -73,8 +86,11 @@ u32 HHMap_count(const HHMap *hm) {
 HHMap *HHMap_new(usize kSize, usize vSize, const My_allocator *allocator, u32 metaSize) {
   HHMap *res = (HHMap *)aAlloc(
       allocator,
-      sizeof(HHMap) + metaSize * sizeof(HHMap_innertype)
+      sizeof(HHMap) +
+          metaSize * sizeof(HHMap_innertype)
   );
+
+  u8 *userSpace = (u8 *)aAlloc(allocator, (kSize + vSize) * 2);
   *res = (HHMap){
       .KVs = (List){
           kSize + vSize,
@@ -91,6 +107,10 @@ HHMap *HHMap_new(usize kSize, usize vSize, const My_allocator *allocator, u32 me
           allocator,
       },
       .metaSize = metaSize,
+      .ykbuffer = userSpace,
+      .yvbuffer = userSpace + kSize,
+      .mkbuffer = userSpace + kSize + vSize,
+      .mvbuffer = userSpace + kSize + vSize + kSize,
       .keysize = kSize,
   };
   lmemset(
@@ -118,7 +138,7 @@ void HHMap_transform(HHMap **last, usize kSize, usize vSize, const My_allocator 
   usize maxK = (max(kSize, lastmap->keysize));
   usize maxV = (max(vSize, lastmap->KVs.width - lastmap->keysize));
   #undef max
-  u8 *buffer = (u8 *)alloca(maxK + maxV);
+  u8 *buffer = (u8 *)aAlloc(allocator, maxK + maxV);
   u8 *keyBuffer = buffer;
   u8 *valBuffer = buffer + maxK;
   for (u32 i = 0; i < HHMap_count(lastmap); i++) {
@@ -127,11 +147,13 @@ void HHMap_transform(HHMap **last, usize kSize, usize vSize, const My_allocator 
     memcpy(valBuffer, HHMap_getVal(lastmap, i), lastmap->KVs.width - lastmap->keysize);
     HHMap_set(res, keyBuffer, valBuffer);
   }
+  aFree(allocator, buffer);
   HHMap_free(lastmap);
   *last = res;
 }
 void HHMap_free(HHMap *hm) {
   const My_allocator *allocator = hm->KVs.allocator;
+  aFree(allocator, hm->ykbuffer);
   aFree(allocator, hm->links.head);
   aFree(allocator, hm->KVs.head);
   aFree(allocator, hm);
@@ -237,4 +259,8 @@ usize HHMap_footprint(const HHMap *map) {
 u32 HHMap_countCollisions(const HHMap *map) {
   return map->links.length;
 }
+
+u8 *HHMap_getKeyBuffer(const HHMap *map) { return map->ykbuffer; }
+u8 *HHMap_getValBuffer(const HHMap *map) { return map->ykbuffer + map->keysize; }
+usize HHMap_getKeySize(const HHMap *map) { return map->keysize; }
 #endif // HHMAP_C

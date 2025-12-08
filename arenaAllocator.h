@@ -22,6 +22,9 @@ extern const My_allocator *pageAllocator;
 #define Arena_scoped [[gnu::cleanup(arena_cleanup_handler)]] My_allocator
 #endif // ARENA_ALLOCATOR_H
 //
+#if (defined(__INCLUDE_LEVEL__) && __INCLUDE_LEVEL__ == 0)
+#define ARENA_ALLOCATOR_C
+#endif
 #ifdef ARENA_ALLOCATOR_C
 //
 
@@ -33,14 +36,14 @@ size_t lineup(size_t unaligned, size_t aligneder) {
   return unaligned;
 }
 #define PAGESIZE
-// niether deal in nulls
+
 void *getPage(size_t);
 void returnPage(void *);
 #if defined(__linux__) || defined(__APPLE__)
   #include <sys/mman.h>
   #include <unistd.h>
   #undef PAGESIZE
-  #define PAGESIZE (getpagesize())
+  #define PAGESIZE ((size_t)sysconf(_SC_PAGESIZE))
 void *getPage(size_t size) {
   size_t pagesize = PAGESIZE;
   size = lineup(size + alignof(max_align_t), pagesize);
@@ -74,8 +77,55 @@ void returnPage(void *page) {
       strerror(errno)
   );
 }
+#elif defined(_WIN32)
+  // #if !defined(_WIN32_LEAN_AND_MEAN)
+  //   #define _WIN32_LEAN_AND_MEAN
+  // #endif
+  #include <windows.h>
+  #undef PAGESIZE
+  #define PAGESIZE ({ SYSTEM_INFO si; GetSystemInfo(&si); si.dwPageSize; })
+void *getPage(size_t size) {
+  size_t pagesize = PAGESIZE;
+  size = lineup(size + alignof(max_align_t), pagesize);
+  void *res = VirtualAlloc(0, size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+  assertMessage(res);
+  *(size_t *)res = size;
+  return (uint8_t *)res + alignof(max_align_t);
+}
+void returnPage(void *page) {
+  nullElse(page);
+  page = ((uint8_t *)page - alignof(max_align_t));
+  size_t pagesize = *(size_t *)page;
+  assertMessage(!((uintptr_t)page % pagesize), "unalgned page pointer");
+
+  BOOL result = VirtualFree(page, 0, MEM_RELEASE);
+  if (!result) {
+    LPVOID msg;
+    FormatMessage(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER |
+            FORMAT_MESSAGE_FROM_SYSTEM |
+            FORMAT_MESSAGE_IGNORE_INSERTS,
+        0,
+        GetLastError(),
+        0,
+        (LPSTR)&msg,
+        0,
+        0
+    );
+    assertMessage(
+        false,
+        "\tpagesize:%llu\n"
+        "\tpointer :%p\n"
+        "\tgetlasterror ->() %s",
+        pagesize,
+        page,
+        (char *)msg
+    );
+  }
+}
+
 #else
-  #pragma #error couldnt find page allocator
+  #error couldnt find page allocator
 #endif
 
 void *allocatePage(const My_allocator *, size_t size) {

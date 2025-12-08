@@ -71,7 +71,7 @@ extern inline fptr fptr_fromCS(char *cstr) {
 extern inline fptr fptr_fromPL(u8 *cstr, size_t len) {
   return (fptr){len, (u8 *)cstr};
 }
-[[gnu::pure]] inline int fptr_cmp(const fptr a, const fptr b) {
+[[gnu::pure]] extern inline int fptr_cmp(const fptr a, const fptr b) {
   int wd = a.width - b.width;
   if (wd) {
     return wd;

@@ -2,7 +2,7 @@ CC = cc
 DIR = build
 # CFLAGS = -w -O0
 CFLAGS_NOTWIN32 = -g -O0 -w -ldl -fsanitize=address -D_GNU_SOURCE -lasan
-CFLAGS_WIN32 = -g -o0 -w -fsanitize=leak -ldbghelp 
+CFLAGS_WIN32 = -g -o0 -w -ldbghelp 
 
 
 OBJECTS = ./examples/main.c
@@ -16,7 +16,7 @@ EXECUTABLE = a.exe
 # gcc -fdump-tree-original printexample.c
 # add later
 make: $(DIR) $(OBJECTS)
-	$(CC) -o $(DIR)/$(EXECUTABLE) $(OBJECTS) $(CFLAGS_NOTWIN32)
+	$(CC) -o $(DIR)/$(EXECUTABLE) $(OBJECTS) $(CFLAGS_WIN32)
 
 $(DIR):
 	mkdir -p $(DIR)

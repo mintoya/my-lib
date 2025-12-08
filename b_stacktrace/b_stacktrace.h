@@ -173,6 +173,7 @@ char *b_stacktrace_get_string(void) {
 #if defined(_WIN32)
 
 #define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 #include <DbgHelp.h>
 #include <TlHelp32.h>
 #include <Windows.h>

@@ -2,6 +2,7 @@
 #define PRINTER_H
 #include <errno.h>
 #include <locale.h>
+#include <malloc.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -151,30 +152,36 @@ static void asPrint(
 
 static struct {
   HHMap *data;
-  usize maxkey;
 } PrinterSingleton;
 
 static void PrinterSingleton_init() {
-  PrinterSingleton.maxkey = 15;
-  PrinterSingleton.data = HHMap_new(15, sizeof(printerFunction), defaultAlloc, 20);
+  PrinterSingleton.data = HHMap_new(sizeof(void *), sizeof(void *), defaultAlloc, 20);
 }
 static void PrinterSingleton_deinit() { HHMap_free(PrinterSingleton.data); }
 static void PrinterSingleton_append(fptr name, printerFunction function) {
-  if (name.width > PrinterSingleton.maxkey) {
-    PrinterSingleton.maxkey = name.width + 5;
-    HHMap_transform(&(PrinterSingleton.data), name.width + 5, 0, NULL, 0);
+  static u32 calls = 0;
+  calls++;
+  if (name.width > HHMap_getKeySize(PrinterSingleton.data)) {
+    HHMap_transform(&(PrinterSingleton.data), name.width, sizeof(void *), NULL, 0);
   }
-  printerFunction container[] = {function};
+  printerFunction space[1] = {function}; // function*
+  void *container = space;
 
-  char *nname = (char *)alloca(PrinterSingleton.maxkey);
-  memset(nname, 0, PrinterSingleton.maxkey);
+  u8 *nname = (u8 *)HHMap_getKeyBuffer(PrinterSingleton.data);
+  memset(nname, 0, HHMap_getKeySize(PrinterSingleton.data));
   memcpy(nname, name.ptr, name.width);
-  HHMap_set(PrinterSingleton.data, nname, (uint8_t *)container);
+
+  HHMap_set(PrinterSingleton.data, nname, (u8 *)container);
 
   void *res = HHMap_get(PrinterSingleton.data, nname);
-  memset((void *)container, 0, sizeof(res));
-  memcpy((void *)container, res, sizeof(function));
-  assertMessage(*container == function);
+  memset((void *)container, 0, sizeof(void *));
+  memcpy((void *)container, res, sizeof(void *));
+
+  assertMessage(
+      *(printerFunction *)container == function,
+      "%p != %p on the %u'th call",
+      *(printerFunction *)container, function, calls
+  );
 }
 static printerFunction lastprinters[2] = {NULL, NULL};
 static fptr lastnames[2] = {nullUmf, nullUmf};
@@ -187,11 +194,11 @@ static printerFunction PrinterSingleton_get(fptr name) {
     return lastprinters[!lasttick];
   }
 
-  u8 *nname = (u8 *)alloca(PrinterSingleton.maxkey);
-  memset(nname, 0, PrinterSingleton.maxkey);
+  u8 *nname = (u8 *)HHMap_getKeyBuffer(PrinterSingleton.data);
+  memset(nname, 0, HHMap_getKeySize(PrinterSingleton.data));
   memcpy(nname, name.ptr, name.width);
 
-  void *val = HHMap_get(PrinterSingleton.data, nname); 
+  void *val = HHMap_get(PrinterSingleton.data, nname);
 
   printerFunction p = NULL;
   if (val) {
@@ -200,7 +207,7 @@ static printerFunction PrinterSingleton_get(fptr name) {
     lastprinters[lasttick] = p;
     lastnames[lasttick] = name;
   } else {
-    assert(false);
+    return NULL;
   }
   return p;
 }
@@ -611,7 +618,11 @@ void print_f(outputFunction put, void *arb, fptr fmt, ...);
         "==============================\n");
   println("list of printer type names: ");
   for (int i = 0; i < HHMap_count(PrinterSingleton.data); i++) {
-    fptr key = ((fptr){PrinterSingleton.maxkey, (u8 *)HHMap_getKey(PrinterSingleton.data, i)});
+    fptr key = ((fptr){
+        HHMap_getKeySize(PrinterSingleton.data),
+        (u8 *)HHMap_getKey(PrinterSingleton.data, i)
+    }
+    );
     println(" ${}", key);
   }
   println(
@@ -619,11 +630,13 @@ void print_f(outputFunction put, void *arb, fptr fmt, ...);
       "footprint : ${}\n"
       "types     : ${}\n"
       "collisions: ${}\n"
+      "keysize   : ${}\n"
       "==============================\n",
       HHMap_getMetaSize(PrinterSingleton.data),
       HHMap_footprint(PrinterSingleton.data),
       (size_t)HHMap_count(PrinterSingleton.data),
-      (int)HHMap_countCollisions(PrinterSingleton.data)
+      (int)HHMap_countCollisions(PrinterSingleton.data),
+      (int)HHMap_getKeySize(PrinterSingleton.data)
   );
 }
 #endif // PRINTER_LIST_TYPENAMES
