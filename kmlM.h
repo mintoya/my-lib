@@ -1,11 +1,11 @@
 #ifndef KMLM_H
-#define KMLM_H
-#include "fptr.h"
-#include "omap.h"
-#include "wchar.h"
+  #define KMLM_H
+  #include "fptr.h"
+  #include "omap.h"
+  #include "wchar.h"
 
-#define min(a, b) ((a < b) ? (a) : (b))
-#define max(a, b) ((a > b) ? (a) : (b))
+  #define min(a, b) ((a < b) ? (a) : (b))
+  #define max(a, b) ((a > b) ? (a) : (b))
 
 unsigned int kml_indexOf(fptr string, char c);
 fptr kml_until(char delim, fptr string);
@@ -17,7 +17,7 @@ fptr kml_trimPadding(fptr in);
 fptr findIndex(fptr str, unsigned int index);
 fptr findKey(fptr str, um_fp key);
 
-#define fpChar(fptr) ((char *)fptr.ptr)
+  #define fpChar(fptr) ((char *)fptr.ptr)
 static OMap *parse(OMap *parent, stringList *lparent, fptr kml);
 
 static stringList *parseList(stringList *lparent, fptr kml) {
@@ -215,7 +215,8 @@ static void kmlFormatPrinter(
     indentLevel = 0;
 }
 #endif // KMLM_H
-#ifdef KMLM_C
+#if defined(KMLM_C) || (defined(__INCLUDE_LEVEL__) && __INCLUDE_LEVEL__ == 0)
+  #ifdef KMLM_C
 
 // index after end if c not present
 unsigned int kml_indexOf(um_fp string, char c) {
@@ -395,6 +396,6 @@ um_fp kml_trimPadding(um_fp in) {
   res = splits[1];
   return res;
 }
-#undef min
-#undef max
-#endif
+    #undef min
+    #undef max
+  #endif

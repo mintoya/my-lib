@@ -10,6 +10,7 @@
 
 int main(void) {
   Arena_scoped *local = arena_new();
+  aAlloc(local, 4000);
   OMap_scoped *omap = OMap_new(local);
   OMap_set(omap, fp_from("a"), fp_from("b"));
   OMap_set(omap, fp_from("b"), fp_from("c"));
@@ -31,5 +32,6 @@ int main(void) {
   print_wf(kmlFormatPrinter, "print output: ${}", printOutput);
   OMap_scoped *parsed = parse(NULL, NULL, printOutput);
   print_wf(kmlFormatPrinter, "parsed output: ${OMap}", *parsed);
+  println("arena footprint: ${}", arena_footprint(local));
   return EXIT_SUCCESS;
 }

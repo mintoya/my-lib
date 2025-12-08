@@ -31,9 +31,9 @@ typedef size_t usize;
 #define CONCAT(a, b) _CONCAT(a, b)
 
 #ifndef __cplusplus
-#ifndef thread_local
-#define thread_local _Thread_local
-#endif
+  #ifndef thread_local
+    #define thread_local _Thread_local
+  #endif
 #endif
 
 typedef struct {
@@ -123,7 +123,7 @@ extern inline char fptr_eq(fptr a, fptr b) { return !fptr_cmp(a, b); }
 #ifdef __cplusplus
 inline bool operator==(const fptr &a, const fptr &b) { return fptr_eq(a, b); }
 inline bool operator!=(const fptr &a, const fptr &b) { return !fptr_eq(a, b); }
-#define typeof(x) std::decay_t<decltype(x)>
+  #define typeof(x) std::decay_t<decltype(x)>
 #endif
 
 #define setvar_aligned(var, ptr)                   \
@@ -145,14 +145,14 @@ inline bool operator!=(const fptr &a, const fptr &b) { return !fptr_eq(a, b); }
 })
 
 #ifndef __cplusplus
-#define REF(type, value) ((type[1]){value})
-// #define REF(type, value) (&(type){value})
+  #define REF(type, value) ((type[1]){value})
+  // #define REF(type, value) ((type *)(&(type){(value)}))
 #else
 template <typename T>
 static inline T *ref_tmp(T &&v) {
   return &v;
 }
-#define REF(type, value) ref_tmp(type{value})
+  #define REF(type, value) ref_tmp(type{value})
 
 #endif
 
@@ -237,29 +237,29 @@ static inline T *ref_tmp(T &&v) {
 
 #ifndef __cplusplus
 
-#define fp_fromT(struct)           \
-  ((fptr){                         \
-      .ptr = (uint8_t *)&(struct), \
-      .width = sizeof(struct),     \
-  })
-#define fp_fromP(ref, size)  \
-  ((fptr){                   \
-      .ptr = (uint8_t *)ref, \
-      .width = size,         \
-  })
-#define is_comparr(x) \
-  (!__builtin_types_compatible_p(__typeof__(x), __typeof__(&(x)[0])))
-#define fp_from(val)                                                         \
-  ((fptr){                                                                   \
-      .width =                                                               \
-          (is_comparr(val) ? sizeof(val) - 1 : strlen((const char *)(val))), \
-      .ptr = (uint8_t *)(val),                                               \
-  })
+  #define fp_fromT(struct)           \
+    ((fptr){                         \
+        .ptr = (uint8_t *)&(struct), \
+        .width = sizeof(struct),     \
+    })
+  #define fp_fromP(ref, size)  \
+    ((fptr){                   \
+        .ptr = (uint8_t *)ref, \
+        .width = size,         \
+    })
+  #define is_comparr(x) \
+    (!__builtin_types_compatible_p(__typeof__(x), __typeof__(&(x)[0])))
+  #define fp_from(val)                                                         \
+    ((fptr){                                                                   \
+        .width =                                                               \
+            (is_comparr(val) ? sizeof(val) - 1 : strlen((const char *)(val))), \
+        .ptr = (uint8_t *)(val),                                               \
+    })
 
 #else
-#include <cstdint>
-#include <cstring>
-#include <string>
+  #include <cstdint>
+  #include <cstring>
+  #include <string>
 template <typename T>
 inline fptr fp_from(T &val) {
   return {
@@ -324,38 +324,46 @@ static int fptr_toInt(const fptr in) {
 }
 
 // #define noAssertMessage
-#include "assert.h"
-#define PRINTORANGE "\x1b[38;5;208m"
-#define PRINTRESET "\x1b[0m"
-#define PRINTRED "\x1b[31m\n\n"
-#ifndef noAssertMessage
-#define assertMessage(expr, ...)   \
-  do {                             \
-    bool result = (expr);          \
-    if (!(result)) {               \
-      fprintf(                     \
-          stderr,                  \
-          PRINTRED                 \
-          "\nmessage:\n"           \
-          "" __VA_ARGS__           \
-      );                           \
-      fprintf(                     \
-          stderr,                  \
-          PRINTORANGE              \
-          "\nassert:\n\t%s\n"      \
-          "in fn :\n\t%s"          \
-          "\nfailed\n",            \
-          #expr,                   \
-          __PRETTY_FUNCTION__      \
-      );                           \
-      fprintf(stderr, PRINTRESET); \
-      fflush(stderr);              \
-      abort();                     \
-    }                              \
-  } while (0)
+#ifndef NDEBUG
+  #define PRINTORANGE "\x1b[38;5;208m"
+  #define PRINTRESET "\x1b[0m"
+  #define PRINTRED "\x1b[31m\n\n"
+  #ifndef noAssertMessage
+    #define assertMessage(expr, ...)   \
+      do {                             \
+        bool result = (expr);          \
+        if (!(result)) {               \
+          fprintf(                     \
+              stderr,                  \
+              PRINTRED                 \
+              "\nmessage:\n"           \
+              "" __VA_ARGS__           \
+          );                           \
+          fprintf(                     \
+              stderr,                  \
+              PRINTORANGE              \
+              "\nassert:\t%s\n"        \
+              "in fn :\t%s\n"          \
+              "file  :\t%s\n"          \
+              "line  :\t%d\n"          \
+              "\nfailed\n",            \
+              #expr,                   \
+              __PRETTY_FUNCTION__,     \
+              __FILE__,                \
+              __LINE__                 \
+          );                           \
+          fprintf(stderr, PRINTRESET); \
+          fflush(stderr);              \
+          abort();                     \
+        }                              \
+      } while (0)
 
+  #else
+    #include <assert.h>
+    #define assertMessage(bool, fmstr, ...) assert(bool)
+  #endif
 #else
-#define assertMessage(bool, fmstr, ...) assert(bool)
+  #define assertMessage(...)
 #endif
 
 // returns "else" block, or exit
@@ -375,5 +383,18 @@ static int fptr_toInt(const fptr in) {
   })
 #define nullElse(expr, ...) \
   valElse(expr, NULL, __VA_ARGS__);
+#define countof(v) (sizeof(v) / sizeof(v[i]))
 
+#define valFullElse(expr, onerror, ...)    \
+  do {                                     \
+    typeof((expr)) res = (expr);           \
+    typeof(res) errvals[] = {__VA_ARGS__}; \
+    int i = 0;                             \
+    for (; i < countof(errvals); i++) {    \
+      if (res == errvals[i]) {             \
+        onerror;                           \
+        break;                             \
+      }                                    \
+    }                                      \
+  } while (0)
 #endif // UM_FP_H

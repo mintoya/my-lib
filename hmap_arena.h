@@ -1,4 +1,3 @@
-#include "allocator.h"
 #ifndef HMAP_ALLOCATOR_H
 #define HMAP_ALLOCATOR_H
 enum fnshowOpts_t : unsigned char {
@@ -12,13 +11,17 @@ struct hmap_alloc_opts {
   bool footprint : 1;
   enum fnshowOpts_t fnshowOpts : 3;
 };
-const struct hmap_alloc_opts defMallocs = {0};
+#include "allocator.h"
 My_allocator *hmap_alloc_new(OwnAllocator backend, struct hmap_alloc_opts);
 void hmap_alloc_cleanup(My_allocator *allocator);
 #endif // HMAP_ALLOCATOR_H
 //
 // #define HMAP_ALLOCATOR_C
 //
+
+#if (defined(__INCLUDE_LEVEL__) && __INCLUDE_LEVEL__ == 0)
+#define HMAP_ALLOCATOR_C (1)
+#endif
 #ifdef HMAP_ALLOCATOR_C
 #define B_STACKTRACE_IMPL
 #include "b_stacktrace/b_stacktrace.h"
@@ -56,7 +59,6 @@ fptr startDebugInfo(hmap_allocatorInfo *scratch, const My_allocator *allocator) 
   return (fptr){sizeof(info), (u8 *)scratch};
 }
 void finishDebugInfo(fptr allocatorInfoFptr, memop **memopScratch, u32 *memoplen, b_stacktrace_handle **scratch, u32 *len) {
-  // b_stacktrace_handle lastElement = b_stacktrace_get();
 
   assertMessage(
       allocatorInfoFptr.width == sizeof(hmap_allocatorInfo),
@@ -120,7 +122,6 @@ void *hmap_alloc_alloc(const My_allocator *arenaptr, size_t size) {
   return res;
 }
 void *hmap_alloc_realloc(const My_allocator *arenaptr, void *oldptr, size_t size) {
-
   hmap_allocatorInfo scratch[1];
   HMap_allocator data = *(HMap_allocator *)(arenaptr->arb);
   fptr oldInfo = HMap_get(
@@ -150,7 +151,6 @@ void hmap_alloc_free(const My_allocator *arenaptr, void *ptr) {
       fptr_fromTypeDef(ptr)
   );
   aFree(data.actualAllocator, ptr);
-  // println("freed ${ptr}", ptr);
   HMap_set(
       data.ptrMap,
       fptr_fromTypeDef(ptr),
@@ -171,7 +171,7 @@ My_allocator *hmap_alloc_new(OwnAllocator backend, struct hmap_alloc_opts opts) 
   *res = (My_allocator){
       .alloc = hmap_alloc_alloc,
       .free = hmap_alloc_free,
-      .r_alloc = hmap_alloc_realloc,
+      .ralloc = hmap_alloc_realloc,
       .arb = resarb,
   };
   return res;
@@ -204,11 +204,11 @@ void hmap_alloc_cleanup(My_allocator *allocator) {
   b_stacktrace_handle *scratch[1];
   memop *mems[1];
   HMap_allocator data = *(HMap_allocator *)(allocator->arb);
-  usize n = HMap_count(data.ptrMap), nulls = 0,totalSize = 0;
+  usize n = HMap_count(data.ptrMap), nulls = 0, totalSize = 0;
   for (int i = 0; i < n; i++)
     nulls += (HMap_getVal(data.ptrMap, i).width == 0);
 
-    println();
+  println();
   for (int i = 0; i < n; i++) {
     fptr val = HMap_getVal(data.ptrMap, i);
     if (!val.width)
@@ -219,13 +219,12 @@ void hmap_alloc_cleanup(My_allocator *allocator) {
 
     if (!memslen)
       continue;
-    assertMessage(memslen==scratchlen);
-    totalSize+=memslen*sizeof((*mems)[0])+
-    scratchlen*sizeof((*scratch)[0]) +
-    (2*sizeof(List));
+    assertMessage(memslen == scratchlen, "%i,%i", memslen, scratchlen);
+    totalSize += memslen * sizeof((*mems)[0]) +
+                 scratchlen * sizeof((scratch)[0]) +
+                 (2 * sizeof(List));
 
     bool leaked = (isleak(*mems, memslen));
-
     char *leaktext = leaked ? (char *)"leak" : (char *)"free";
     if (data.opts.summary) {
       print("{${char_ptr}:${}:", (char *)leaktext, memslen);
@@ -244,35 +243,36 @@ void hmap_alloc_cleanup(My_allocator *allocator) {
       println("}");
     }
 
-    if(leaked)
-    { if (data.opts.fnshowOpts & (enum fnshowOpts_t)(first)) {
-      char *cf = b_stacktrace_to_string(((*scratch)[0]));
-      println("[${}]=>\n{\n${char_ptr}\n}", (char *)"first", cf);
-      free(cf);
-    }
-    for (int i = 1; i < scratchlen - 1; i++) {
-      if (data.opts.fnshowOpts & (enum fnshowOpts_t)(all) == (enum fnshowOpts_t)(all)) {
-        char *cl = b_stacktrace_to_string(((*scratch)[i]));
-        println("[${}]=>\n{\n${char_ptr}\n}", i, cl);
+    if (leaked) {
+      if (data.opts.fnshowOpts & (enum fnshowOpts_t)(first)) {
+        char *cf = b_stacktrace_to_string(((*scratch)[0]));
+        println("[${}]=>\n{\n${char_ptr}\n}", (char *)"first", cf);
+        free(cf);
+      }
+      for (int i = 1; i < scratchlen - 1; i++) {
+        if (data.opts.fnshowOpts & ((enum fnshowOpts_t)(all) == (enum fnshowOpts_t)(all))) {
+          char *cl = b_stacktrace_to_string(((*scratch)[i]));
+          println("[${}]=>\n{\n${char_ptr}\n}", i, cl);
+          free(cl);
+        }
+      }
+      if (data.opts.fnshowOpts & (enum fnshowOpts_t)(last)) {
+        char *cl = b_stacktrace_to_string(((*scratch)[scratchlen - 1]));
+        println("[${}]=>\n{\n${char_ptr}\n}", (char *)"last", cl);
         free(cl);
       }
-      free((*scratch)[i]);
     }
-    if (data.opts.fnshowOpts & (enum fnshowOpts_t)(last)) {
-      char *cl = b_stacktrace_to_string(((*scratch)[scratchlen - 1]));
-      println("[${}]=>\n{\n${char_ptr}\n}", (char *)"last", cl);
-      free(cl);
-    } }
-    for (int i = 0; i < scratchlen ; i++) {
+    for (int i = 0; i < scratchlen; i++) {
       free((*scratch)[i]);
     }
   }
-  totalSize+=HMap_footprint(data.ptrMap);
+  totalSize += HMap_footprint(data.ptrMap);
   if (data.opts.footprint) {
     println();
-    println("debug allocator took up ${} bytes in memory",totalSize);
+    println("debug allocator took up ${} bytes in memory", totalSize);
   }
 
   data.own.deInit(data.actualAllocator);
 }
+
 #endif // HMAP_ALLOCATOR_H

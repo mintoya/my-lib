@@ -1,6 +1,7 @@
 #define PRINTER_LIST_TYPENAMES
 #include "../arenaAllocator.h"
 #include "../fptr.h"
+#include "../hhmap.h"
 #include "../hmap.h"
 #include "../hmap_arena.h"
 #include "../macroList.h"
@@ -14,14 +15,13 @@ int main(void) {
       arena_owned_new(),
       (struct hmap_alloc_opts){
           .summary = true,
-          .footprint = true,
           .fnshowOpts = last,
       }
   );
   do {
     char *l;
-    List_scoped *hl = NULL;
-    assertMessage(hl != NULL, "nulltest");
+    List_scoped *hl = List_new(local, 5000);
+    // assertMessage(hl != NULL, "nulltest");
 
     MList(int) list;
     MList_DFInit(list, local, hl); // overwrites hl

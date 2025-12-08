@@ -9,9 +9,8 @@
 
 #include "allocator.h"
 #include "fptr.h"
-#include "hmap.h"
+#include "hhmap.h"
 #include "my-list.h"
-#include "printer/macros.h"
 #include "printer/variadic.h"
 
 typedef void (*outputFunction)(
@@ -53,14 +52,14 @@ typedef pEsc printerEscape;
       .reset = 1,    \
   })
 #ifndef OVERRIDE_DEFAULT_PRINTER
-#include <stdio.h>
+  #include <stdio.h>
 static void stdoutPrint(
     const wchar *c,
     void *,
     unsigned int length,
     char flush
 ) {
-#define bufLen (2 << 16)
+  #define bufLen (2 << 16)
   mbstate_t mbs = {0};
   static thread_local struct
   {
@@ -152,6 +151,7 @@ static void asPrint(
 
 static struct {
   HMap *data;
+  // HHMap *data;
 } PrinterSingleton;
 
 static void PrinterSingleton_init() {
@@ -195,7 +195,7 @@ static printerFunction PrinterSingleton_get(fptr name) {
 
 // clang-format on
 
-[[gnu::constructor(200)]] static void printerInit() {
+[[gnu::constructor(201)]] static void printerInit() {
 #ifdef __WIN32
   setlocale(LC_ALL, "");
 #else
@@ -204,6 +204,16 @@ static printerFunction PrinterSingleton_get(fptr name) {
   PrinterSingleton_init();
 }
 [[gnu::destructor]] static void printerDeinit() { PrinterSingleton_deinit(); }
+
+#define GETTYPEPRINTERFN(T) _##T##_printer
+#define MERGE_PRINTER_M(a, b) a##b
+#define LABEL_PRINTER_GEN(l, a) MERGE_PRINTER_M(l, a)
+
+#define UNIQUE_GEN_PRINTER \
+  LABEL_PRINTER_GEN(LABEL_PRINTER_GEN(__LINE__, _), __COUNTER__)
+#define UNIQUE_PRINTER_FN LABEL_PRINTER_GEN(PRINTERFN, UNIQUE_GEN_PRINTER)
+#define UNIQUE_PRINTER_FN2 \
+  LABEL_PRINTER_GEN(printerConstructor, UNIQUE_GEN_PRINTER)
 
 #define PUTS(characters) put(characters, _arb, (sizeof(characters) / sizeof(wchar)) - 1, 0)
 #define PUTC(character) put(REF(wchar, character), _arb, 1, 0)
@@ -216,7 +226,7 @@ static printerFunction PrinterSingleton_get(fptr name) {
     T in = *(T *)_v_in_ptr;                                            \
     __VA_ARGS__                                                        \
   }                                                                    \
-  [[gnu::constructor(201)]] static void register_##T() {               \
+  [[gnu::constructor(202)]] static void register_##T() {               \
     fptr key = (fptr){                                                 \
         .width = sizeof(#T) - 1,                                       \
         .ptr = (uint8_t *)#T,                                          \
@@ -229,7 +239,7 @@ static printerFunction PrinterSingleton_get(fptr name) {
     type in = *(type *)_v_in_ptr;                                                           \
     __VA_ARGS__                                                                             \
   }                                                                                         \
-  [[gnu::constructor(202)]] static void UNIQUE_PRINTER_FN2() {                              \
+  [[gnu::constructor(203)]] static void UNIQUE_PRINTER_FN2() {                              \
     fptr key = (fptr){                                                                      \
         .width = strlen(str),                                                               \
         .ptr = (uint8_t *)str,                                                              \
@@ -257,7 +267,7 @@ static printerFunction PrinterSingleton_get(fptr name) {
   }
 
 #define REGISTER_ALIASED_PRINTER(realtype, alias)                            \
-  [[gnu::constructor(201)]] static void register__##alias() {                \
+  [[gnu::constructor(202)]] static void register__##alias() {                \
     fptr key = (fptr){                                                       \
         .width = sizeof(EXPAND_AND_STRINGIFY(alias)) - 1,                    \
         .ptr = (uint8_t *)EXPAND_AND_STRINGIFY(alias),                       \
@@ -320,7 +330,11 @@ struct print_arg {
     }
 
   });
-  REGISTER_PRINTER(char_ptr, { while(*in){ PUTC((wchar)*in); in++; } });
+  REGISTER_PRINTER(char_ptr, {
+    in = nullElse(in,(char_ptr)"__NULLCSTR__");
+    while(*in){ PUTC((wchar)*in); in++; } 
+  });
+  REGISTER_SPECIAL_PRINTER("cstr", char_ptr,{USETYPEPRINTER(char_ptr, in);});
   REGISTER_PRINTER(wchar_ptr, { while(*in){ PUTC(*in); in++; } });
   REGISTER_PRINTER(char, {PUTC((wchar)in);});
   REGISTER_PRINTER(wchar, {PUTC(in);});
@@ -597,6 +611,9 @@ void print_f(outputFunction put, void *arb, fptr fmt, ...);
 fptr wchar_toUtf8(const My_allocator *allocator, fptr wbuf);
 #endif
 
+#if (defined(__INCLUDE_LEVEL__) && __INCLUDE_LEVEL__ == 0)
+#define PRINTER_C (1)
+#endif
 #ifdef PRINTER_C
 fptr wchar_toUtf8(const My_allocator *allocator, fptr wbuf) {
   fptr res = {

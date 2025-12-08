@@ -1,36 +1,50 @@
-#include "../fptr.h"
-#include "../kmlM.h"
-#include "../macroList.h"
-#include "../omap.h"
+#define PRINTER_LIST_TYPENAMES
+#include "../arenaAllocator.h"
+#include "../hhmap.h"
+#include "../hmap_arena.h"
 #include "../print.h"
-#include "../printers/omap_printers.c"
 #include "../wheels.h"
+
 #include <stdio.h>
-fptr read_stdin() {
-  List *lptr;
-  MList(char) chars;
-  MList_DFInit(chars, &defaultAllocator, lptr);
-  int c;
-  while ((c = fgetc(stdin)) != EOF)
-    MList_push(chars, (char)c);
-  aFree(defaultAlloc, lptr);
-  return MList_fp(chars);
-}
+#include <string.h>
 
-int main(int nargs, char *args[nargs]) {
-  fptr stin = read_stdin();
+int main(void) {
+  My_allocator *local = hmap_alloc_new(
+      arena_owned_new(),
+      (struct hmap_alloc_opts){
+          .summary = true,
+          .footprint = true,
+          .fnshowOpts = first,
+      }
+  );
+  // Arena_scoped *local = arena_new();
 
-  OMap_scoped *map = parse(NULL, NULL, stin);
+  println("=== HHMap Test Suite ===\n");
 
-  fptr argsf[nargs];
-  for (uint i = 0; i < nargs; i++) {
-    argsf[i] = ((fptr){
-        .width = strlen(args[i]),
-        .ptr = (u8 *)args[i],
-    });
+  // Test 4: Force collisions with small metaSize
+  println("Test 4: Collision handling");
+  HHMap *small_map = HHMap_new(sizeof(int), sizeof(int), local, 4);
+
+  println("  Inserting keys and showing hash distribution:");
+  for (int i = 0; i < 10; i++) {
+    int k = i * 100;
+    int v = i;
+    unsigned int hash = HHMap_hash((fptr){sizeof(int), (u8 *)&k}) % 4;
+    u32 idx = HHMap_set(small_map, &k, &v);
+    println("key=${}, hash_slot=${}, stored_at_index=${}", k, hash, idx);
+    assertMessage(*(int *)HHMap_getKey(small_map, idx) == k, "hmap returned wrong index?");
+    assertMessage(*(int *)HHMap_getVal(small_map, idx) == v, "hmap returned wrong index?");
   }
-  println("${OMap_V}", OMap_getLA(map, nargs - 1, argsf + 1));
+  println();
+  assertMessage(HHMap_count(small_map) == 10);
+  for (int i = 0; i < 10; i++) {
+    int k = *(int *)HHMap_getKey(small_map, i);
+    int *v = (int *)HHMap_get(small_map, &k);
+    assertMessage(v && *v == k / 100, "wrong key retrieved");
+    println("${} -> ${}", k, *v);
+  }
 
-  aFree(defaultAlloc, stin.ptr);
+  println("=== All tests complete ===");
+  hmap_alloc_cleanup(local);
   return 0;
 }
