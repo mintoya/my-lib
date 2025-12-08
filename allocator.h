@@ -28,6 +28,9 @@ typedef struct {
 typedef My_allocator MyAllocator;
 typedef Own_Allocator OwnAllocator;
 
+void *default_alloc(const My_allocator *allocator, size_t s);
+void *default_r_alloc(const My_allocator *allocator, void *p, size_t s);
+void default_free(const My_allocator *allocator, void *p);
 // extern const My_allocator *defaultAlloc;
 extern inline const My_allocator *getDefaultAllocator(void);
   #define defaultAlloc (getDefaultAllocator())
@@ -56,7 +59,7 @@ void default_free(const My_allocator *allocator, void *p) {
   return free(p);
 }
   #include "fptr.h"
-inline const My_allocator defaultAllocator = (My_allocator){default_alloc, default_free, default_r_alloc};
+const My_allocator defaultAllocator = (My_allocator){default_alloc, default_free, default_r_alloc};
 const My_allocator *getDefaultAllocator(void) {
   return &defaultAllocator;
 }

@@ -1,7 +1,6 @@
 #ifndef ARENA_ALLOCATOR_H
 #define ARENA_ALLOCATOR_H
 #include "allocator.h"
-#include "fptr.h"
 #include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -26,6 +25,7 @@ extern const My_allocator *pageAllocator;
 #ifdef ARENA_ALLOCATOR_C
 //
 
+#include "fptr.h"
 size_t lineup(size_t unaligned, size_t aligneder) {
   if (unaligned % aligneder != 0) {
     return unaligned + aligneder - unaligned % aligneder;
@@ -37,10 +37,10 @@ size_t lineup(size_t unaligned, size_t aligneder) {
 void *getPage(size_t);
 void returnPage(void *);
 #if defined(__linux__) || defined(__APPLE__)
-#include <sys/mman.h>
-#include <unistd.h>
-#undef PAGESIZE
-#define PAGESIZE (getpagesize())
+  #include <sys/mman.h>
+  #include <unistd.h>
+  #undef PAGESIZE
+  #define PAGESIZE (getpagesize())
 void *getPage(size_t size) {
   size_t pagesize = PAGESIZE;
   size = lineup(size + alignof(max_align_t), pagesize);
@@ -75,7 +75,7 @@ void returnPage(void *page) {
   );
 }
 #else
-#pragma #error couldnt find page allocator
+  #pragma #error couldnt find page allocator
 #endif
 
 void *allocatePage(const My_allocator *, size_t size) {
