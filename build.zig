@@ -14,22 +14,13 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    // Add C source file
-    exe.addCSourceFile(.{
-        .file = b.path("examples/alloctest.c"),
-        .flags = &.{
-            "-w",
-            "-g",
-            "-O0",
-        },
-    });
+    const sourcefile = "examples/main.c";
 
-    // Link libc
     exe.linkLibC();
 
     if (target.result.os.tag != .windows) {
         exe.addCSourceFile(.{
-            .file = b.path("examples/alloctest.c"),
+            .file = b.path(sourcefile),
             .flags = &.{
                 "-w",
                 "-g",
@@ -41,7 +32,7 @@ pub fn build(b: *std.Build) void {
         exe.linkSystemLibrary("dl");
     } else {
         exe.addCSourceFile(.{
-            .file = b.path("examples/alloctest.c"),
+            .file = b.path(sourcefile),
             .flags = &.{
                 "-w",
                 "-g",

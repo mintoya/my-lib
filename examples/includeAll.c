@@ -2,6 +2,4 @@
 #include "../hmap.h"
 #include "../my-list.h"
 #include "../omap.h"
-#include "../print.h"
-#include "../stringList.h"
 #include "../wheels.h"

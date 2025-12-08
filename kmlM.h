@@ -1,3 +1,4 @@
+#pragma once
 #ifndef KMLM_H
   #define KMLM_H
   #include "fptr.h"

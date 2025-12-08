@@ -6,11 +6,11 @@
 #include <string.h>
 
 #ifdef OLD_ATTR
-#define ATTR(arg, ...) __attribute__((arg))
+  #define ATTR(arg, ...) __attribute__((arg))
 #elifdef NEW_ATTR
-#define ATTR(arg, ...) [[__VA_OPT__(__VA_ARGS__::) arg]]
+  #define ATTR(arg, ...) [[__VA_OPT__(__VA_ARGS__::) arg]]
 #else
-#define ATTR(...)
+  #define ATTR(...)
 #endif
 
 // clang-format off
@@ -87,7 +87,7 @@ static void List_cleanup_handler(List **l) {
       __VA_ARGS__                                          \
     }                                                      \
   } while (0)
-#define mList(allocator,type) List_new(allocator, sizeof(type))
+#define mList(allocator, type) List_new(allocator, sizeof(type))
 #define mList_get(list, type, index) (*(type *)List_getRef(list, index))
 #define mList_add(list, type, value)         \
   do {                                       \
@@ -109,6 +109,10 @@ static void List_cleanup_handler(List **l) {
 
 #endif // MY_LIST_H
 
+#if (defined(__INCLUDE_LEVEL__) && __INCLUDE_LEVEL__ == 0)
+#pragma once
+#define MY_LIST_C (1)
+#endif
 #ifdef MY_LIST_C
 const struct List_opErrorStruct List_opErrorS = {
     OK, CANTRESIZE, INVALID

@@ -1,11 +1,9 @@
-#define PRINTER_LIST_TYPENAMES
 #include "../arenaAllocator.h"
 #include "../hhmap.h"
 #include "../hmap_arena.h"
+#define PRINTER_LIST_TYPENAMES
 #include "../print.h"
 #include "../wheels.h"
-
-#include <stdio.h>
 #include <string.h>
 
 int main(void) {
@@ -19,30 +17,27 @@ int main(void) {
   );
   // Arena_scoped *local = arena_new();
 
-  println("=== HHMap Test Suite ===\n");
-
-  // Test 4: Force collisions with small metaSize
   println("Test 4: Collision handling");
-  HHMap *small_map = HHMap_new(sizeof(int), sizeof(int), local, 4);
 
+  HHMap *small_map = HHMap_new(sizeof(int), sizeof(int), local, 4);
   println("  Inserting keys and showing hash distribution:");
   for (int i = 0; i < 10; i++) {
-    int k = i * 100;
-    int v = i;
-    unsigned int hash = HHMap_hash((fptr){sizeof(int), (u8 *)&k}) % 4;
-    u32 idx = HHMap_set(small_map, &k, &v);
-    println("key=${}, hash_slot=${}, stored_at_index=${}", k, hash, idx);
-    assertMessage(*(int *)HHMap_getKey(small_map, idx) == k, "hmap returned wrong index?");
-    assertMessage(*(int *)HHMap_getVal(small_map, idx) == v, "hmap returned wrong index?");
+    int v = i * i;
+    HHMap_set(small_map, &i, &v);
   }
-  println();
   assertMessage(HHMap_count(small_map) == 10);
+  bool all = true;
   for (int i = 0; i < 10; i++) {
-    int k = *(int *)HHMap_getKey(small_map, i);
-    int *v = (int *)HHMap_get(small_map, &k);
-    assertMessage(v && *v == k / 100, "wrong key retrieved");
-    println("${} -> ${}", k, *v);
+    int v;
+    HHmap_getSet(small_map, &i, &v);
+    valFullElse(
+        HHmap_getSet(small_map, &i, &v),
+        { all = false;v = -999; },
+        false
+    );
+    println("[${}]:${}->${}", i, i, v);
   }
+  assertMessage(all, "hhmap couldnt retrieve all values ");
 
   println("=== All tests complete ===");
   hmap_alloc_cleanup(local);

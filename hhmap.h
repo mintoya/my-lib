@@ -1,3 +1,4 @@
+#include <string.h>
 #if !defined(HHMAP_H)
   #define HHMAP_H (1)
 // same as hmap, but key and value size are known
@@ -13,7 +14,7 @@ HHMap *HHMap_new(usize kSize, usize vSize, const My_allocator *allocator, u32 me
 void HHMap_transform(HHMap **last, usize kSize, usize vSize, const My_allocator *allocator, u32 metaSize);
 void HHMap_free(HHMap *hm);
 // void HHMap_remake(HMap *hm);
-void *HHMap_get(HHMap *, void *);
+void *HHMap_get(HHMap *, const void *);
 u32 HHMap_set(HHMap *map, void *key, void *val);
 u32 HHMap_getMetaSize(HHMap *);
 u32 HHMap_count(const HHMap *map);
@@ -29,6 +30,11 @@ u32 HHMap_countCollisions(const HHMap *map);
 u8 *HHMap_getKeyBuffer(const HHMap *map);
 u8 *HHMap_getValBuffer(const HHMap *map);
 usize HHMap_getKeySize(const HHMap *map);
+usize HHMap_getValSize(const HHMap *map);
+
+// get key store it in val
+// false if key doesnt exist
+extern inline bool HHmap_getSet(HHMap *map, const void *key, void *val);
 
 static inline void HHMap_cleanup_handler(HHMap **v) {
   if (v && *v) {
@@ -36,11 +42,31 @@ static inline void HHMap_cleanup_handler(HHMap **v) {
     *v = NULL;
   }
 }
+  #define HHMap_setM(HhMap, key, val)                       \
+    ({                                                      \
+      typeof(key) kv = (key);                               \
+      typeof(val) vv = (val);                               \
+      assertMessage(HHMap_getKeySize(HhMap) == sizeof(kv)); \
+      assertMessage(HHMap_getValSize(HhMap) == sizeof(vv)); \
+      HHMap_set(HhMap, &kv, &vv);                           \
+    })
+  #define HHMap_getM(HhMap, type, key, elseBlock) \
+    ({                                            \
+      typeof(key) k = key;                        \
+      type rv;                                    \
+      void *ptr = HHMap_get(HhMap, &k);           \
+      if (ptr) {                                  \
+        memcpy(&rv, ptr, sizeof(rv));             \
+      } else                                      \
+        elseBlock                                 \
+            rv;                                   \
+    })
   #define HHMap_scoped [[gnu::cleanup(HHMap_cleanup_handler)]] HHMap
 
 #endif // HHMAP_H
 
 #if (defined(__INCLUDE_LEVEL__) && __INCLUDE_LEVEL__ == 0)
+  #pragma once
   #define HHMAP_C (1)
 #endif
 #ifdef HHMAP_C
@@ -170,7 +196,7 @@ inline void *HHMap_getVal(const HHMap *map, u32 n) {
   u8 *k = (u8 *)List_getRef(&(map->KVs), n);
   return (k + keysize);
 }
-u32 HHMap_setForce(HHMap *map, HHMap_innertype *handle, void *key, void *val, bool createKey) {
+u32 HHMap_setForce(HHMap *map, HHMap_innertype *handle, const void *key, void *val, bool createKey) {
   assertMessage(map->metaSize != 0, "map.metaSize cant be 0");
   usize keysize = map->keysize;
   usize valsize = map->KVs.width - map->keysize;
@@ -226,7 +252,7 @@ u32 HHMap_set(HHMap *map, void *key, void *val) {
   return HHMap_setForce(map, ht, key, val, true);
 }
 
-void *HHMap_get(HHMap *map, void *key) {
+void *HHMap_get(HHMap *map, const void *key) {
   usize keysize = map->keysize;
   usize valsize = map->KVs.width - map->keysize;
   unsigned int hash = HHMap_hash((fptr){map->keysize, (u8 *)key});
@@ -263,4 +289,15 @@ u32 HHMap_countCollisions(const HHMap *map) {
 u8 *HHMap_getKeyBuffer(const HHMap *map) { return map->ykbuffer; }
 u8 *HHMap_getValBuffer(const HHMap *map) { return map->ykbuffer + map->keysize; }
 usize HHMap_getKeySize(const HHMap *map) { return map->keysize; }
+usize HHMap_getValSize(const HHMap *map) { return map->KVs.width - map->keysize; }
+// get key store it in val
+// false if key doesnt exist
+inline bool HHmap_getSet(HHMap *map, const void *key, void *val) {
+  assertMessage(key && val);
+  void *mapVal = HHMap_get(map, key);
+  if (!mapVal)
+    return false;
+  memcpy(val, mapVal, HHMap_getValSize(map));
+  return true;
+}
 #endif // HHMAP_C

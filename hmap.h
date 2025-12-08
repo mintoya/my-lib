@@ -55,6 +55,7 @@ static inline void HMap_cleanup_handler(HMap **hm) {
 #endif // HMAP_H
 
 #if (defined(__INCLUDE_LEVEL__) && __INCLUDE_LEVEL__ == 0)
+#pragma once
 #define HMAP_C (1)
 #endif
 #ifdef HMAP_C

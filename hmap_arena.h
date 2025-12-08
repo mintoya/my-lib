@@ -20,6 +20,7 @@ void hmap_alloc_cleanup(My_allocator *allocator);
 //
 
 #if (defined(__INCLUDE_LEVEL__) && __INCLUDE_LEVEL__ == 0)
+#pragma once
 #define HMAP_ALLOCATOR_C (1)
 #endif
 #ifdef HMAP_ALLOCATOR_C

@@ -53,8 +53,8 @@ typedef struct {
   u8 *Arr_stringMetaData;
   u8 *Arr_char;
 } stringList_Solid;
-const Boxer stringListBoxer = {2, {{.type = FPTR}, {.type = FPTR}}};
 static inline stringListView stringList_toView(const My_allocator *allocator, stringList *sl) {
+  static const Boxer stringListBoxer = {2, {{.type = FPTR}, {.type = FPTR}}};
   fptr meta = (fptr){List_headArea(&(sl->List_stringMetaData)), sl->List_stringMetaData.head};
   fptr buff = (fptr){List_headArea(&(sl->List_char)), sl->List_char.head};
   void *bx[2] = {&(meta), &(buff)};
@@ -63,6 +63,7 @@ static inline stringListView stringList_toView(const My_allocator *allocator, st
   return (stringListView){res};
 }
 static inline stringList_Solid stringList_fromView(stringListView slv) {
+  static const Boxer stringListBoxer = {2, {{.type = FPTR}, {.type = FPTR}}};
   stringList_Solid res;
   fptr meta, buff;
   void *bx[2] = {&meta, &buff};
@@ -108,6 +109,11 @@ static inline void stringList_cleanup_handler(stringList **sl) {
   [[gnu::cleanup(stringList_cleanup_handler)]] stringList
 
 #endif // STRING_LIST_H
+
+#if (defined(__INCLUDE_LEVEL__) && __INCLUDE_LEVEL__ == 0)
+#pragma once
+#define STRING_LIST_C (1)
+#endif
 
 #ifdef STRING_LIST_C
 #include <string.h>
@@ -199,8 +205,8 @@ void stringList_set(stringList *l, fptr value, u32 index) {
     ref->width = value.width;
     if (value.width && value.ptr)
       memcpy(List_getRef(&(l->List_char), ref->index), value.ptr, value.width);
-    else 
-      assertMessage(!value.width && !value.ptr, "null pointer to %llu bytes!",value.width);
+    else
+      assertMessage(!value.width && !value.ptr, "null pointer to %llu bytes!", value.width);
   }
 }
 

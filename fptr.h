@@ -1,15 +1,16 @@
+#pragma once
 #ifndef UM_FP_H
-#define UM_FP_H
-#ifdef _WIN32
-// #include <malloc.h>
-// #else
-// #include <alloca.h>
-#endif
-#include <stdalign.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-// #include <wchar.h>
+  #define UM_FP_H
+  #ifdef _WIN32
+  // #include <malloc.h>
+  // #else
+  // #include <alloca.h>
+  #endif
+  #include <stdalign.h>
+  #include <stdbool.h>
+  #include <stddef.h>
+  #include <stdint.h>
+  #include <wchar.h>
 
 typedef wchar_t wchar;
 typedef unsigned int uint;
@@ -23,18 +24,21 @@ typedef int8_t i8;
 typedef int16_t i16;
 typedef int32_t i32;
 typedef int64_t i64;
+
 typedef uintmax_t umax;
 typedef intmax_t imax;
 typedef size_t usize;
+typedef uintptr_t uptr;
 
-#define _CONCAT(a, b) a##b
-#define CONCAT(a, b) _CONCAT(a, b)
+  #define USESTRINGLIB
+  #define _CONCAT(a, b) a##b
+  #define CONCAT(a, b) _CONCAT(a, b)
 
-#ifndef __cplusplus
-  #ifndef thread_local
-    #define thread_local _Thread_local
+  #ifndef __cplusplus
+    #ifndef thread_local
+      #define thread_local _Thread_local
+    #endif
   #endif
-#endif
 
 typedef struct {
   size_t width;
@@ -44,7 +48,7 @@ typedef struct {
   size_t width;
   u8 ptr[];
 } bFptr;
-#define fptr_fromB(bfptr) ((fptr){.width = (bfptr).width, .ptr = (uint8_t *)(bfptr).ptr})
+  #define fptr_fromB(bfptr) ((fptr){.width = (bfptr).width, .ptr = (uint8_t *)(bfptr).ptr})
 
 struct fatter_pointer {
   fptr fpart;
@@ -62,52 +66,46 @@ typedef union {
 
 typedef fptr um_fp;
 
-// vptr version of dereferencing a value
-#define fptr_fromTypeDef(v) ((fptr){sizeof(typeof(v)), (u8 *)REF(typeof(v), v)})
-#include <string.h>
-extern inline fptr fptr_fromCS(char *cstr) {
-  return (fptr){(size_t)strlen(cstr), (u8 *)cstr};
+  // vptr version of dereferencing a value
+  #define fptr_fromTypeDef(v) ((fptr){sizeof(typeof(v)), (u8 *)REF(typeof(v), v)})
+  // _INC_STRING
+  #include <string.h>
+  #define fptr_fromCS(cstr) \
+    ((fptr){(size_t)strlen(cstr), (u8 *)cstr})
+  #define fptr_fromPL ((fptr){len, (u8 *)cstr})
+  #define IGNORE_ALIGNMENT
+// only sign  of result matters
+inline usize fptr_cstrlen(const char *a) {
+  #ifdef USESTRINGLIB
+  return strlen(a);
+  #else
+  usize res = 0;
+  while (*a) {
+    a++;
+    res++;
+  }
+  return res;
+  #endif
 }
-extern inline fptr fptr_fromPL(u8 *cstr, size_t len) {
-  return (fptr){len, (u8 *)cstr};
-}
-[[gnu::pure]] extern inline int fptr_cmp(const fptr a, const fptr b) {
+[[gnu::pure]] static inline int fptr_cmp(const fptr a, const fptr b) {
   int wd = a.width - b.width;
-  if (wd) {
+  if (wd)
     return wd;
-  }
-  if (!a.width)
+  if (!a.ptr)
     return 0;
-#ifndef IGNORE_ALIGNMENT
+  #ifdef USESTRINGLIB
   return memcmp(a.ptr, b.ptr, a.width);
-#else
-  int res = 0;
-  size_t top = a.width / sizeof(intmax_t);
-  size_t bottom = a.width % sizeof(intmax_t);
-  u8 *resta = a.ptr + (top * (sizeof(imax)));
-  u8 *restb = b.ptr + (top * (sizeof(imax)));
-  for (size_t i = 0; i < top && !res; i++) {
-    imax ai;
-    imax bi;
-    ai = *(imax *)(a.ptr + sizeof(imax) * i);
-    bi = *(imax *)(b.ptr + sizeof(imax) * i);
-    res = ai - bi;
-  }
-  for (size_t i = 0; i < bottom && !res; i++)
-    res = (resta[i] - restb[i]);
-  int result;
-  if (!res)
-    return 0;
-  else if (res < 0)
-    return -1;
-  else
-    return 1;
-#endif
+  #else
+  imax res = 0;
+  for (usize i = 0; !res && i < length; i++)
+    res = ((u8 *)a)[i] - ((u8 *)b)[i];
+  return res;
+  #endif
 }
 static int (*um_fp_cmp)(const fptr, const fptr) = fptr_cmp;
 
-#include <string.h>
-extern inline void fpmemset(uint8_t *ptr, const fptr element, size_t ammount) {
+  #include <string.h>
+static inline void fpmemset(uint8_t *ptr, const fptr element, size_t ammount) {
   if (!ammount)
     return;
   memcpy(ptr, element.ptr, element.width);
@@ -118,45 +116,45 @@ extern inline void fpmemset(uint8_t *ptr, const fptr element, size_t ammount) {
   }
 }
 
-extern inline char fptr_eq(fptr a, fptr b) { return !fptr_cmp(a, b); }
+static inline char fptr_eq(fptr a, fptr b) { return !fptr_cmp(a, b); }
 
-#ifdef __cplusplus
-inline bool operator==(const fptr &a, const fptr &b) { return fptr_eq(a, b); }
-inline bool operator!=(const fptr &a, const fptr &b) { return !fptr_eq(a, b); }
-  #define typeof(x) std::decay_t<decltype(x)>
-#endif
+  #ifdef __cplusplus
+static bool operator==(const fptr &a, const fptr &b) { return fptr_eq(a, b); }
+static bool operator!=(const fptr &a, const fptr &b) { return !fptr_eq(a, b); }
+    #define typeof(x) std::decay_t<decltype(x)>
+  #endif
 
-#define setvar_aligned(var, ptr)                   \
-  do {                                             \
-    const size_t alignment = alignof(typeof(var)); \
-    const uintptr_t address = (uintptr_t)(ptr);    \
-                                                   \
-    if (!(address & (alignment - 1))) {            \
-      var = *(typeof(var) *)(ptr);                 \
-    } else {                                       \
-      memcpy(&(var), (ptr), sizeof(typeof(var)));  \
-    }                                              \
-  } while (0)
+  #define setvar_aligned(var, ptr)                   \
+    do {                                             \
+      const size_t alignment = alignof(typeof(var)); \
+      const uintptr_t address = (uintptr_t)(ptr);    \
+                                                     \
+      if (!(address & (alignment - 1))) {            \
+        var = *(typeof(var) *)(ptr);                 \
+      } else {                                       \
+        memcpy(&(var), (ptr), sizeof(typeof(var)));  \
+      }                                              \
+    } while (0)
 
-#define align_alloca(type) ({                                           \
-  uintptr_t newptr = (uintptr_t)alloca(sizeof(type) + alignof(type));   \
-  newptr += (alignof(type) - (newptr % alignof(type))) % alignof(type); \
-  (type *)newptr;                                                       \
-})
+  #define align_alloca(type) ({                                           \
+    uintptr_t newptr = (uintptr_t)alloca(sizeof(type) + alignof(type));   \
+    newptr += (alignof(type) - (newptr % alignof(type))) % alignof(type); \
+    (type *)newptr;                                                       \
+  })
 
-#ifndef __cplusplus
-  #define REF(type, value) ((type[1]){value})
+  #ifndef __cplusplus
+    #define REF(type, value) ((type[1]){value})
   // #define REF(type, value) ((type *)(&(type){(value)}))
-#else
+  #else
 template <typename T>
 static inline T *ref_tmp(T &&v) {
   return &v;
 }
-  #define REF(type, value) ref_tmp(type{value})
+    #define REF(type, value) ref_tmp(type{value})
 
-#endif
+  #endif
 
-#define fptr_stack_split(string, ...) ({fptr* __temp__result = (fptr*)alloca( (sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1)*sizeof(fptr) ); \
+  #define fptr_stack_split(string, ...) ({fptr* __temp__result = (fptr*)alloca( (sizeof((unsigned int[]){__VA_ARGS__}) / sizeof(unsigned int) + 1)*sizeof(fptr) ); \
   do {                                                                                 \
     uint8_t *last;                                                                     \
     unsigned int args[] = {__VA_ARGS__};                                               \
@@ -183,83 +181,83 @@ static inline T *ref_tmp(T &&v) {
         .ptr = last,                                                                   \
     };                                                                                 \
   } while (0);__temp__result; })
-#define isSkip(char) ( \
-    char == ' ' ||     \
-    char == '\n' ||    \
-    char == '\r' ||    \
-    char == '\t'       \
-)
-#define UM_DEFAULT(...) {__VA_ARGS__}
-#define UM_CASE(fp, ...)     \
-  if (fptr_eq(fp, __temp)) { \
-    __VA_ARGS__              \
-  } else
-#define UM_SWITCH(fp, ...) \
-  do {                     \
-    fptr __temp = fp;      \
-    __VA_ARGS__            \
-  } while (0)
-#define lmemset(arr, arrlen, value)                     \
-  do {                                                  \
-    typeof(value) __temp = (value);                     \
-    fptr __tempFp = ((fptr){                            \
-        .width = sizeof(__temp),                        \
-        .ptr = ((uint8_t *)&(__temp)),                  \
-    });                                                 \
-    fpmemset(((uint8_t *)(arr)), (__tempFp), (arrlen)); \
-  } while (0)
-#define nullFptr ((fptr){0})
-#define nullUmf nullFptr
-#define nullFFptr ((ffptr){0})
+  #define isSkip(char) ( \
+      char == ' ' ||     \
+      char == '\n' ||    \
+      char == '\r' ||    \
+      char == '\t'       \
+  )
+  #define UM_DEFAULT(...) {__VA_ARGS__}
+  #define UM_CASE(fp, ...)     \
+    if (fptr_eq(fp, __temp)) { \
+      __VA_ARGS__              \
+    } else
+  #define UM_SWITCH(fp, ...) \
+    do {                     \
+      fptr __temp = fp;      \
+      __VA_ARGS__            \
+    } while (0)
+  #define lmemset(arr, arrlen, value)                     \
+    do {                                                  \
+      typeof(value) __temp = (value);                     \
+      fptr __tempFp = ((fptr){                            \
+          .width = sizeof(__temp),                        \
+          .ptr = ((uint8_t *)&(__temp)),                  \
+      });                                                 \
+      fpmemset(((uint8_t *)(arr)), (__tempFp), (arrlen)); \
+    } while (0)
+  #define nullFptr ((fptr){0})
+  #define nullUmf nullFptr
+  #define nullFFptr ((ffptr){0})
 
-#define um_block(var)                          \
-  ((fptr){                                     \
-      .width = sizeof(var),                    \
-      .ptr = (uint8_t *)(typeof(var)[1]){var}, \
-  })
-#define um_blockT(type, ...)                    \
-  ((fptr){                                      \
-      .width = sizeof(type),                    \
-      .ptr = (uint8_t *)(type[1]){__VA_ARGS__}, \
-  })
-
-#define structEq(a, b)              \
-  (fptr_eq(                         \
-      (fptr){                       \
-          .width = sizeof(a),       \
-          .ptr = (uint8_t *)(&(a)), \
-      },                            \
-      (fptr){                       \
-          .width = sizeof(b),       \
-          .ptr = (uint8_t *)(&(b)), \
-      }                             \
-  ))
-
-#ifndef __cplusplus
-
-  #define fp_fromT(struct)           \
-    ((fptr){                         \
-        .ptr = (uint8_t *)&(struct), \
-        .width = sizeof(struct),     \
+  #define um_block(var)                          \
+    ((fptr){                                     \
+        .width = sizeof(var),                    \
+        .ptr = (uint8_t *)(typeof(var)[1]){var}, \
     })
-  #define fp_fromP(ref, size)  \
-    ((fptr){                   \
-        .ptr = (uint8_t *)ref, \
-        .width = size,         \
-    })
-  #define is_comparr(x) \
-    (!__builtin_types_compatible_p(__typeof__(x), __typeof__(&(x)[0])))
-  #define fp_from(val)                                                         \
-    ((fptr){                                                                   \
-        .width =                                                               \
-            (is_comparr(val) ? sizeof(val) - 1 : strlen((const char *)(val))), \
-        .ptr = (uint8_t *)(val),                                               \
+  #define um_blockT(type, ...)                    \
+    ((fptr){                                      \
+        .width = sizeof(type),                    \
+        .ptr = (uint8_t *)(type[1]){__VA_ARGS__}, \
     })
 
-#else
-  #include <cstdint>
-  #include <cstring>
-  #include <string>
+  #define structEq(a, b)              \
+    (fptr_eq(                         \
+        (fptr){                       \
+            .width = sizeof(a),       \
+            .ptr = (uint8_t *)(&(a)), \
+        },                            \
+        (fptr){                       \
+            .width = sizeof(b),       \
+            .ptr = (uint8_t *)(&(b)), \
+        }                             \
+    ))
+
+  #ifndef __cplusplus
+
+    #define fp_fromT(struct)           \
+      ((fptr){                         \
+          .ptr = (uint8_t *)&(struct), \
+          .width = sizeof(struct),     \
+      })
+    #define fp_fromP(ref, size)  \
+      ((fptr){                   \
+          .ptr = (uint8_t *)ref, \
+          .width = size,         \
+      })
+    #define is_comparr(x) \
+      (!__builtin_types_compatible_p(__typeof__(x), __typeof__(&(x)[0])))
+    #define fp_from(val)                                                         \
+      ((fptr){                                                                   \
+          .width =                                                               \
+              (is_comparr(val) ? sizeof(val) - 1 : strlen((const char *)(val))), \
+          .ptr = (uint8_t *)(val),                                               \
+      })
+
+  #else
+    #include <cstdint>
+    #include <cstring>
+    #include <string>
 template <typename T>
 inline fptr fp_from(T &val) {
   return {
@@ -288,7 +286,7 @@ inline fptr fp_from(const char (&s)[N]) {
   };
 }
 
-#endif
+  #endif
 static fptr fptr_trim(fptr in) {
   while (isSkip(*in.ptr)) {
     in.ptr++;
@@ -299,8 +297,8 @@ static fptr fptr_trim(fptr in) {
   }
   return in;
 }
-#undef isSkip
-#define isDigit(char) (char <= '9' && char >= '0')
+  #undef isSkip
+  #define isDigit(char) (char <= '9' && char >= '0')
 static unsigned int fptr_toUint(const fptr in) {
   fptr copy = fptr_trim(in);
   unsigned int res = 0;
@@ -310,7 +308,7 @@ static unsigned int fptr_toUint(const fptr in) {
   }
   return res;
 }
-#undef isDigit
+  #undef isDigit
 static int fptr_toInt(const fptr in) {
   fptr number = fptr_trim(in);
   if (!number.width)
@@ -323,78 +321,80 @@ static int fptr_toInt(const fptr in) {
   return (negetive ? -1 : 1) * fptr_toUint(number);
 }
 
-// #define noAssertMessage
-#ifndef NDEBUG
-  #define PRINTORANGE "\x1b[38;5;208m"
-  #define PRINTRESET "\x1b[0m"
-  #define PRINTRED "\x1b[31m\n\n"
-  #ifndef noAssertMessage
-    #define assertMessage(expr, ...)   \
-      do {                             \
-        bool result = (expr);          \
-        if (!(result)) {               \
-          fprintf(                     \
-              stderr,                  \
-              PRINTRED                 \
-              "\nmessage:\n"           \
-              "" __VA_ARGS__           \
-          );                           \
-          fprintf(                     \
-              stderr,                  \
-              PRINTORANGE              \
-              "\nassert:\t%s\n"        \
-              "in fn :\t%s\n"          \
-              "file  :\t%s\n"          \
-              "line  :\t%d\n"          \
-              "\nfailed\n",            \
-              #expr,                   \
-              __PRETTY_FUNCTION__,     \
-              __FILE__,                \
-              __LINE__                 \
-          );                           \
-          fprintf(stderr, PRINTRESET); \
-          fflush(stderr);              \
-          abort();                     \
-        }                              \
-      } while (0)
+  // #define noAssertMessage
+  #ifndef NDEBUG
+    #define PRINTORANGE "\x1b[38;5;208m"
+    #define PRINTRESET "\x1b[0m"
+    #define PRINTRED "\x1b[31m\n\n"
+    #ifndef noAssertMessage
+      #define assertMessage(expr, ...)   \
+        do {                             \
+          bool result = (expr);          \
+          if (!(result)) {               \
+            fprintf(                     \
+                stderr,                  \
+                PRINTRED                 \
+                "\nmessage:\n"           \
+                "" __VA_ARGS__           \
+            );                           \
+            fprintf(                     \
+                stderr,                  \
+                PRINTORANGE              \
+                "\nassert:\t%s\n"        \
+                "in fn :\t%s\n"          \
+                "file  :\t%s\n"          \
+                "line  :\t%d\n"          \
+                "\nfailed\n",            \
+                #expr,                   \
+                __PRETTY_FUNCTION__,     \
+                __FILE__,                \
+                __LINE__                 \
+            );                           \
+            fprintf(stderr, PRINTRESET); \
+            fflush(stderr);              \
+            abort();                     \
+          }                              \
+        } while (0)
 
+    #else
+      #include <assert.h>
+      #define assertMessage(bool, fmstr, ...) assert(bool)
+    #endif
   #else
-    #include <assert.h>
-    #define assertMessage(bool, fmstr, ...) assert(bool)
+    #define assertMessage(...)
   #endif
-#else
-  #define assertMessage(...)
-#endif
 
-// returns "else" block, or exit
-#define valElse(expr, ovalue, ...)  \
-  ({                                \
-    typeof((expr)) res = (expr);    \
-    typeof(res) other = (ovalue);   \
-    if (res == ovalue) {            \
-      typeof(res) elseBlock = ({    \
-        (typeof(res))(ovalue);      \
-        __VA_OPT__((__VA_ARGS__);)  \
-      });                           \
-      res = elseBlock;              \
-      assertMessage(res != ovalue); \
-    }                               \
-    res;                            \
-  })
-#define nullElse(expr, ...) \
-  valElse(expr, NULL, __VA_ARGS__);
-#define countof(v) (sizeof(v) / sizeof(v[i]))
+  #define valElse(expr, ovalue, ...)   \
+    /* returns "else" block, or exit*/ \
+    ({                                 \
+      typeof((expr)) res = (expr);     \
+      typeof(res) other = (ovalue);    \
+      if (res == ovalue) {             \
+        typeof(res) elseBlock = ({     \
+          (typeof(res))(ovalue);       \
+          __VA_OPT__((__VA_ARGS__);)   \
+        });                            \
+        res = elseBlock;               \
+        assertMessage(res != ovalue);  \
+      }                                \
+      res;                             \
+    })
+  #define nullElse(expr, ...) \
+    valElse(expr, NULL, __VA_ARGS__);
+  #define countof(v) (sizeof(v) / sizeof(v[i]))
 
-#define valFullElse(expr, onerror, ...)    \
-  do {                                     \
-    typeof((expr)) res = (expr);           \
-    typeof(res) errvals[] = {__VA_ARGS__}; \
-    int i = 0;                             \
-    for (; i < countof(errvals); i++) {    \
-      if (res == errvals[i]) {             \
-        onerror;                           \
-        break;                             \
-      }                                    \
-    }                                      \
-  } while (0)
+  #define valFullElse(expr, onerror, ...)    \
+    /*if expr == anything in __VA_ARGS__,    \
+     do  onerror;*/                          \
+    do {                                     \
+      typeof((expr)) res = (expr);           \
+      typeof(res) errvals[] = {__VA_ARGS__}; \
+      int i = 0;                             \
+      for (; i < countof(errvals); i++) {    \
+        if (res == errvals[i]) {             \
+          onerror;                           \
+          break;                             \
+        }                                    \
+      }                                      \
+    } while (0)
 #endif // UM_FP_H

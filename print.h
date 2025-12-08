@@ -155,7 +155,7 @@ static struct {
 } PrinterSingleton;
 
 static void PrinterSingleton_init() {
-  PrinterSingleton.data = HHMap_new(sizeof(void *), sizeof(void *), defaultAlloc, 20);
+  PrinterSingleton.data = HHMap_new(sizeof(void *), sizeof(void *), defaultAlloc, 10);
 }
 static void PrinterSingleton_deinit() { HHMap_free(PrinterSingleton.data); }
 static void PrinterSingleton_append(fptr name, printerFunction function) {
@@ -246,7 +246,7 @@ static printerFunction PrinterSingleton_get(fptr name) {
 #define PUTC(character) put(REF(wchar, character), _arb, 1, 0)
 
 #define REGISTER_PRINTER(T, ...)                                       \
-  [[gnu::weak]] void GETTYPEPRINTERFN(T)(                              \
+  static void GETTYPEPRINTERFN(T)(                                     \
       outputFunction put, const void *_v_in_ptr, fptr args, void *_arb \
   ) {                                                                  \
     (void)args;                                                        \
@@ -261,17 +261,17 @@ static printerFunction PrinterSingleton_get(fptr name) {
     PrinterSingleton_append(key, GETTYPEPRINTERFN(T));                 \
   }
 
-#define REGISTER_SPECIAL_PRINTER_NEEDID(id, str, type, ...)                                 \
-  [[gnu::weak]] void id(outputFunction put, const void *_v_in_ptr, fptr args, void *_arb) { \
-    type in = *(type *)_v_in_ptr;                                                           \
-    __VA_ARGS__                                                                             \
-  }                                                                                         \
-  [[gnu::constructor(203)]] static void UNIQUE_PRINTER_FN2() {                              \
-    fptr key = (fptr){                                                                      \
-        .width = strlen(str),                                                               \
-        .ptr = (uint8_t *)str,                                                              \
-    };                                                                                      \
-    PrinterSingleton_append(key, id);                                                       \
+#define REGISTER_SPECIAL_PRINTER_NEEDID(id, str, type, ...)                          \
+  static void id(outputFunction put, const void *_v_in_ptr, fptr args, void *_arb) { \
+    type in = *(type *)_v_in_ptr;                                                    \
+    __VA_ARGS__                                                                      \
+  }                                                                                  \
+  [[gnu::constructor(203)]] static void UNIQUE_PRINTER_FN2() {                       \
+    fptr key = (fptr){                                                               \
+        .width = strlen(str),                                                        \
+        .ptr = (uint8_t *)str,                                                       \
+    };                                                                               \
+    PrinterSingleton_append(key, id);                                                \
   }
 
 #define REGISTER_SPECIAL_PRINTER(str, type, ...) \
@@ -646,6 +646,7 @@ fptr wchar_toUtf8(const My_allocator *allocator, fptr wbuf);
 
 #if (defined(__INCLUDE_LEVEL__) && __INCLUDE_LEVEL__ == 0)
 #define PRINTER_C (1)
+#pragma once
 #endif
 #ifdef PRINTER_C
 fptr wchar_toUtf8(const My_allocator *allocator, fptr wbuf) {

@@ -7,7 +7,7 @@ typedef struct My_allocator My_allocator;
 typedef void *(*My_allocatorAlloc)(const My_allocator *, size_t);
 typedef void (*My_allocatorFree)(const My_allocator *, void *);
 typedef void *(*My_allocatorRealloc)(const My_allocator *, void *, size_t);
-typedef size_t (*My_allocatorGetActualSize)(void *); // cant be bothered making one of these for everything
+typedef size_t (*My_allocatorGetActualSize)(void *);
 
 typedef My_allocator *(*OwnAllocatorInit)(void);
 typedef void (*OwnAllocatorDeInit)(My_allocator *);

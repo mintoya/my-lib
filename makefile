@@ -1,8 +1,8 @@
-CC = cc
+CC = zig cc
 DIR = build
 # CFLAGS = -w -O0
 CFLAGS_NOTWIN32 = -g -O0 -w -ldl -fsanitize=address -D_GNU_SOURCE -lasan
-CFLAGS_WIN32 = -g -o0 -w -ldbghelp 
+CFLAGS_WIN32 = -g -O0 -w -ldbghelp 
 
 
 OBJECTS = ./examples/main.c
