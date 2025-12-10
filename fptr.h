@@ -72,7 +72,7 @@ typedef fptr um_fp;
   #include <string.h>
   #define fptr_fromCS(cstr) \
     ((fptr){(size_t)strlen(cstr), (u8 *)cstr})
-  #define fptr_fromPL ((fptr){len, (u8 *)cstr})
+  #define fptr_fromPL(cstr, len) ((fptr){len, (u8 *)cstr})
   #define IGNORE_ALIGNMENT
 // only sign  of result matters
 inline usize fptr_cstrlen(const char *a) {

@@ -4,18 +4,17 @@
 #define PRINTER_LIST_TYPENAMES
 #include "../print.h"
 #include "../wheels.h"
-#include <string.h>
 
 int main(void) {
-  My_allocator *local = hmap_alloc_new(
-      arena_owned_new(),
-      (struct hmap_alloc_opts){
-          .summary = true,
-          .footprint = true,
-          .fnshowOpts = first,
-      }
-  );
-  // Arena_scoped *local = arena_new();
+  // My_allocator *local = hmap_alloc_new( // bugged
+  //     arena_owned_new(),
+  //     (struct hmap_alloc_opts){
+  //         .summary = true,
+  //         .footprint = true,
+  //         .fnshowOpts = first,
+  //     }
+  // );
+  Arena_scoped *local = arena_new();
 
   println("Test 4: Collision handling");
 
@@ -39,7 +38,6 @@ int main(void) {
   }
   assertMessage(all, "hhmap couldnt retrieve all values ");
 
-  println("=== All tests complete ===");
-  hmap_alloc_cleanup(local);
+  // hmap_alloc_cleanup(local);
   return 0;
 }

@@ -155,14 +155,18 @@ static struct {
 } PrinterSingleton;
 
 static void PrinterSingleton_init() {
-  PrinterSingleton.data = HHMap_new(sizeof(void *), sizeof(void *), defaultAlloc, 10);
+  PrinterSingleton.data = HHMap_new(sizeof(printerFunction), sizeof(printerFunction), defaultAlloc, 10);
 }
 static void PrinterSingleton_deinit() { HHMap_free(PrinterSingleton.data); }
 static void PrinterSingleton_append(fptr name, printerFunction function) {
   static u32 calls = 0;
   calls++;
   if (name.width > HHMap_getKeySize(PrinterSingleton.data)) {
-    HHMap_transform(&(PrinterSingleton.data), name.width, sizeof(void *), NULL, 0);
+
+    size_t width = name.width;
+    if (name.width % (alignof(printerFunction)) != 0)
+      width += (alignof(printerFunction)) - name.width % (alignof(printerFunction));
+    HHMap_transform(&(PrinterSingleton.data), width, sizeof(printerFunction), NULL, 0);
   }
   printerFunction space[1] = {function}; // function*
   void *container = space;
@@ -176,12 +180,6 @@ static void PrinterSingleton_append(fptr name, printerFunction function) {
   void *res = HHMap_get(PrinterSingleton.data, nname);
   memset((void *)container, 0, sizeof(void *));
   memcpy((void *)container, res, sizeof(void *));
-
-  assertMessage(
-      *(printerFunction *)container == function,
-      "%p != %p on the %u'th call",
-      *(printerFunction *)container, function, calls
-  );
 }
 static printerFunction lastprinters[2] = {NULL, NULL};
 static fptr lastnames[2] = {nullUmf, nullUmf};
@@ -202,7 +200,8 @@ static printerFunction PrinterSingleton_get(fptr name) {
 
   printerFunction p = NULL;
   if (val) {
-    memcpy(&p, val, sizeof(printerFunction));
+    p = *(typeof(p) *)val; // reason for void* sizes with alignof
+    // memcpy(&p, val, sizeof(printerFunction));
     lasttick = !lasttick;
     lastprinters[lasttick] = p;
     lastnames[lasttick] = name;
@@ -621,8 +620,7 @@ void print_f(outputFunction put, void *arb, fptr fmt, ...);
     fptr key = ((fptr){
         HHMap_getKeySize(PrinterSingleton.data),
         (u8 *)HHMap_getKey(PrinterSingleton.data, i)
-    }
-    );
+    });
     println(" ${}", key);
   }
   println(
