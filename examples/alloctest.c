@@ -20,9 +20,7 @@ int main(void) {
   );
   do {
     char *l;
-    List_scoped *hl = List_new(local, 5000);
-    // assertMessage(hl != NULL, "nulltest");
-
+    List_scoped *hl = NULL;
     MList(int) list;
     MList_DFInit(list, local, hl); // overwrites hl
 
@@ -34,8 +32,9 @@ int main(void) {
     MList_push(list, 8);
     MList_push(list, 7);
     MList_push(list, 9);
-    MList_foreach(list, index, element, { println("${}", (int)element); });
-    println("list footprint : ${}", List_headArea(MList_heapList(list)));
+    MList_foreach(list, index, element, { println("{}", (int)element); });
+    println("list footprint : {}", List_headArea(MList_heapList(list)));
+    println("{cstr}", (char *)"hello world");
 
   } while (0);
   hmap_alloc_cleanup(local);

@@ -73,7 +73,6 @@ typedef fptr um_fp;
   #define fptr_fromCS(cstr) \
     ((fptr){(size_t)strlen(cstr), (u8 *)cstr})
   #define fptr_fromPL(cstr, len) ((fptr){len, (u8 *)cstr})
-  #define IGNORE_ALIGNMENT
 // only sign  of result matters
 inline usize fptr_cstrlen(const char *a) {
   #ifdef USESTRINGLIB
@@ -321,6 +320,7 @@ static int fptr_toInt(const fptr in) {
   return (negetive ? -1 : 1) * fptr_toUint(number);
 }
 
+  #define OBJ(ptr, fnel, ...) ((ptr)->fnel(ptr __VA_OPT__(, __VA_ARGS__)))
   // #define noAssertMessage
   #ifndef NDEBUG
     #define PRINTORANGE "\x1b[38;5;208m"

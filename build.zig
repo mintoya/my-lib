@@ -4,10 +4,8 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    // Create executable
-
     const exe = b.addExecutable(.{
-        .name = "a.exe",
+        .name = "a",
         .root_module = b.createModule(.{
             .target = target,
             .optimize = optimize,

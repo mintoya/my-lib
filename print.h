@@ -162,10 +162,11 @@ static void PrinterSingleton_append(fptr name, printerFunction function) {
   static u32 calls = 0;
   calls++;
   if (name.width > HHMap_getKeySize(PrinterSingleton.data)) {
-
     size_t width = name.width;
+#ifndef IGNORE_ALIGNMENT
     if (name.width % (alignof(printerFunction)) != 0)
       width += (alignof(printerFunction)) - name.width % (alignof(printerFunction));
+#endif
     HHMap_transform(&(PrinterSingleton.data), width, sizeof(printerFunction), NULL, 0);
   }
   printerFunction space[1] = {function}; // function*
@@ -621,14 +622,14 @@ void print_f(outputFunction put, void *arb, fptr fmt, ...);
         HHMap_getKeySize(PrinterSingleton.data),
         (u8 *)HHMap_getKey(PrinterSingleton.data, i)
     });
-    println(" ${}", key);
+    println(" {}", key);
   }
   println(
-      "buckets   : ${}\n"
-      "footprint : ${}\n"
-      "types     : ${}\n"
-      "collisions: ${}\n"
-      "keysize   : ${}\n"
+      "buckets   : {}\n"
+      "footprint : {}\n"
+      "types     : {}\n"
+      "collisions: {}\n"
+      "keysize   : {}\n"
       "==============================\n",
       HHMap_getMetaSize(PrinterSingleton.data),
       HHMap_footprint(PrinterSingleton.data),
@@ -713,77 +714,44 @@ void print_f_helper(struct print_arg p, fptr typeName, outputFunction put, fptr 
   }
   printerFunction fn = PrinterSingleton_get(typeName);
   if (!fn) {
-    // if (!args.width) {
     USETYPEPRINTER(fptr, fp_from("__ NO_TYPE("));
     USETYPEPRINTER(fptr, typeName);
     USETYPEPRINTER(fptr, fp_from(") __"));
-    // } else {
-    //   if (fptr_eq(fp_from("flush"), args)) {
-    //     put(NULL, _arb, 0, 1);
-    //   }
-    // }
   } else {
     fn(put, ref, args, _arb);
   }
 }
 
 void print_f(outputFunction put, void *arb, const fptr fmt, ...) {
-#ifndef __cplusplus
-  const char *restrict ccstr = (char *)fmt.ptr;
-#else
   const char *ccstr = (char *)fmt.ptr;
-#endif
   va_list l;
   va_start(l, fmt);
   char check = 0;
-  for (unsigned int i = 0; i < fmt.width; i++) {
-    switch (ccstr[i]) {
-    case '$':
-      if (check) {
-        wchar c = (wchar) * (ccstr + i - 1);
-        put(&c, arb, 1, 0);
-      }
-      if (i + 1 == fmt.width)
-        put(L"$", arb, 1, 0);
-      check = 1;
-      break;
-    case '{':
-      if (check) {
-        unsigned int j;
-        for (j = i + 1; j < fmt.width && ccstr[j] != '}'; j++)
-          ;
-        fptr typeName = {
-            .width = j - i - 1,
-            .ptr = ((uint8_t *)fmt.ptr) + i + 1,
-        };
-        struct print_arg assumedName = va_arg(l, struct print_arg);
+  for (u32 i = 0; i < fmt.width; i++) {
+    if (ccstr[i] == '{') {
+      u32 j = i + 1;
+      while (j < fmt.width && ccstr[j] != '}')
+        j++;
+      fptr typeName = {
+          .width = j - i - 1,
+          .ptr = ((u8 *)fmt.ptr) + i + 1,
+      };
+      struct print_arg assumedName = va_arg(l, struct print_arg);
 
-        fptr tname = printer_arg_until(':', typeName);
-        fptr parseargs = printer_arg_after(':', typeName);
-        tname = printer_arg_trim(tname);
-        if (!assumedName.ref) {
-          va_end(l);
-          return put(L"__ NO ARGUMENT PROVIDED, ENDING PRINT __\n", arb, 41, 1);
-        }
-        print_f_helper(assumedName, tname, put, parseargs, arb);
-        i = j;
-        check = 0;
-      } else {
-        put(L"{", arb, 1, 0);
+      fptr tname = printer_arg_until(':', typeName);
+      fptr parseargs = printer_arg_after(':', typeName);
+      tname = printer_arg_trim(tname);
+      if (!assumedName.ref) {
+        va_end(l);
+        return put(L"__ NO ARGUMENT PROVIDED, ENDING PRINT __\n", arb, 41, 1);
       }
-      break;
-    default:
-      if (check) {
-        wchar c = (wchar) * (ccstr + i - 1);
-        put(&c, arb, 1, 0);
-      }
-      size_t ne;
-      for (ne = 0; ne + i < fmt.width && ccstr[ne + i] != '$'; ne++) {
-        wchar c = (wchar) * (ccstr + i + ne);
-        put(&c, arb, 1, 0);
-      }
-      i += (ne - 1);
+      print_f_helper(assumedName, tname, put, parseargs, arb);
+      i = j;
       check = 0;
+
+    } else {
+      wchar c = (wchar)(ccstr[i]);
+      put(&c, arb, 1, 0);
     }
   }
   va_end(l);
