@@ -35,6 +35,7 @@ typedef struct LList_element {
 
 typedef struct LList_head {
   LList_element *first;
+  LList_element *last;
   size_t elementSize;
   const My_allocator *allocator;
 } LList_head;
@@ -341,6 +342,7 @@ LList_head *LList_new(const My_allocator *allocator, size_t size) {
   LList_head *res = (LList_head *)aAlloc(allocator, size + sizeof(LList_head));
   *res = (LList_head){
       NULL,
+      NULL,
       size,
       allocator,
   };
@@ -355,7 +357,7 @@ void LList_free(LList_head *l) {
   }
   aFree(l->allocator, l);
 }
-List_opError LList_append(LList_head *l, const void *val) {
+List_opError LList_push(LList_head *l, const void *val) {
   LList_element *newelement = (LList_element *)aAlloc(l->allocator, l->elementSize + sizeof(LList_element));
   if (!newelement)
     return List_opErrorS.CantResize;
@@ -366,13 +368,12 @@ List_opError LList_append(LList_head *l, const void *val) {
 
   if (!l->first) {
     l->first = newelement;
+    l->last = newelement;
     return List_opErrorS.Ok;
   }
-  LList_element *e = l->first;
-  while (e->next)
-    e = e->next;
-  e->next = newelement;
-  newelement->next = NULL;
+  l->last->next = newelement;
+  l->last = newelement;
+
   return List_opErrorS.Ok;
 }
 

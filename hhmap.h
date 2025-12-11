@@ -2,7 +2,7 @@
 #if !defined(HHMAP_H)
   #define HHMAP_H (1)
 typedef struct HHMap HHMap;
-  #include "hmap.h"
+  #include "fptr.h"
   #include "my-list.h"
 
 HHMap *HHMap_new(usize kSize, usize vSize, const My_allocator *allocator, u32 metaSize);
@@ -21,10 +21,16 @@ usize HHMap_footprint(const HHMap *map);
 u32 HHMap_countCollisions(const HHMap *map);
 usize HHMap_getKeySize(const HHMap *map);
 usize HHMap_getValSize(const HHMap *map);
+typedef struct HHMap_both {
+  void *key;
+  void *val;
+} HHMap_both;
+HHMap_both HHMap_getBoth(HHMap *map, const void *key);
 
 // get key store it in val
 // false if key doesnt exist
-extern inline bool HHmap_getSet(HHMap *map, const void *key, void *val);
+bool HHMap_getSet(HHMap *map, const void *key, void *val);
+void HHMap_fset(HHMap *map, const fptr key, void *val);
 
 static inline void HHMap_cleanup_handler(HHMap **v) {
   if (v && *v) {
@@ -91,7 +97,7 @@ HHMap *HHMap_new(usize kSize, usize vSize, const My_allocator *allocator, u32 me
       sizeof(HHMap) +
           metaSize * sizeof(HHMap_LesserList) +
           metaSize * sizeof(void *) +
-          kSize + vSize
+          2 * (kSize + vSize)
   );
 
   HHMap_LesserList *lists = (HHMap_LesserList *)((u8 *)hm + sizeof(HHMap));
@@ -299,15 +305,12 @@ usize HHMap_footprint(const HHMap *map) {
   }
   res += sizeof(HHMap);
   res += map->keysize + map->valsize;
-  res += map->metaSize * sizeof(HHMap_LesserList);
-  res += map->metaSize * sizeof(void *);
+  res += map->metaSize * sizeof(HHMap_LesserList) * 2;
+  res += map->metaSize * sizeof(void *) * 2;
   return res;
 }
-inline bool HHmap_getSet(HHMap *map, const void *key, void *val) {
+bool HHMap_getSet(HHMap *map, const void *key, void *val) {
   assertMessage(map && key && val);
-  if (!key || !val) {
-    return false;
-  }
 
   void *result = HHMap_get(map, key);
   if (result) {
@@ -315,6 +318,26 @@ inline bool HHmap_getSet(HHMap *map, const void *key, void *val) {
     return true;
   }
   return false;
+}
+void HHMap_fset(HHMap *map, const fptr key, void *val) {
+
+  // HHMap *hm = (HHMap *)aAlloc(
+  //     allocator,
+  //     sizeof(HHMap) +
+  //         metaSize * sizeof(HHMap_LesserList) +
+  //         metaSize * sizeof(void *) +
+  //         2 * (kSize + vSize)
+  // );
+  u8 *nname = ((u8 *)map) + sizeof(HHMap) + map->metaSize * (sizeof(HHMap_LesserList) + sizeof(void *) + map->keysize + map->valsize);
+  memset(nname, 0, HHMap_getKeySize(map));
+  memcpy(nname, key.ptr, key.width);
+  return HHMap_set(map, nname, val);
+}
+HHMap_both HHMap_getBoth(HHMap *map, const void *key) {
+  u8 *place = (u8 *)HHMap_get(map, key);
+  if (!place)
+    return (HHMap_both){NULL, NULL};
+  return (HHMap_both){place - map->valsize, place};
 }
 
 #endif // HHMAP_C

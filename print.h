@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <wchar.h>
 
 #include "allocator.h"
@@ -131,7 +132,7 @@ static void asPrint(
     char flush
 ) {
   (void)flush;
-  assert(!!listptr);
+  assertMessage(listptr != NULL);
   List *list = *(List **)listptr;
   if (!list)
     list = List_new(defaultAlloc, sizeof(wchar));
@@ -155,38 +156,29 @@ static struct {
 } PrinterSingleton;
 
 static void PrinterSingleton_init() {
-  PrinterSingleton.data = HHMap_new(sizeof(printerFunction), sizeof(printerFunction), defaultAlloc, 10);
+  PrinterSingleton.data = HHMap_new(
+      sizeof(printerFunction),
+      sizeof(printerFunction),
+      defaultAlloc, 10
+  );
 }
 static void PrinterSingleton_deinit() { HHMap_free(PrinterSingleton.data); }
 static void PrinterSingleton_append(fptr name, printerFunction function) {
-  static u32 calls = 0;
-  calls++;
-  if (name.width > HHMap_getKeySize(PrinterSingleton.data)) {
-    size_t width = name.width;
-#ifndef IGNORE_ALIGNMENT
-    if (name.width % (alignof(printerFunction)) != 0)
-      width += (alignof(printerFunction)) - name.width % (alignof(printerFunction));
-#endif
-    HHMap_transform(&(PrinterSingleton.data), width, sizeof(printerFunction), NULL, 0);
-  }
-  printerFunction space[1] = {function}; // function*
-  void *container = space;
-
-  u8 *nname = (u8 *)HHMap_getKeyBuffer(PrinterSingleton.data);
-  memset(nname, 0, HHMap_getKeySize(PrinterSingleton.data));
-  memcpy(nname, name.ptr, name.width);
-
-  HHMap_set(PrinterSingleton.data, nname, (u8 *)container);
-
-  void *res = HHMap_get(PrinterSingleton.data, nname);
-  memset((void *)container, 0, sizeof(void *));
-  memcpy((void *)container, res, sizeof(void *));
+  if (name.width > HHMap_getKeySize(PrinterSingleton.data))
+    HHMap_transform(
+        &PrinterSingleton.data,
+        name.width,
+        sizeof(printerFunction),
+        NULL, 0
+    );
+  HHMap_fset(PrinterSingleton.data, name, REF(printerFunction, function));
 }
-static printerFunction lastprinters[2] = {NULL, NULL};
-static fptr lastnames[2] = {nullUmf, nullUmf};
-static char lasttick = 0;
 
 static printerFunction PrinterSingleton_get(fptr name) {
+  static printerFunction lastprinters[2] = {NULL, NULL};
+  static fptr lastnames[2] = {nullUmf, nullUmf};
+  static u8 lasttick = 0;
+
   if (!fptr_cmp(name, lastnames[lasttick])) {
     return lastprinters[lasttick];
   } else if (!fptr_cmp(name, lastnames[!lasttick])) {
@@ -197,17 +189,14 @@ static printerFunction PrinterSingleton_get(fptr name) {
   memset(nname, 0, HHMap_getKeySize(PrinterSingleton.data));
   memcpy(nname, name.ptr, name.width);
 
-  void *val = HHMap_get(PrinterSingleton.data, nname);
-
   printerFunction p = NULL;
-  if (val) {
-    p = *(typeof(p) *)val; // reason for void* sizes with alignof
-    // memcpy(&p, val, sizeof(printerFunction));
+  HHMap_both r = HHMap_getBoth(PrinterSingleton.data, nname);
+
+  if (r.val) {
+    memcpy(&p, r.val, sizeof(p));
     lasttick = !lasttick;
     lastprinters[lasttick] = p;
-    lastnames[lasttick] = name;
-  } else {
-    return NULL;
+    lastnames[lasttick] = ((fptr){name.width, (u8 *)r.key});
   }
   return p;
 }

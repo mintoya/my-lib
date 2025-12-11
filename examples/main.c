@@ -1,7 +1,6 @@
 #include "../arenaAllocator.h"
 #include "../hhmap.h"
 #include "../hmap_arena.h"
-#define PRINTER_LIST_TYPENAMES
 #include "../print.h"
 #include "../wheels.h"
 
@@ -18,9 +17,9 @@ int main(void) {
   bool all = true;
   for (int i = 0; i < 10; i++) {
     int v;
-    HHmap_getSet(small_map, &i, &v);
+    HHMap_getSet(small_map, &i, &v);
     valFullElse(
-        HHmap_getSet(small_map, &i, &v),
+        HHMap_getSet(small_map, &i, &v),
         { all = false;v = -999; },
         false
     );
@@ -29,9 +28,9 @@ int main(void) {
   assertMessage(all, "hhmap couldnt retrieve all values ");
 
   LList_head *l = LList_new(local, sizeof(int));
-  LList_append(l, REF(int, 1));
-  LList_append(l, REF(int, 2));
-  LList_append(l, REF(int, 3));
+  LList_push(l, REF(int, 1));
+  LList_push(l, REF(int, 2));
+  LList_push(l, REF(int, 3));
 
   LList_element *e = l->first;
   while (e) {
