@@ -714,9 +714,11 @@ void print_f_helper(struct print_arg p, fptr typeName, outputFunction put, fptr 
   }
   printerFunction fn = PrinterSingleton_get(typeName);
   if (!fn) {
+    USETYPEPRINTER(pEsc, ((pEsc){.fg = {255, 0, 0}, .fgset = 1}));
     USETYPEPRINTER(fptr, fp_from("__ NO_TYPE("));
     USETYPEPRINTER(fptr, typeName);
     USETYPEPRINTER(fptr, fp_from(") __"));
+    USETYPEPRINTER(pEsc, ((pEsc){.reset = 1}));
   } else {
     fn(put, ref, args, _arb);
   }
@@ -726,9 +728,9 @@ void print_f(outputFunction put, void *arb, const fptr fmt, ...) {
   const char *ccstr = (char *)fmt.ptr;
   va_list l;
   va_start(l, fmt);
-  char check = 0;
+  bool toggled = 0;
   for (u32 i = 0; i < fmt.width; i++) {
-    if (ccstr[i] == '{') {
+    if (ccstr[i] == '{' && !toggled) {
       u32 j = i + 1;
       while (j < fmt.width && ccstr[j] != '}')
         j++;
@@ -747,9 +749,16 @@ void print_f(outputFunction put, void *arb, const fptr fmt, ...) {
       }
       print_f_helper(assumedName, tname, put, parseargs, arb);
       i = j;
-      check = 0;
+      toggled = 0;
 
+    } else if (ccstr[i] == '/') {
+      toggled = !toggled;
+      if (!toggled) {
+        wchar c = (wchar)(ccstr[i]);
+        put(REF(wchar, L'/'), arb, 1, 0);
+      }
     } else {
+      toggled = 0;
       wchar c = (wchar)(ccstr[i]);
       put(&c, arb, 1, 0);
     }

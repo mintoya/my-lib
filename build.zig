@@ -28,6 +28,7 @@ pub fn build(b: *std.Build) void {
             },
         });
         exe.linkSystemLibrary("dl");
+        exe.linkSystemLibrary("asan");
     } else {
         exe.addCSourceFile(.{
             .file = b.path(sourcefile),

@@ -8,7 +8,7 @@
 #include <string.h>
 
 OwnAllocator arena_owned_new(void);
-My_allocator *arena_new();
+My_allocator *pageArena_new();
 My_allocator *arena_new_ext(const My_allocator *base, size_t blockSize);
 void arena_cleanup(My_allocator *arena);
 size_t arena_footprint(My_allocator *arena);
@@ -166,7 +166,7 @@ typedef struct ArenaBlock {
 } ArenaBlock;
 ArenaBlock *arenablock_new(const My_allocator *allocator, size_t blockSize);
 
-My_allocator *arena_new() {
+My_allocator *pageArena_new() {
   size_t size = PAGESIZE;
 
   uint8_t *ptr = (uint8_t *)allocatePage(NULL, size);
@@ -179,6 +179,7 @@ My_allocator *arena_new() {
   };
 
   struct anonalign *anl = (struct anonalign *)ptr;
+  assertMessage(((uptr)ptr) == ((uptr) & (anl->blockpart)));
   ptr += sizeof(struct anonalign);
   size -= sizeof(struct anonalign);
 
@@ -253,7 +254,7 @@ void arena_free(const My_allocator *allocator, void *ptr) {
 }
 
 My_allocator *ownArenaInit(void) {
-  return arena_new();
+  return pageArena_new();
 }
 void ownArenaDeInit(My_allocator *d) {
   return arena_cleanup(d);
@@ -264,8 +265,7 @@ OwnAllocator arena_owned_new(void) {
 My_allocator *arena_new_ext(const My_allocator *base, size_t blockSize) {
   My_allocator *res =
       (My_allocator *)aAlloc(base, sizeof(My_allocator));
-  if (!res)
-    exit(ENOMEM);
+  assertMessage(res);
   *res = defaultAllocaator_functions;
   res->arb = arenablock_new(base, blockSize);
   return res;
@@ -274,7 +274,7 @@ bool inarena(ArenaBlock *it, const void *ptr) {
   return ptr > it->buffer && ptr < it->buffer + it->size;
 }
 void *arena_r_alloc(const My_allocator *arena, void *ptr, size_t size) {
-  size = (size + alignof(max_align_t) - 1) / alignof(max_align_t) * alignof(max_align_t);
+  size = lineup(size, alignof(max_align_t));
   assertMessage(ptr, "reallocating null pointer");
   size_t *lastSize = (size_t *)((uint8_t *)ptr - alignof(max_align_t));
   if (*lastSize > size)

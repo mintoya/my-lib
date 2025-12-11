@@ -27,11 +27,9 @@ typedef struct List {
   const My_allocator *allocator;
 } List;
 //
-typedef struct {
-  uintptr_t ptr;
-} xorptr;
+typedef struct LList_element LList_element;
 typedef struct LList_element {
-  xorptr ptr;
+  LList_element *next;
   uint8_t data[];
 } LList_element;
 
@@ -339,13 +337,6 @@ List *List_deepCopy(List *l) {
   return List_fromArr(l->allocator, l->head, l->width, l->length);
 }
 
-static inline LList_element *LList_next(LList_element *l, LList_element *prev) {
-  if(!l || !prev)return NULL;
-  return (LList_element *)(l->ptr.ptr ^ (uintptr_t)prev);
-}
-static inline void LList_element_setNP(LList_element *prev, LList_element *l, LList_element *next) {
-  l->ptr.ptr = ((uintptr_t)prev ^ (uintptr_t)next);
-}
 LList_head *LList_new(const My_allocator *allocator, size_t size) {
   LList_head *res = (LList_head *)aAlloc(allocator, size + sizeof(LList_head));
   *res = (LList_head){
@@ -356,13 +347,11 @@ LList_head *LList_new(const My_allocator *allocator, size_t size) {
   return res;
 }
 void LList_free(LList_head *l) {
-  LList_element *prev = l->first;
-  LList_element *next = LList_next(prev, NULL);
-  while (prev) {
-    aFree(l->allocator, prev);
-    LList_element *nn = LList_next(prev, next);
-    prev = next;
-    next = nn;
+  LList_element *e = l->first;
+  while (e) {
+    LList_element *n = e->next;
+    aFree(l->allocator, e);
+    e = n;
   }
   aFree(l->allocator, l);
 }
@@ -375,23 +364,16 @@ List_opError LList_append(LList_head *l, const void *val) {
   else
     memset(newelement->data, 0, l->elementSize);
 
-  if (l->first == NULL) {
-    LList_element_setNP(NULL, newelement, NULL);
+  if (!l->first) {
     l->first = newelement;
-  } else {
-    LList_element *prev = NULL;
-    LList_element *curr = l->first;
-    LList_element *next = LList_next(curr, prev);
-
-    while (next) {
-      prev = curr;
-      curr = next;
-      next = LList_next(curr, prev);
-    }
-
-    LList_element_setNP(prev, curr, newelement);
-    LList_element_setNP(curr, newelement, NULL);
+    return List_opErrorS.Ok;
   }
+  LList_element *e = l->first;
+  while (e->next)
+    e = e->next;
+  e->next = newelement;
+  newelement->next = NULL;
+  return List_opErrorS.Ok;
 }
 
 #endif
