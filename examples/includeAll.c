@@ -1,5 +1,6 @@
 #include "../arenaAllocator.h"
 #include "../hmap.h"
+#include "../hhmap.h"
 #include "../my-list.h"
 #include "../omap.h"
 #include "../wheels.h"

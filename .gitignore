@@ -5,4 +5,5 @@ cSum/a*
 perf.*
 .gdb*
 .zig-cache
-zig-out/*
+zig-out/.*
+zig-out/bin

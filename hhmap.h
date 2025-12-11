@@ -17,11 +17,6 @@ u32 HHMap_count(const HHMap *map);
 u8 *HHMap_getKeyBuffer(const HHMap *map);
 extern inline void *HHMap_getKey(const HHMap *map, u32 n);
 extern inline void *HHMap_getVal(const HHMap *map, u32 n);
-struct HHMap_both {
-  void *key;
-  void *val;
-};
-struct HHMap_both HHMap_getBoth(HHMap *map, void *key);
 usize HHMap_footprint(const HHMap *map);
 u32 HHMap_countCollisions(const HHMap *map);
 usize HHMap_getKeySize(const HHMap *map);
