@@ -5,7 +5,6 @@
   #include "hmap_arena.h"
 #endif
 
-
 #ifdef KMLM_H
   #define KMLM_C
   #include "kmlM.h"
@@ -16,11 +15,6 @@
   #include "print.h"
 #endif
 
-#ifdef HHMAP_H
-  #define HHMAP_C
-  #include "hhmap.h"
-#endif
-
 #ifdef HMAP_H
   #define HMAP_C
   #include "hmap.h"
@@ -29,6 +23,11 @@
 #ifdef OMAP_H
   #define OMAP_C
   #include "omap.h"
+#endif
+
+#ifdef HHMAP_H
+  #define HHMAP_C
+  #include "hhmap.h"
 #endif
 
 #ifdef STRING_LIST_H

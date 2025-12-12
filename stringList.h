@@ -120,8 +120,8 @@ static inline void stringList_cleanup_handler(stringList **sl) {
 
 stringList *stringList_new(const My_allocator *allocator) {
   stringList *res = (stringList *)aAlloc(allocator, sizeof(stringList));
-  List_makeNew(allocator, &(res->List_char), sizeof(char));
-  List_makeNew(allocator, &(res->List_stringMetaData), sizeof(stringMetaData));
+  List_makeNew(allocator, &(res->List_char), sizeof(char), 2);
+  List_makeNew(allocator, &(res->List_stringMetaData), sizeof(stringMetaData), 2);
   return res;
 }
 #define max(a, b) ((a < b) ? (b) : (a))

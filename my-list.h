@@ -64,10 +64,20 @@ ATTR(pure, gnu)
 extern inline void *List_getRefForce(const List *l, unsigned int i);
 ATTR(pure, gnu)
 extern inline void *List_getRef(const List *l, unsigned int i);
-extern inline void List_makeNew(const My_allocator *allocator, List *l, size_t bytes);
+extern inline void List_makeNew(const My_allocator *allocator, List *l, size_t bytes, uint32_t init);
 extern inline List_opError List_resize(List *l, unsigned int newSize);
-extern inline List *List_new(const My_allocator *allocator, size_t bytes);
+
+static inline List *List_new(const My_allocator *allocator, size_t bytes) {
+  List *l = (List *)aAlloc(allocator, sizeof(List));
+  List_makeNew(allocator, l, bytes, 2);
+  return l;
+}
 extern inline void List_free(List *l);
+static inline List *List_newInitL(const My_allocator *allocator, size_t bytes, uint32_t initSize) {
+  List *l = (List *)aAlloc(allocator, sizeof(List));
+  List_makeNew(allocator, l, bytes, initSize);
+  return l;
+}
 
 List_opError List_append(List *l, const void *element);
 List_opError List_insert(List *l, unsigned int i, void *element);
@@ -148,11 +158,6 @@ inline List_opError List_resize(List *l, unsigned int newSize) {
     return List_forceResize(l, newSize);
   return OK;
 }
-inline List *List_new(const My_allocator *allocator, size_t bytes) {
-  List *l = (List *)aAlloc(allocator, sizeof(List));
-  List_makeNew(allocator, l, bytes);
-  return l;
-}
 ATTR(pure, gnu)
 inline size_t List_headArea(const List *l) {
   return (l->width * l->length);
@@ -185,14 +190,14 @@ inline List_opError List_validState(const List *l) {
   )?OK:INVALID;
   // clang-format on
 }
-inline void List_makeNew(const My_allocator *allocator, List *l, size_t bytes) {
+inline void List_makeNew(const My_allocator *allocator, List *l, size_t bytes, uint32_t initialSize) {
   if (!l)
     return;
   *l = (List){
       .width = bytes,
       .length = 0,
-      .size = 2,
-      .head = (uint8_t *)aAlloc(allocator, bytes * 2),
+      .size = initialSize,
+      .head = (uint8_t *)aAlloc(allocator, bytes * initialSize),
       .allocator = allocator,
   };
 }
